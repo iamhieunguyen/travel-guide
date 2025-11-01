@@ -1,4 +1,3 @@
-// src/components/Login.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/cognito';
@@ -13,7 +12,9 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      await login(username, password);
+      const token = await login(username, password); 
+      localStorage.setItem('idToken', token); 
+      alert('Đăng nhập thành công!');
       navigate('/home');
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');

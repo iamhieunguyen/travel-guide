@@ -17,10 +17,11 @@ lint = true
 capabilities = "CAPABILITY_IAM"
 confirm_changeset = true
 resolve_s3 = true
-s3_prefix = "travel-guide-backend"
+s3_prefix = "travel-guide-stack"
 disable_rollback = true
 parameter_overrides = "StageName=\"prod\""
 image_repositories = []
+stack_name = "travel-guide-stack"
 
 [default.package.parameters]
 resolve_s3 = true

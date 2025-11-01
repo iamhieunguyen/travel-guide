@@ -1,4 +1,3 @@
-# backend/functions/auth/confirm_user.py
 import json
 import boto3
 import os

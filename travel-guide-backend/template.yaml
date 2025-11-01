@@ -5,9 +5,9 @@ Description: Travel Guide Backend
 Globals:
   Api:
     Cors:
-      AllowMethods: "'POST,OPTIONS'"
+      AllowMethods: "'POST,OPTIONS,GET,DELETE'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-      AllowOrigin: "'https://d8hm6ly0q0v5e.cloudfront.net'"
+      AllowOrigin: "'*'"
 
 Resources:
 
@@ -112,13 +112,13 @@ Resources:
             Method: POST
       Environment:
         Variables:
-          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
-                - cognito-idp:AdminConfirmSignUp
+                - cognito-idp:ConfirmSignUp
               Resource: !GetAtt UserPool.Arn
 
   StaticSiteBucket:

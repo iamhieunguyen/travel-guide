@@ -9,14 +9,15 @@ export default function Register() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleRegister = async (e) => {
+    e.preventDefault(); 
+    setError(''); 
     try {
       await register(username, email, password);
-      alert('Đăng ký thành công! Vui lòng đăng nhập.');
-      navigate('/login');
+      navigate('/confirm', { state: { username, email } });
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      console.error(err);
+      setError(err.message || 'Đăng ký thất bại. Vui lòng thử lại.');
     }
   };
 
@@ -24,7 +25,7 @@ export default function Register() {
     <div style={{ padding: '2rem', maxWidth: '400px', margin: '0 auto' }}>
       <h2>Đăng ký</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleRegister}>
         <div>
           <input
             type="text"

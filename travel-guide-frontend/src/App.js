@@ -1,19 +1,19 @@
+// src/App.js
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Register from './pages/Register';
+import Login from './pages/Login';
+import HomePage from './pages/HomePage'; // hoặc Home.jsx
 import LandingPage from './pages/LandingPage';
-import Login from './components/Login';
-import Register from './components/Register';
-import Confirm from './components/Confirm';
-import HomePage from './pages/HomePage';
+import './App.css';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/confirm" element={<Confirm />} /> 
         <Route path="/home" element={<HomePage />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
   );

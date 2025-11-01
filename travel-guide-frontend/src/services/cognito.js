@@ -1,3 +1,4 @@
+// src/services/cognito.js
 import {
   CognitoUserPool,
   CognitoUser,
@@ -12,18 +13,18 @@ const poolData = {
 
 const userPool = new CognitoUserPool(poolData);
 
+// Đăng ký
 export const register = (username, email, password) => {
   return new Promise((resolve, reject) => {
-    const attributeList = [
-      new CognitoUserAttribute({ Name: 'email', Value: email })
-    ];
-    userPool.signUp(username, password, attributeList, null, (err, result) => {
+    const attributes = [new CognitoUserAttribute({ Name: 'email', Value: email })];
+    userPool.signUp(username, password, attributes, null, (err, result) => {
       if (err) reject(err);
       else resolve(result.user);
     });
   });
 };
 
+// Xác minh OTP
 export const confirmRegistration = (username, code) => {
   return new Promise((resolve, reject) => {
     const userData = { Username: username, Pool: userPool };
@@ -35,28 +36,41 @@ export const confirmRegistration = (username, code) => {
   });
 };
 
+// Gửi lại OTP
+export const resendConfirmationCode = (username) => {
+  return new Promise((resolve, reject) => {
+    const user = new CognitoUser({ Username: username, Pool: userPool });
+    user.resendConfirmationCode((err, result) => {
+      if (err) reject(err);
+      else resolve(result);
+    });
+  });
+};
+
+// Đăng nhập
 export const login = (username, password) => {
   return new Promise((resolve, reject) => {
     const authDetails = new AuthenticationDetails({ Username: username, Password: password });
     const userData = { Username: username, Pool: userPool };
     const cognitoUser = new CognitoUser(userData);
     cognitoUser.authenticateUser(authDetails, {
-      onSuccess: (session) => resolve(session.getIdToken().getJwtToken()),
+      onSuccess: (session) => {
+        localStorage.setItem('idToken', session.getIdToken().getJwtToken());
+        resolve(session);
+      },
       onFailure: (err) => reject(err)
     });
   });
 };
 
-export const getIdToken = () => {
-  return localStorage.getItem('idToken');
-};
-
+// Đăng xuất
 export const signOut = () => {
   localStorage.removeItem('idToken');
 };
 
+// Kiểm tra đăng nhập 
 export const isAuthenticated = () => {
-  const token = getIdToken();
+  const token = localStorage.getItem('idToken');
   if (!token) return false;
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));

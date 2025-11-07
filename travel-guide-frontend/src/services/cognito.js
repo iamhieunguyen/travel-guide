@@ -79,3 +79,39 @@ export const isAuthenticated = () => {
     return false;
   }
 };
+
+// Lấy thông tin user hiện tại nếu session còn hiệu lực
+export const getCurrentUser = () => {
+  return new Promise((resolve) => {
+    const currentUser = userPool.getCurrentUser();
+    if (!currentUser) {
+      resolve(null);
+      return;
+    }
+
+    currentUser.getSession((err, session) => {
+      if (err || !session.isValid()) {
+        resolve(null);
+        return;
+      }
+
+      // ✅ Lưu lại idToken mỗi lần refresh session
+      localStorage.setItem('idToken', session.getIdToken().getJwtToken());
+
+      // ✅ Lấy thêm thông tin user (attributes)
+      currentUser.getUserAttributes((attrErr, attributes) => {
+        if (attrErr) {
+          resolve({ username: currentUser.getUsername() });
+        } else {
+          const userData = {
+            username: currentUser.getUsername(),
+            attributes: Object.fromEntries(
+              attributes.map((a) => [a.getName(), a.getValue()])
+            ),
+          };
+          resolve(userData);
+        }
+      });
+    });
+  });
+};

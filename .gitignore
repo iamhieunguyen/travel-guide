@@ -4,7 +4,6 @@
 .DS_Store
 .vscode/
 .idea/
-.env
 *.log
 
 # sam env (file bạn không muốn push)

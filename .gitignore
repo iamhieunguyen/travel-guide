@@ -11,17 +11,17 @@ sam-env
 # hoặc nếu ở root cố định: /sam-env
 
 # backend (AWS SAM, Python)
-backend/.aws-sam/
-backend/.venv/
-backend/__pycache__/
-backend/*.pyc
+**/.aws-sam/
+**/.venv/
+**/__pycache__/
+**/*.pyc
 
 # frontend (Node)
-frontend/node_modules/
-frontend/build/
-frontend/dist/
-frontend/.next/
-frontend/.cache/
+**/node_modules/
+**/build/
+**/dist/
+**/.next/
+**/.cache/
 
 # optional: ignore any node_modules anywhere
-node_modules/
+**/node_modules/

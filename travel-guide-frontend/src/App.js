@@ -1,22 +1,18 @@
-// src/App.js
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Register from './pages/Register';
-import Login from './pages/Login';
-import HomePage from './pages/HomePage'; // hoặc Home.jsx
-import LandingPage from './pages/LandingPage';
-import './App.css';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
+import HomePage from "./pages/HomePage";
+import CreatePostPage from "./pages/CreatePost/CreatePostPage";
 
-function App() {
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<HomePage />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/create-post" element={<CreatePostPage />} />
       </Routes>
     </BrowserRouter>
   );
 }
-
-export default App;

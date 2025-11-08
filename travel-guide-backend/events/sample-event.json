@@ -1,9 +1,0 @@
-{
-  "body": "{\"username\": \"testuser\", \"password\": \"TestPass123!\"}",
-  "httpMethod": "POST",
-  "headers": {
-    "Content-Type": "application/json"
-  },
-  "path": "/auth/login",
-  "isBase64Encoded": false
-}

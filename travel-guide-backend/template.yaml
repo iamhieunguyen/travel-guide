@@ -10,7 +10,7 @@ Globals:
       AllowOrigin: "'*'"
 
 Resources:
-
+# ---------------- COGNITO ----------------
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -121,6 +121,201 @@ Resources:
                 - cognito-idp:ConfirmSignUp
               Resource: !GetAtt UserPool.Arn
 
+# ---------------- DATA LAYER (Articles) ----------------
+  ArticleImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration: { Status: Enabled }
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [ "GET", "PUT", "POST", "DELETE", "HEAD" ]
+            AllowedOrigins: [ "*" ]
+            AllowedHeaders: [ "*" ]
+
+  ArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: articleId,  AttributeType: S }
+        - { AttributeName: visibility, AttributeType: S }
+        - { AttributeName: createdAt,  AttributeType: S }
+        - { AttributeName: ownerId,    AttributeType: S }
+      KeySchema:
+        - { AttributeName: articleId, KeyType: HASH }
+      GlobalSecondaryIndexes:
+        - IndexName: gsi_visibility_createdAt
+          KeySchema:
+            - { AttributeName: visibility, KeyType: HASH }
+            - { AttributeName: createdAt,  KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+        - IndexName: gsi_owner_createdAt
+          KeySchema:
+            - { AttributeName: ownerId,   KeyType: HASH }
+            - { AttributeName: createdAt, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+
+  # ---------------- ARTICLES API ----------------
+  CreateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: create_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 20
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+      Events:
+        CreateArticleApi:
+          Type: Api
+          Properties: { Path: /articles, Method: POST }
+
+  GetArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          RETURN_403_ON_PRIVATE: "false"
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+        - S3ReadPolicy:       { BucketName: !Ref ArticleImagesBucket }
+      Events:
+        GetArticleApi:
+          Type: Api
+          Properties: { Path: "/articles/{id}", Method: GET }
+  ListArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: list_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+      Events:
+        ListArticlesApi:
+          Type: Api
+          Properties: { Path: /articles, Method: GET }
+
+  UpdateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/media/
+      Handler: update_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 20
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+      Events:
+        UpdateArticleApi:
+          Type: Api
+          Properties: { Path: "/articles/{id}", Method: PATCH }
+
+  DeleteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: delete_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
+        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+      Events:
+        DeleteArticleApi:
+          Type: Api
+          Properties: { Path: "/articles/{id}", Method: DELETE }
+
+  SearchArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: search_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+      Events:
+        SearchArticlesApi:
+          Type: Api
+          Properties: { Path: /search, Method: GET }
+
+  GetUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_upload_url.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3WritePolicy: { BucketName: !Ref ArticleImagesBucket }
+      Events:
+        GetUploadUrlApi:
+          Type: Api
+          Properties: { Path: /upload-url, Method: POST }
+
+  # ---------------- THUMBNAIL (S3 trigger) ----------------
+  ThumbnailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/thumbnail_generator/
+      Handler: app.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 1024
+      Environment:
+        Variables:
+          BUCKET_NAME: !Sub "${AWS::StackName}-article-images-${AWS::AccountId}"
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action: ["s3:GetObject","s3:PutObject"]
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-article-images-${AWS::AccountId}/*"
+            - Effect: Allow
+              Action: ["s3:ListBucket"]
+              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-article-images-${AWS::AccountId}"
+      Events:
+        S3CreateArticles:
+          Type: S3
+          Properties:
+            Bucket: !Ref ArticleImagesBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - { Name: prefix, Value: articles/ }
+
+# ---------------- STATIC SITE (S3 + CloudFront OAI) ----------------
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:

@@ -181,3 +181,26 @@
     bottom: 0;
   }
 }
+
+/* Float animation for decorative cats */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+/* Tail wagging animation */
+@keyframes tailWag {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-8deg);
+  }
+  75% {
+    transform: rotate(8deg);
+  }
+}

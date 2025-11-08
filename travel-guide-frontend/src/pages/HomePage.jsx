@@ -1,41 +1,64 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated, signOut } from "../services/cognito";
+import CreatePostModal from "../components/CreatePost/CreatePostModal";
+import { useCreatePostModal } from "../components/CreatePost/CreatePostModalContext"; // ✅ dùng context mới
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { openModal } = useCreatePostModal(); 
 
-  // ✅ Kiểm tra nếu chưa đăng nhập thì chuyển về trang login
+  // Kiểm tra đăng nhập
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/auth?mode=login", { replace: true });
     }
   }, [navigate]);
 
+  // Đăng xuất
   const handleLogout = () => {
-    // ✅ Gọi signOut từ Cognito (nếu có)
     signOut();
-
-    // ✅ Xóa toàn bộ thông tin người dùng trong localStorage
     localStorage.clear();
-
-    // ✅ Chuyển về trang login trong AuthPage
     navigate("/auth?mode=login", { replace: true });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* ✅ Modal tạo bài viết */}
+      <CreatePostModal />
+
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="text-xl font-bold text-indigo-700">Travel Guide</div>
+          <div
+            className="text-xl font-bold text-indigo-700 cursor-pointer"
+            onClick={() => navigate("/home")}
+          >
+            Travel Guide
+          </div>
+
           <div className="flex items-center space-x-4">
-            <button className="text-gray-600 hover:text-indigo-600 font-medium">
+            <button
+              className="text-gray-600 hover:text-indigo-600 font-medium"
+              onClick={() => navigate("/explore")}
+            >
               Khám phá
             </button>
-            <button className="text-gray-600 hover:text-indigo-600 font-medium">
+            <button
+              className="text-gray-600 hover:text-indigo-600 font-medium"
+              onClick={() => navigate("/history")}
+            >
               Lịch sử
             </button>
+
+            {/* ✅ Nút tạo bài viết */}
+            <button
+              onClick={openModal}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+            >
+              + Tạo bài viết
+            </button>
+
             <button
               onClick={handleLogout}
               className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
@@ -47,17 +70,17 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-16">
+      <section className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-4xl font-bold mb-4">Chào mừng bạn trở lại!</h1>
           <p className="text-xl max-w-2xl mx-auto">
             Sẵn sàng cho chuyến đi tiếp theo? Hãy chọn điểm đến mơ ước của bạn.
           </p>
         </div>
-      </div>
+      </section>
 
       {/* Map Placeholder */}
-      <div className="container mx-auto px-4 py-12">
+      <section className="container mx-auto px-4 py-12 flex-1">
         <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
           Bản đồ hành trình
         </h2>
@@ -67,10 +90,10 @@ export default function HomePage() {
         <p className="text-center text-gray-500 mt-4 text-sm">
           (Tích hợp Google Maps API sau khi có key)
         </p>
-      </div>
+      </section>
 
       {/* Featured Destinations */}
-      <div className="bg-white py-12">
+      <section className="bg-white py-12">
         <div className="container mx-auto px-4">
           <h2 className="text-2xl font-bold text-center mb-10">
             Điểm đến nổi bật
@@ -94,7 +117,7 @@ export default function HomePage() {
             )}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

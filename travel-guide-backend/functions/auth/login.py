@@ -1,60 +1,54 @@
-import json
 import boto3
+import json
 import os
-from botocore.exceptions import ClientError
 
-USER_POOL_ID = os.environ['USER_POOL_ID']
-CLIENT_ID = os.environ['CLIENT_ID']
-
-cognito = boto3.client('cognito-idp')
+client = boto3.client('cognito-idp')
 
 def lambda_handler(event, context):
-    # Kiểm tra body
-    if not event.get("body"):
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Missing request body"})
-        }
-
     try:
-        body = json.loads(event["body"])
-    except (TypeError, json.JSONDecodeError):
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": "Invalid JSON"})
-        }
+        body = json.loads(event['body'])
+        username = body['username']
+        password = body['password']
 
-    username = body.get("username")
-    password = body.get("password")
-
-    if not username or not password:
-        return {
-            "statusCode": 400,
-            "body": json.dumps({"error": "Missing username or password"})
-        }
-
-    try:
-        resp = cognito.initiate_auth(
-            ClientId=CLIENT_ID,
-            AuthFlow='USER_PASSWORD_AUTH',
+        response = client.admin_initiate_auth(
+            UserPoolId=os.environ['USER_POOL_ID'],
+            ClientId=os.environ['CLIENT_ID'],
+            AuthFlow='ADMIN_NO_SRP_AUTH',
             AuthParameters={
                 'USERNAME': username,
                 'PASSWORD': password
             }
         )
+
+        id_token = response['AuthenticationResult']['IdToken']
+        refresh_token = response['AuthenticationResult']['RefreshToken']
+
         return {
-            "statusCode": 200,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({
-                "message": "Login successful",
-                "idToken": resp['AuthenticationResult']['IdToken']
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*',
+            },
+            'body': json.dumps({
+                'message': 'Login successful',
+                'id_token': id_token,
+                'refresh_token': refresh_token
             })
         }
-    except ClientError as e:
-        return {
-            "statusCode": 401,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"error": e.response['Error']['Message']})
-        }
+    except client.exceptions.UserNotFoundException:
+        return error_response(400, 'User not found')
+    except client.exceptions.NotAuthorizedException:
+        return error_response(400, 'Incorrect username or password')
+    except Exception as e:
+        print(f"Login error: {e}")
+        return error_response(500, f'Login failed: {str(e)}')
+
+def error_response(status, message):
+    return {
+        'statusCode': status,
+        'headers': {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+        },
+        'body': json.dumps({'error': message})
+    }

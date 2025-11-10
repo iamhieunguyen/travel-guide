@@ -1,12 +1,13 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Travel Guide Backend
+Description: Travel Guide Backend - Full Stack
 
+# Globals
 Globals:
   Api:
     Cors:
-      AllowMethods: "'POST,OPTIONS,GET,DELETE'"
-      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
       AllowOrigin: "'*'"
 
 Resources:
@@ -31,23 +32,18 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
-        # SourceArn: !Sub "arn:aws:ses:${AWS::Region}:${AWS::AccountId}:identity/your@email.com"
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
       ClientName: web-client
       UserPoolId: !Ref UserPool
-      GenerateSecret: false
+      GenerateSecret: false 
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
+        
 
-  NotificationTopic:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: TravelGuideNotifications
-      DisplayName: Travel Guide Notifications
-
+  # --- AUTH FUNCTIONS ---
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -55,15 +51,9 @@ Resources:
       Handler: login.lambda_handler
       Runtime: python3.11
       Timeout: 10
-      Events:
-        LoginApi:
-          Type: Api
-          Properties:
-            Path: /auth/login
-            Method: POST
       Environment:
         Variables:
-          USER_POOL_ID: !Ref UserPool
+          USER_POOL_ID: !Ref UserPool 
           CLIENT_ID: !Ref UserPoolClient
       Policies:
         - Version: '2012-10-17'
@@ -71,7 +61,14 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:InitiateAuth
+                - cognito-idp:AdminInitiateAuth 
               Resource: !GetAtt UserPool.Arn
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
 
   RegisterFunction:
     Type: AWS::Serverless::Function
@@ -80,12 +77,6 @@ Resources:
       Handler: register.lambda_handler
       Runtime: python3.11
       Timeout: 10
-      Events:
-        RegisterApi:
-          Type: Api
-          Properties:
-            Path: /auth/register
-            Method: POST
       Environment:
         Variables:
           CLIENT_ID: !Ref UserPoolClient
@@ -96,6 +87,12 @@ Resources:
               Action:
                 - cognito-idp:SignUp
               Resource: !GetAtt UserPool.Arn
+      Events:
+        RegisterApi:
+          Type: Api
+          Properties:
+            Path: /auth/register
+            Method: POST
 
   ConfirmUserFunction:
     Type: AWS::Serverless::Function
@@ -104,12 +101,6 @@ Resources:
       Handler: confirm_user.lambda_handler
       Runtime: python3.11
       Timeout: 10
-      Events:
-        ConfirmApi:
-          Type: Api
-          Properties:
-            Path: /auth/confirm
-            Method: POST
       Environment:
         Variables:
           CLIENT_ID: !Ref UserPoolClient
@@ -120,6 +111,12 @@ Resources:
               Action:
                 - cognito-idp:ConfirmSignUp
               Resource: !GetAtt UserPool.Arn
+      Events:
+        ConfirmApi:
+          Type: Api
+          Properties:
+            Path: /auth/confirm
+            Method: POST
 
 # ---------------- DATA LAYER (Articles) ----------------
   ArticleImagesBucket:
@@ -131,6 +128,11 @@ Resources:
           - AllowedMethods: [ "GET", "PUT", "POST", "DELETE", "HEAD" ]
             AllowedOrigins: [ "*" ]
             AllowedHeaders: [ "*" ]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
 
   ArticlesTable:
     Type: AWS::DynamoDB::Table
@@ -167,13 +169,24 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          USER_POOL_ID: !Ref UserPool 
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn 
       Events:
         CreateArticleApi:
           Type: Api
-          Properties: { Path: /articles, Method: POST }
+          Properties:
+            Path: /articles
+            Method: POST
 
   GetArticleFunction:
     Type: AWS::Serverless::Function
@@ -187,13 +200,25 @@ Resources:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
           RETURN_403_ON_PRIVATE: "false"
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
         - S3ReadPolicy:       { BucketName: !Ref ArticleImagesBucket }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         GetArticleApi:
           Type: Api
-          Properties: { Path: "/articles/{id}", Method: GET }
+          Properties:
+            Path: "/articles/{articleId}"
+            Method: GET
+
   ListArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -204,17 +229,28 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         ListArticlesApi:
           Type: Api
-          Properties: { Path: /articles, Method: GET }
+          Properties:
+            Path: /articles
+            Method: GET
 
   UpdateArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/media/
+      CodeUri: functions/articles/
       Handler: update_article.lambda_handler
       Runtime: python3.11
       Timeout: 20
@@ -222,13 +258,24 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         UpdateArticleApi:
           Type: Api
-          Properties: { Path: "/articles/{id}", Method: PATCH }
+          Properties:
+            Path: "/articles/{articleId}"
+            Method: PATCH
 
   DeleteArticleFunction:
     Type: AWS::Serverless::Function
@@ -241,13 +288,24 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
         - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         DeleteArticleApi:
           Type: Api
-          Properties: { Path: "/articles/{id}", Method: DELETE }
+          Properties:
+            Path: "/articles/{articleId}"
+            Method: DELETE
 
   SearchArticlesFunction:
     Type: AWS::Serverless::Function
@@ -259,12 +317,23 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         SearchArticlesApi:
           Type: Api
-          Properties: { Path: /search, Method: GET }
+          Properties:
+            Path: /search
+            Method: GET
 
   GetUploadUrlFunction:
     Type: AWS::Serverless::Function
@@ -281,7 +350,9 @@ Resources:
       Events:
         GetUploadUrlApi:
           Type: Api
-          Properties: { Path: /upload-url, Method: POST }
+          Properties:
+            Path: /upload-url
+            Method: POST
 
   # ---------------- THUMBNAIL (S3 trigger) ----------------
   ThumbnailFunction:
@@ -294,27 +365,17 @@ Resources:
       MemorySize: 1024
       Environment:
         Variables:
-          BUCKET_NAME: !Sub "${AWS::StackName}-article-images-${AWS::AccountId}"
+          BUCKET_NAME: !Ref ArticleImagesBucket
       Policies:
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action: ["s3:GetObject","s3:PutObject"]
-              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-article-images-${AWS::AccountId}/*"
+              Resource: !Sub "${ArticleImagesBucket.Arn}/*"
             - Effect: Allow
               Action: ["s3:ListBucket"]
-              Resource: !Sub "arn:aws:s3:::${AWS::StackName}-article-images-${AWS::AccountId}"
-      Events:
-        S3CreateArticles:
-          Type: S3
-          Properties:
-            Bucket: !Ref ArticleImagesBucket
-            Events: s3:ObjectCreated:*
-            Filter:
-              S3Key:
-                Rules:
-                  - { Name: prefix, Value: articles/ }
-
+              Resource: !GetAtt ArticleImagesBucket.Arn
+      
 # ---------------- STATIC SITE (S3 + CloudFront OAI) ----------------
   StaticSiteBucket:
     Type: AWS::S3::Bucket
@@ -324,7 +385,7 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-  
+
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -341,7 +402,7 @@ Resources:
             Condition:
               StringEquals:
                 AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-    DependsOn: CloudFrontDistribution  
+    DependsOn: CloudFrontDistribution
 
   CloudFrontOAI:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
@@ -353,13 +414,13 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Enabled: true
-        DefaultRootObject: index.html
         Origins:
           - Id: S3Origin
             DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
             S3OriginConfig:
               OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+        Enabled: true
+        DefaultRootObject: index.html
         DefaultCacheBehavior:
           TargetOriginId: S3Origin
           ViewerProtocolPolicy: redirect-to-https
@@ -380,12 +441,17 @@ Resources:
 
 Outputs:
   ApiUrl:
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/prod/"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
   UserPoolId:
-    Value: !Ref UserPool
+    Value: !Ref UserPool 
   UserPoolClientId:
-    Value: !Ref UserPoolClient
+    Value: !Ref UserPoolClient 
+  ArticleImagesBucketName:
+    Value: !Ref ArticleImagesBucket
   StaticSiteBucketName:
     Value: !Ref StaticSiteBucket
   CloudFrontDomain:
     Value: !GetAtt CloudFrontDistribution.DomainName
+  CloudFrontDomainForImages:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: Use this domain for serving images via CloudFront for better performance

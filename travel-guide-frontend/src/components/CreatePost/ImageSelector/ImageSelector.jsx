@@ -8,7 +8,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { useCreatePostModal } from "../CreatePostModalContext";
+import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 import InstagramStyleHeader from "../CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {

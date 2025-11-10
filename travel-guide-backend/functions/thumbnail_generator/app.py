@@ -1,47 +1,58 @@
-import os, io, boto3
+import boto3
+import os
 from PIL import Image
+import io
 
-s3 = boto3.client("s3")
-BUCKET = os.environ["BUCKET_NAME"]
-THUMB_SIZE = 256
+s3 = boto3.client('s3')
+bucket_name = os.environ['BUCKET_NAME']
 
-def _thumb_key_from_image_key(image_key: str) -> str:
-    base = os.path.basename(image_key)
-    stem = os.path.splitext(base)[0]
-    return f"thumbnails/{stem}_{THUMB_SIZE}.webp"
+def lambda_handler(event, context):
+    for record in event['Records']:
+        bucket = record['s3']['bucket']['name']
+        key = record['s3']['object']['key']
 
-def lambda_handler(event, ctx):
-    for rec in event.get("Records", []):
-        bucket = rec["s3"]["bucket"]["name"]
-        key = rec["s3"]["object"]["key"]
-
-        if bucket != BUCKET:
+        # Chỉ xử lý nếu là ảnh trong thư mục articles
+        if not key.startswith('articles/') or key.startswith('thumbnails/'):
             continue
-        # chỉ tạo thumb cho object dưới 'articles/'
-        if not key.startswith("articles/"):
-            continue
-        if key.startswith("thumbnails/"):
-            continue  # an toàn
 
-        # tải ảnh gốc
-        obj = s3.get_object(Bucket=bucket, Key=key)
-        raw = obj["Body"].read()
+        try:
+            # Get image from S3
+            response = s3.get_object(Bucket=bucket, Key=key)
+            image_content = response['Body'].read()
 
-        # tạo thumbnail (giữ tỉ lệ, tối đa 256)
-        im = Image.open(io.BytesIO(raw)).convert("RGB")
-        im.thumbnail((THUMB_SIZE, THUMB_SIZE))
-        out = io.BytesIO()
-        im.save(out, format="WEBP", quality=80, method=6)
-        out.seek(0)
+            # Open and resize image
+            image = Image.open(io.BytesIO(image_content))
+            image.thumbnail((256, 256), Image.Resampling.LANCZOS) # Use LANCZOS for better quality
 
-        # ghi lên S3
-        thumb_key = _thumb_key_from_image_key(key)
-        s3.put_object(
-            Bucket=bucket,
-            Key=thumb_key,
-            Body=out.getvalue(),
-            ContentType="image/webp",
-            ACL="private"
-        )
+            # Save to bytes
+            buffer = io.BytesIO()
+            image.save(buffer, format='WEBP', optimize=True, quality=85)
+            buffer.seek(0)
 
-    return {"ok": True}
+            # Generate thumbnail key
+            base_filename = os.path.basename(key)
+            stem = os.path.splitext(base_filename)[0]
+            thumbnail_key = f"thumbnails/{stem}_256.webp"
+
+            # Upload thumbnail to S3
+            s3.put_object(
+                Bucket=bucket,
+                Key=thumbnail_key,
+                Body=buffer.getvalue(),
+                ContentType='image/webp',
+                ACL='private' # Or 'public-read' if you want to serve directly
+            )
+
+            print(f"Thumbnail created: {thumbnail_key}")
+
+        except Exception as e:
+            print(f"Error processing {key}: {e}")
+            return {
+                'statusCode': 500,
+                'body': json.dumps(f'Error: {str(e)}')
+            }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Thumbnails processed successfully')
+    }

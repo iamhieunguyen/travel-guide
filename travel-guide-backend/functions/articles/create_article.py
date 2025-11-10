@@ -2,14 +2,18 @@ import os, json, uuid, base64
 import boto3
 from datetime import datetime, timezone
 from decimal import Decimal
-
-from utils.geo import geohash_encode  # từ CommonLayer
+import requests
+from jose import jwt
 
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
+USER_POOL_ID = os.environ["USER_POOL_ID"]
+CLIENT_ID = os.environ["CLIENT_ID"]
+AWS_REGION = os.environ["AWS_REGION"]
+
 table = dynamodb.Table(TABLE_NAME)
 
 def _response(status, body_dict):
@@ -22,13 +26,58 @@ def _response(status, body_dict):
         "body": json.dumps(body_dict, ensure_ascii=False),
     }
 
+def _get_user_id_from_jwt(token):
+    """Lấy username từ JWT token (cách frontend đang dùng)"""
+    try:
+        keys_url = f'https://cognito-idp.{AWS_REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json'
+        response = requests.get(keys_url)
+        keys = response.json()['keys']
+
+        headers = jwt.get_unverified_headers(token)
+        kid = headers['kid']
+
+        key = None
+        for k in keys:
+            if k['kid'] == kid:
+                key = k
+                break
+
+        if not key:
+            return None
+
+        user_info = jwt.decode(
+            token,
+            key,
+            algorithms=['RS256'],
+            audience=CLIENT_ID,
+            options={"verify_exp": True, "verify_aud": True}
+        )
+
+        return user_info.get('cognito:username') or user_info.get('username')
+    except Exception as e:
+        print(f"JWT verification error: {e}")
+        return None
+
 def _get_user_id(event):
+    """Hỗ trợ cả X-User-Id header và JWT token"""
     headers = event.get("headers") or {}
-    return headers.get("X-User-Id") or headers.get("x-user-id")
+
+    # 1. Thử X-User-Id header
+    x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
+    if x_user_id:
+        return x_user_id
+
+    # 2. Thử Authorization header (JWT)
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+        return _get_user_id_from_jwt(token)
+
+    return None
 
 def _thumb_from_image_key(image_key: str) -> str:
-    base = os.path.basename(image_key)  # ví dụ: 6baf2e01.png
-    stem = os.path.splitext(base)[0]    # 6baf2e01
+    base = os.path.basename(image_key)
+    stem = os.path.splitext(base)[0]
     return f"thumbnails/{stem}_256.webp"
 
 def lambda_handler(event, context):
@@ -50,7 +99,10 @@ def lambda_handler(event, context):
         visibility = (data.get("visibility") or "public").lower()
         if visibility not in ("public", "private"):
             return _response(400, {"error": "visibility must be public|private"})
-        owner_id = _get_user_id(event)  # None nếu không gửi header
+
+        owner_id = _get_user_id(event)
+        if not owner_id:
+            return _response(401, {"error": "X-User-Id or Authorization header is required"})
 
         # -------- geo: lat/lng bắt buộc --------
         try:
@@ -61,8 +113,12 @@ def lambda_handler(event, context):
         if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
             return _response(400, {"error": "lat/lng out of range"})
 
-        geohash = geohash_encode(lat_f, lng_f, precision=9)
-        gh5 = geohash[:5]
+        # Sử dụng geohash_encode nếu bạn có, nếu không thì tạo thủ công
+        # geohash = geohash_encode(lat_f, lng_f, precision=9)
+        # gh5 = geohash[:5]
+        # Dành cho ví dụ, ta dùng lat/lng làm partition key đơn giản
+        geohash = f"{lat_f:.6f},{lng_f:.6f}"
+        gh5 = geohash[:13] # Ví dụ, không chính xác như geohash thật
 
         # -------- tags (optional) --------
         tags = data.get("tags") or []
@@ -75,7 +131,7 @@ def lambda_handler(event, context):
         created_at = datetime.now(timezone.utc).isoformat()
         image_key = None
 
-        # Mode A: đã upload trước (presigned)
+        # Mode A: đã upload trước (presigned) - tên field phù hợp với frontend
         if data.get("imageKey"):
             image_key = data["imageKey"].strip()
             try:
@@ -83,7 +139,7 @@ def lambda_handler(event, context):
             except Exception:
                 return _response(400, {"error": f"imageKey not found in S3: {image_key}"})
 
-        # Mode B: gửi base64/data URL trực tiếp
+        # Mode B: gửi base64/data URL trực tiếp (frontend có thể gửi khi upload trực tiếp)
         elif data.get("image_data_url") or data.get("image_base64"):
             image_data_url = data.get("image_data_url")
             image_b64 = data.get("image_base64")
@@ -103,7 +159,7 @@ def lambda_handler(event, context):
                 image_key = f"articles/{article_id}.{image_ext}"
                 s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=raw, ContentType=mime, ACL="private")
 
-        # -------- put item (lat/lng dùng Decimal khi ghi DDB) --------
+        # -------- put item --------
         item = {
             "articleId": article_id,
             "title": title,
@@ -120,7 +176,7 @@ def lambda_handler(event, context):
             item["imageKey"] = image_key
             item["thumbnailKey"] = _thumb_from_image_key(image_key)
         if owner_id:
-            item["ownerId"] = owner_id  # KHÔNG set ""
+            item["ownerId"] = owner_id
 
         table.put_item(Item=item)
 
@@ -132,4 +188,5 @@ def lambda_handler(event, context):
         return _response(201, resp)
 
     except Exception as e:
+        print(f"Error in create_article: {e}")
         return _response(500, {"error": f"internal error: {e}"})

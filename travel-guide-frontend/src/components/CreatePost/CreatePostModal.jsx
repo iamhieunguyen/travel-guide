@@ -1,11 +1,12 @@
-import { useCreatePostModal } from "./CreatePostModalContext";
+// components/CreatePost/CreatePostModal.jsx
+import { useCreatePostModal } from "../../context/CreatePostModalContext";
 import ImageSelector from "./ImageSelector/ImageSelector";
 import PostDetails from "./PostDetails/PostDetails";
 import InstagramStyleHeader from "./CreatePostStyleHeader";
 import { X } from "lucide-react";
 
 export default function CreatePostModal() {
-  const { isOpen, closeModal, step, setStep, image } = useCreatePostModal();
+  const { isOpen, closeModal, step, setStep, image, handleShare } = useCreatePostModal();
 
   if (!isOpen) return null;
 
@@ -20,7 +21,7 @@ export default function CreatePostModal() {
           }}>
             {/* Curved top edge for avatar */}
             <div className="absolute top-0 left-0 right-0 h-12 bg-[#f5f3f0] z-20" style={{
-              clipPath: "ellipse(70px 40px at 50% 0%)"
+              clipPath: "ellipse(70px 40% at 50% 0%)"
             }}></div>
 
             {/* Decorative Cats - Cute illustrations in corners */}
@@ -30,7 +31,7 @@ export default function CreatePostModal() {
                 {/* Cat body */}
                 <div className="absolute bottom-0 left-0 w-20 h-14 bg-white rounded-[60%_40%_50%_50%/60%_60%_40%_40%] shadow-lg"></div>
                 {/* Brown spots */}
-                <div className="absolute top-1 left-2 w-8 h-6 bg-[#8B7355] rounded-[50%_60%_40%_50%/60%_50%_50%_40%]"></div>
+                <div className="absolute top-1 left-2 w-8 h-6 bg-[#8B7355] rounded-[50%_60%_40%_50%/50%_50%_50%_40%]"></div>
                 <div className="absolute top-2 right-3 w-6 h-5 bg-[#8B7355] rounded-[60%_40%_50%_50%/50%_60%_40%_50%]"></div>
                 {/* Tail */}
                 <div className="absolute -top-2 right-0 w-3 h-12 bg-[#4A4A4A] rounded-full transform rotate-45"></div>
@@ -69,8 +70,8 @@ export default function CreatePostModal() {
                 {/* White chest */}
                 <div className="absolute bottom-2 right-8 w-8 h-6 bg-white rounded-[50%_50%_40%_40%]"></div>
                 {/* Ears */}
-                <div className="absolute top-0 right-5 w-3 h-3 bg-[#FFB6C1] rounded-[50%_50%_0%_50%] border-2 border-[#8B8B8B]"></div>
-                <div className="absolute top-0 right-9 w-3 h-3 bg-[#FFB6C1] rounded-[50%_50%_50%_0%] border-2 border-[#8B8B8B]"></div>
+                <div className="absolute -top-1 right-5 w-3 h-3 bg-[#FFB6C1] rounded-[50%_50%_0%_50%] border-2 border-[#8B8B8B]"></div>
+                <div className="absolute -top-1 right-9 w-3 h-3 bg-[#FFB6C1] rounded-[50%_50%_50%_0%] border-2 border-[#8B8B8B]"></div>
                 {/* Eyes */}
                 <div className="absolute top-3 right-6 w-1.5 h-1.5 bg-black rounded-full"></div>
                 <div className="absolute top-3 right-9 w-1.5 h-1.5 bg-black rounded-full"></div>
@@ -134,10 +135,8 @@ export default function CreatePostModal() {
               </div>
             </div>
 
-            {/* Header */}
             <InstagramStyleHeader />
 
-            {/* Close Button */}
             <div className="absolute top-3 left-3 z-40">
               <button
                 onClick={closeModal}
@@ -147,12 +146,11 @@ export default function CreatePostModal() {
               </button>
             </div>
 
-            {/* Body */}
             <div className="bg-[#f5f3f0] relative p-6 pt-2" style={{ zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
               <PostDetails
                 image={image}
                 onBack={() => setStep(1)}
-                onShare={closeModal}
+                onShare={handleShare}
               />
             </div>
           </div>

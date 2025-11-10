@@ -7,7 +7,7 @@
 *.log
 
 # sam env (file bạn không muốn push)
-sam-env
+**/sam-env
 # hoặc nếu ở root cố định: /sam-env
 
 # backend (AWS SAM, Python)

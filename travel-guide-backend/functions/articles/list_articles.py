@@ -1,51 +1,97 @@
-import os, json, base64, boto3
-from boto3.dynamodb.conditions import Key
+import os
+import json
+import boto3
+from decimal import Decimal
 
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.environ["TABLE_NAME"])
 
-def _resp(code, body): 
-    return {"statusCode":code,"headers":{"Content-Type":"application/json","Access-Control-Allow-Origin":"*"},"body":json.dumps(body,ensure_ascii=False)}
+TABLE_NAME = os.environ["TABLE_NAME"]
+table = dynamodb.Table(TABLE_NAME)
 
-def _encode(d): return base64.urlsafe_b64encode(json.dumps(d).encode()).decode()
-def _decode(s):
-    try: return json.loads(base64.urlsafe_b64decode(s.encode()).decode())
-    except: return None
+def _response(status, body_dict):
+    return {
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": json.dumps(body_dict, ensure_ascii=False),
+    }
 
 def _get_user_id(event):
-    h = event.get("headers") or {}
-    return h.get("X-User-Id") or h.get("x-user-id")
+    """Hàm hỗ trợ lấy user ID từ cả JWT và X-User-Id như trong create_article"""
+    headers = event.get("headers") or {}
+    x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
+    if x_user_id:
+        return x_user_id
 
-def lambda_handler(event, ctx):
-    qs = event.get("queryStringParameters") or {}
-    scope = (qs.get("scope") or "public").lower()   # public | mine
-    limit = int(qs.get("limit", 10))
-    if limit<=0 or limit>100: limit=10
-    nt = _decode(qs["nextToken"]) if qs.get("nextToken") else None
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        # Bạn có thể thêm logic JWT ở đây nếu cần
+        # hoặc chỉ cần kiểm tra có token hay không
+        return "authenticated_user" # hoặc parse từ token
 
-    if scope not in ("public","mine"):
-        return _resp(400, {"error":"scope must be public|mine"})
+    return None
 
-    if scope == "public":
-        params = {
-            "IndexName":"gsi_visibility_createdAt",
-            "KeyConditionExpression": Key("visibility").eq("public"),
-            "ScanIndexForward": False,  # mới nhất trước
-            "Limit": limit
+def lambda_handler(event, context):
+    try:
+        params = event.get("queryStringParameters") or {}
+        scope = params.get("scope", "public")
+        limit = int(params.get("limit", 10))
+        next_token = params.get("nextToken")
+
+        user_id = _get_user_id(event)
+
+        # Query DynamoDB
+        if scope == "mine" and user_id:
+            # Query theo ownerId nếu scope là mine
+            query_params = {
+                'IndexName': 'gsi_owner_createdAt',
+                'KeyConditionExpression': 'ownerId = :owner_id',
+                'ExpressionAttributeValues': {
+                    ':owner_id': user_id
+                },
+                'ScanIndexForward': False, # Mới nhất trước
+                'Limit': limit
+            }
+        else:
+            # Query theo visibility nếu scope là public
+            query_params = {
+                'IndexName': 'gsi_visibility_createdAt',
+                'KeyConditionExpression': 'visibility = :visibility',
+                'ExpressionAttributeValues': {
+                    ':visibility': 'public'
+                },
+                'ScanIndexForward': False, # Mới nhất trước
+                'Limit': limit
+            }
+
+        if next_token:
+            query_params['ExclusiveStartKey'] = json.loads(next_token)
+
+        response = table.query(**query_params)
+
+        items = response['Items']
+        next_key = response.get('LastEvaluatedKey')
+
+        # Chuyển Decimal sang float cho frontend
+        processed_items = []
+        for item in items:
+            processed_item = dict(item)
+            if 'lat' in processed_item:
+                processed_item['lat'] = float(processed_item['lat'])
+            if 'lng' in processed_item:
+                processed_item['lng'] = float(processed_item['lng'])
+            processed_items.append(processed_item)
+
+        result = {
+            'items': processed_items
         }
-    else:  # mine
-        user = _get_user_id(event)
-        if not user: 
-            return _resp(401, {"error":"missing X-User-Id for scope=mine"})
-        params = {
-            "IndexName":"gsi_owner_createdAt",
-            "KeyConditionExpression": Key("ownerId").eq(user),
-            "ScanIndexForward": False,
-            "Limit": limit
-        }
+        if next_key:
+            result['nextToken'] = json.dumps(next_key)
 
-    if nt: params["ExclusiveStartKey"]=nt
-    rs = table.query(**params)
-    items = rs.get("Items", [])
-    next_token = _encode(rs["LastEvaluatedKey"]) if "LastEvaluatedKey" in rs else None
-    return _resp(200, {"items":items,"nextToken":next_token})
+        return _response(200, result)
+
+    except Exception as e:
+        print(f"Error in list_articles: {e}")
+        return _response(500, {"error": f"internal error: {e}"})

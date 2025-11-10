@@ -1,5 +1,5 @@
 import React from "react";
-import { useCreatePostModal } from "./CreatePostModalContext"; // hoặc "./CreatePostModalContext"
+import { useCreatePostModal } from "./CreatePostModalContext"; 
 
 export default function CreatePostButton() {
   const { openModal } = useCreatePostModal();

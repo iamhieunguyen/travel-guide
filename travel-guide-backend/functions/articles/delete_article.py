@@ -1,37 +1,50 @@
-import os, json, boto3
+import os
+import json
+import boto3
 
-s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(os.environ["TABLE_NAME"])
-BUCKET = os.environ["BUCKET_NAME"]
 
-def _resp(status, body=None):
+TABLE_NAME = os.environ["TABLE_NAME"]
+BUCKET_NAME = os.environ["BUCKET_NAME"]
+table = dynamodb.Table(TABLE_NAME)
+
+def _response(status, body_dict):
     return {
         "statusCode": status,
-        "headers": {"Access-Control-Allow-Origin":"*"},
-        "body": "" if body is None else json.dumps(body, ensure_ascii=False),
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+        },
+        "body": json.dumps(body_dict, ensure_ascii=False),
     }
 
 def lambda_handler(event, context):
-    article_id = (event.get("pathParameters") or {}).get("id")
-    if not article_id:
-        return _resp(400, {"error":"missing id"})
+    try:
+        path_params = event.get("pathParameters") or {}
+        article_id = path_params.get("articleId")
 
-    # Lấy item để biết imageKey
-    res = table.get_item(Key={"articleId": article_id})
-    item = res.get("Item")
-    if not item:
-        return _resp(404, {"error":"not found"})
+        if not article_id:
+            return _response(400, {"error": "articleId is required"})
 
-    # Xóa DynamoDB
-    table.delete_item(Key={"articleId": article_id})
+        # Lấy item để xóa ảnh nếu có
+        response = table.get_item(Key={'articleId': article_id})
+        if 'Item' not in response:
+            return _response(404, {"error": "Article not found"})
 
-    # Xóa ảnh (nếu có)
-    if "imageKey" in item and item["imageKey"]:
-        try:
-            s3.delete_object(Bucket=BUCKET, Key=item["imageKey"])
-        except Exception:
-            # Không fail nếu xóa ảnh lỗi
-            pass
+        item = response['Item']
+        image_key = item.get('imageKey')
 
-    return _resp(204)
+        # Xóa item trong DB
+        table.delete_item(Key={'articleId': article_id})
+
+        # Xóa ảnh khỏi S3 nếu có
+        if image_key:
+            import boto3
+            s3 = boto3.client('s3')
+            s3.delete_object(Bucket=BUCKET_NAME, Key=image_key)
+
+        return _response(200, {"message": "Article deleted successfully"})
+
+    except Exception as e:
+        print(f"Error in delete_article: {e}")
+        return _response(500, {"error": f"internal error: {e}"})

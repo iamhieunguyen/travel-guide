@@ -42,7 +42,6 @@ def lambda_handler(event, context):
                 "Bucket": BUCKET,
                 "Key": key,
                 "ContentType": content_type,
-                # Đừng ký ACL ở đây để đơn giản, bucket mặc định private là đủ
             },
             ExpiresIn=900  # 15 phút
         )

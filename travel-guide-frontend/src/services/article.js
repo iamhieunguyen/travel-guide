@@ -1,6 +1,6 @@
 // services/article.js
 const API_BASE = process.env.REACT_APP_API_BASE?.replace(/\/+$/, "") || "";
-const CF_DOMAIN = process.env.REACT_APP_CF_DOMAIN || "d839pyrahtgd8.cloudfront.net";
+const CF_DOMAIN = process.env.REACT_APP_CF_DOMAIN || "d1k0khib98591u.cloudfront.net";
 const X_USER_ID = process.env.REACT_APP_X_USER_ID || "";
 
 // Cache cho các request

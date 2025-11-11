@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import requests
 from jose import jwt
+from cors import ok, error, options
 
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
@@ -16,13 +17,19 @@ AWS_REGION = os.environ["AWS_REGION"]
 
 table = dynamodb.Table(TABLE_NAME)
 
+def _cors_headers():
+    return {
+        "Content-Type": "application/json",
+        # audit: có thể thay * bằng domain FE của bạn
+        "Access-Control-Allow-Origin": os.getenv("CORS_ORIGIN", "https://d1k0khib98591u.cloudfront.net"),
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id",
+        "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PATCH,DELETE",
+    }
+
 def _response(status, body_dict):
     return {
         "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
+        "headers": _cors_headers(),
         "body": json.dumps(body_dict, ensure_ascii=False),
     }
 
@@ -81,7 +88,10 @@ def _thumb_from_image_key(image_key: str) -> str:
     return f"thumbnails/{stem}_256.webp"
 
 def lambda_handler(event, context):
-    try:
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
+    try:         
         body_str = event.get("body") or ""
         if event.get("isBase64Encoded"):
             body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")

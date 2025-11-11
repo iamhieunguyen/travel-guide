@@ -2,6 +2,7 @@ import os
 import json
 import boto3
 from decimal import Decimal
+from cors import ok, error, options
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -20,6 +21,10 @@ def _response(status, body_dict):
     }
 
 def lambda_handler(event, context):
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
+
     try:
         path_params = event.get("pathParameters") or {}
         article_id = path_params.get("articleId")

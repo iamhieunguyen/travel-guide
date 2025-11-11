@@ -2,7 +2,6 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide Backend - Full Stack
 
-# Globals
 Globals:
   Api:
     Cors:
@@ -11,7 +10,62 @@ Globals:
       AllowOrigin: "'*'"
 
 Resources:
-# ---------------- COGNITO ----------------
+  ##############################
+  # DATA LAYER
+  ##############################
+  ArticleImagesBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  ArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: articleId
+          AttributeType: S
+        - AttributeName: visibility
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: ownerId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: articleId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: gsi_visibility_createdAt
+          KeySchema:
+            - AttributeName: visibility
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gsi_owner_createdAt
+          KeySchema:
+            - AttributeName: ownerId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  ##############################
+  # AUTH (COGNITO)
+  ##############################
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -38,12 +92,13 @@ Resources:
     Properties:
       ClientName: web-client
       UserPoolId: !Ref UserPool
-      GenerateSecret: false 
+      GenerateSecret: false
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
-        
 
-  # --- AUTH FUNCTIONS ---
+  ##############################
+  # AUTH FUNCTIONS
+  ##############################
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -53,7 +108,7 @@ Resources:
       Timeout: 10
       Environment:
         Variables:
-          USER_POOL_ID: !Ref UserPool 
+          USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
         - Version: '2012-10-17'
@@ -61,7 +116,7 @@ Resources:
             - Effect: Allow
               Action:
                 - cognito-idp:InitiateAuth
-                - cognito-idp:AdminInitiateAuth 
+                - cognito-idp:AdminInitiateAuth
               Resource: !GetAtt UserPool.Arn
       Events:
         LoginApi:
@@ -118,46 +173,9 @@ Resources:
             Path: /auth/confirm
             Method: POST
 
-# ---------------- DATA LAYER (Articles) ----------------
-  ArticleImagesBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      VersioningConfiguration: { Status: Enabled }
-      CorsConfiguration:
-        CorsRules:
-          - AllowedMethods: [ "GET", "PUT", "POST", "DELETE", "HEAD" ]
-            AllowedOrigins: [ "*" ]
-            AllowedHeaders: [ "*" ]
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
-
-  ArticlesTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - { AttributeName: articleId,  AttributeType: S }
-        - { AttributeName: visibility, AttributeType: S }
-        - { AttributeName: createdAt,  AttributeType: S }
-        - { AttributeName: ownerId,    AttributeType: S }
-      KeySchema:
-        - { AttributeName: articleId, KeyType: HASH }
-      GlobalSecondaryIndexes:
-        - IndexName: gsi_visibility_createdAt
-          KeySchema:
-            - { AttributeName: visibility, KeyType: HASH }
-            - { AttributeName: createdAt,  KeyType: RANGE }
-          Projection: { ProjectionType: ALL }
-        - IndexName: gsi_owner_createdAt
-          KeySchema:
-            - { AttributeName: ownerId,   KeyType: HASH }
-            - { AttributeName: createdAt, KeyType: RANGE }
-          Projection: { ProjectionType: ALL }
-
-  # ---------------- ARTICLES API ----------------
+  ##############################
+  # ARTICLE FUNCTIONS
+  ##############################
   CreateArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -169,18 +187,20 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          USER_POOL_ID: !Ref UserPool 
+          USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
-        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn 
+              Resource: !GetAtt UserPool.Arn
       Events:
         CreateArticleApi:
           Type: Api
@@ -203,8 +223,10 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
-        - S3ReadPolicy:       { BucketName: !Ref ArticleImagesBucket }
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -216,7 +238,7 @@ Resources:
         GetArticleApi:
           Type: Api
           Properties:
-            Path: "/articles/{articleId}"
+            Path: /articles/{articleId}
             Method: GET
 
   ListArticlesFunction:
@@ -232,7 +254,8 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -261,8 +284,10 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
-        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -274,7 +299,7 @@ Resources:
         UpdateArticleApi:
           Type: Api
           Properties:
-            Path: "/articles/{articleId}"
+            Path: /articles/{articleId}
             Method: PATCH
 
   DeleteArticleFunction:
@@ -291,8 +316,10 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - S3CrudPolicy:       { BucketName: !Ref ArticleImagesBucket }
-        - DynamoDBCrudPolicy: { TableName: !Ref ArticlesTable }
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -304,7 +331,7 @@ Resources:
         DeleteArticleApi:
           Type: Api
           Properties:
-            Path: "/articles/{articleId}"
+            Path: /articles/{articleId}
             Method: DELETE
 
   SearchArticlesFunction:
@@ -320,7 +347,8 @@ Resources:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - DynamoDBReadPolicy: { TableName: !Ref ArticlesTable }
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
@@ -346,7 +374,8 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
       Policies:
-        - S3WritePolicy: { BucketName: !Ref ArticleImagesBucket }
+        - S3WritePolicy:
+            BucketName: !Ref ArticleImagesBucket
       Events:
         GetUploadUrlApi:
           Type: Api
@@ -354,7 +383,9 @@ Resources:
             Path: /upload-url
             Method: POST
 
-  # ---------------- THUMBNAIL (S3 trigger) ----------------
+  ##############################
+  # THUMBNAIL GENERATOR (S3 trigger)
+  ##############################
   ThumbnailFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -370,13 +401,23 @@ Resources:
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
-              Action: ["s3:GetObject","s3:PutObject"]
+              Action:
+                - s3:GetObject
+                - s3:PutObject
               Resource: !Sub "${ArticleImagesBucket.Arn}/*"
             - Effect: Allow
-              Action: ["s3:ListBucket"]
+              Action: s3:ListBucket
               Resource: !GetAtt ArticleImagesBucket.Arn
-      
-# ---------------- STATIC SITE (S3 + CloudFront OAI) ----------------
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+
+  ##############################
+  # STATIC SITE + CLOUDFRONT (OAI)
+  ##############################
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -386,6 +427,12 @@ Resources:
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${AWS::StackName}"
+
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -393,48 +440,73 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontServicePrincipalReadOnly
+          - Sid: AllowCloudFrontOAIReadOnly
             Effect: Allow
             Principal:
-              Service: cloudfront.amazonaws.com
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
             Resource: !Sub "${StaticSiteBucket.Arn}/*"
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
-    DependsOn: CloudFrontDistribution
 
-  CloudFrontOAI:
-    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+  ArticleImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
     Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub "OAI for ${AWS::StackName}"
+      Bucket: !Ref ArticleImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAIReadImages
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${ArticleImagesBucket.Arn}/*"
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         Origins:
-          - Id: S3Origin
+          - Id: S3OriginStatic
             DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+          - Id: S3OriginImages
+            DomainName: !GetAtt ArticleImagesBucket.RegionalDomainName
             S3OriginConfig:
               OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
         Enabled: true
         DefaultRootObject: index.html
         DefaultCacheBehavior:
-          TargetOriginId: S3Origin
+          TargetOriginId: S3OriginStatic
           ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods:
-            - GET
-            - HEAD
-          CachedMethods:
-            - GET
-            - HEAD
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
           ForwardedValues:
             QueryString: false
             Cookies:
               Forward: none
           Compress: true
+        CacheBehaviors:
+          - PathPattern: "articles/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
+          - PathPattern: "thumbnails/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
         PriceClass: PriceClass_100
         HttpVersion: http2
         IPV6Enabled: true
@@ -443,9 +515,9 @@ Outputs:
   ApiUrl:
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
   UserPoolId:
-    Value: !Ref UserPool 
+    Value: !Ref UserPool
   UserPoolClientId:
-    Value: !Ref UserPoolClient 
+    Value: !Ref UserPoolClient
   ArticleImagesBucketName:
     Value: !Ref ArticleImagesBucket
   StaticSiteBucketName:

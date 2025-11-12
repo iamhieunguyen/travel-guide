@@ -8,6 +8,11 @@ Globals:
       AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
       AllowOrigin: "'*'"
+    Auth:
+      Authorizers:
+        CognitoAuthorizer:
+          UserPoolArn: !GetAtt UserPool.Arn
+          IdentitySource: "method.request.header.Authorization"
 
 Resources:
   ##############################
@@ -333,6 +338,8 @@ Resources:
           Properties:
             Path: /articles/{articleId}
             Method: DELETE
+            Auth:
+             Authorizer: CognitoAuthorizer
 
   SearchArticlesFunction:
     Type: AWS::Serverless::Function

@@ -107,7 +107,7 @@ export default function Login({ embed = false }) {
               type="checkbox"
               checked={remember}
               onChange={() => setRemember(!remember)}
-              className="h-4 w-4 text-[#9caf84] border-gray-300 rounded focus:ring-[#9caf84]"
+              className="h-5 w-5 text-[#9caf84] border-[#9caf84] rounded-2xl focus:ring-2 focus:ring-[#9caf84]/40"
             />
             Remember me
           </label>

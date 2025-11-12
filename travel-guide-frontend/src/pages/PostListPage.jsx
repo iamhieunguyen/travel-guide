@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
 import { Heart, MessageCircle, Share, MapPin, Clock } from 'lucide-react';
 
@@ -12,8 +13,10 @@ export default function PostListPage() {
   const [nextToken, setNextToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [scope, setScope] = useState('public'); // 'public' or 'mine'
+  const [openMenuId, setOpenMenuId] = useState(null); // Track which menu is open
   
-  const { user } = useAuth(); // Bỏ getIdToken nếu không dùng
+  const { user } = useAuth();
+  const { openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
 
   // Di chuyển loadPosts ra ngoài để tránh dependency loop
@@ -66,6 +69,55 @@ export default function PostListPage() {
   const handleShare = (postId) => {
     // Implement share functionality
     console.log('Share post:', postId);
+  };
+
+  const handleEditPost = (post) => {
+    console.log('Edit post:', post);
+    setOpenMenuId(null);
+    openEditModal(post);
+  };
+
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) {
+      return;
+    }
+
+    try {
+      console.log('🗑️ Đang xóa bài viết:', postId);
+      const result = await api.deleteArticle(postId);
+      console.log('✅ Kết quả xóa:', result);
+      
+      // Clear cache để refresh data
+      api.clearCache();
+      
+      // Remove post from local state
+      setPosts(prev => prev.filter(post => post.articleId !== postId));
+      setOpenMenuId(null);
+      alert('Xóa bài viết thành công!');
+    } catch (error) {
+      console.error('❌ Lỗi khi xóa bài viết:', error);
+      console.error('Chi tiết lỗi:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      
+      // Hiển thị lỗi chi tiết hơn
+      let errorMsg = 'Lỗi khi xóa bài viết';
+      if (error.status === 401 || error.status === 403) {
+        errorMsg = 'Bạn không có quyền xóa bài viết này';
+      } else if (error.status === 404) {
+        errorMsg = 'Không tìm thấy bài viết';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
+      alert(errorMsg);
+    }
+  };
+
+  const toggleMenu = (postId) => {
+    setOpenMenuId(openMenuId === postId ? null : postId);
   };
 
   const formatDate = (dateString) => {
@@ -199,18 +251,58 @@ export default function PostListPage() {
                             </span>
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-800">{post.username || 'Ẩn danh'}</p>
+                            <p className="font-semibold text-gray-800">
+                              {post.username || (scope === 'mine' && user?.username) || 'Ẩn danh'}
+                            </p>
                             <p className="text-xs text-gray-500 flex items-center">
                               <Clock className="w-3 h-3 mr-1" />
                               {formatDate(post.createdAt || post.timestamp)}
                             </p>
                           </div>
                         </div>
-                        <button className="text-gray-400 hover:text-gray-600">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                          </svg>
-                        </button>
+                        <div className="relative">
+                          <button 
+                            onClick={() => toggleMenu(post.articleId)}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                            </svg>
+                          </button>
+                          
+                          {/* Dropdown Menu */}
+                          {openMenuId === post.articleId && (
+                            <>
+                              {/* Backdrop */}
+                              <div 
+                                className="fixed inset-0 z-10" 
+                                onClick={() => setOpenMenuId(null)}
+                              />
+                              
+                              {/* Menu */}
+                              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 overflow-hidden">
+                                <button
+                                  onClick={() => handleEditPost(post)}
+                                  className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2 border-b border-gray-100"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                  <span className="font-medium">Chỉnh sửa</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeletePost(post.articleId)}
+                                  className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                  <span className="font-medium">Xóa bài viết</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
                       
                       {post.location && (

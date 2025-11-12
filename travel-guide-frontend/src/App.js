@@ -11,9 +11,9 @@ import PostListPage from "./pages/PostListPage";
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CreatePostModalProvider>
-        <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <CreatePostModalProvider>
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<HomePage />} />
@@ -21,8 +21,8 @@ export default function App() {
             <Route path="/posts" element={<PostListPage />} />
           </Routes>
           <CreatePostModal />
-        </BrowserRouter>
-      </CreatePostModalProvider>
-    </AuthProvider>
+        </CreatePostModalProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

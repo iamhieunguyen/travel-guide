@@ -43,6 +43,13 @@ function authHeaders(hasBody = false) {
 }
 
 async function http(method, path, body, { raw = false, useCache = false } = {}) {
+  // Validate API_BASE
+  if (!API_BASE) {
+    console.error('❌ REACT_APP_API_BASE is not defined!');
+    console.error('Current env:', process.env.REACT_APP_API_BASE);
+    throw new Error('API configuration error. Please restart the app.');
+  }
+
   const cacheKey = getCacheKey(method, path, body);
 
   if (useCache && method === "GET") {
@@ -50,7 +57,10 @@ async function http(method, path, body, { raw = false, useCache = false } = {}) 
     if (cached) return cached;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, {
+  const fullUrl = `${API_BASE}${path}`;
+  console.log(`🌐 ${method} ${fullUrl}`);
+
+  const res = await fetch(fullUrl, {
     method,
     headers: authHeaders(!!body),
     body: body ? JSON.stringify(body) : undefined,

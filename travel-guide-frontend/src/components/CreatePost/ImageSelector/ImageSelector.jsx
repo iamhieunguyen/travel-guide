@@ -12,13 +12,20 @@ import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 import InstagramStyleHeader from "../CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {
+  const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
   const [images, setImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [showAspectMenu, setShowAspectMenu] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
-  const { setImage, aspect, setAspect } = useCreatePostModal();
+
+  // Load ảnh từ context khi quay lại
+  useEffect(() => {
+    if (image && Array.isArray(image) && image.length > 0) {
+      setImages(image);
+    }
+  }, [image]);
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -52,15 +59,57 @@ export default function ImageSelector({ onNext }) {
   };
 
   const handleBack = () => {
+    // Xóa ảnh và quay về màn hình upload
     setImages([]);
     setZoom(100);
-    setAspect("1:1");
     setCurrentIndex(0);
+    setAspect("1:1");
   };
 
-  const handleNext = () => {
-    setImage(images);
-    onNext();
+  const handleNext = async () => {
+    try {
+      console.log('🔄 Converting blob URLs to data URLs...');
+      
+      // Convert blob URLs to data URLs
+      const dataURLPromises = images.map((blobUrl) => {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width;
+              canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              const dataURL = canvas.toDataURL('image/jpeg', 0.9);
+              console.log('✅ Converted:', dataURL.substring(0, 50));
+              resolve(dataURL);
+            } catch (error) {
+              console.error('❌ Canvas error:', error);
+              reject(error);
+            }
+          };
+          
+          img.onerror = (error) => {
+            console.error('❌ Image load error:', error);
+            reject(error);
+          };
+          
+          img.src = blobUrl;
+        });
+      });
+      
+      const dataURLs = await Promise.all(dataURLPromises);
+      console.log('✅ All images converted:', dataURLs.length);
+      
+      setImage(dataURLs);
+      onNext();
+    } catch (error) {
+      console.error('❌ Error converting images:', error);
+      alert('Lỗi khi xử lý ảnh. Vui lòng thử lại.');
+    }
   };
 
   const aspectRatios = [
@@ -110,7 +159,7 @@ export default function ImageSelector({ onNext }) {
         
         <div className="absolute top-3 left-3 z-40">
           <button
-            onClick={images.length > 0 ? handleRemoveAll : null}
+            onClick={images.length > 0 ? handleRemoveAll : closeModal}
             className="bg-white/95 hover:bg-white text-gray-600 hover:text-gray-800 p-2.5 rounded-full shadow-xl backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90"
           >
             <X size={20} strokeWidth={2.5} />
@@ -160,41 +209,42 @@ export default function ImageSelector({ onNext }) {
                 }}
               ></div>
 
-              <label
-                onClick={triggerFileSelect}
-                className="flex flex-col items-center justify-center w-full h-full cursor-pointer group px-4"
-              >
-              <div className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-pink-400 group-hover:border-pink-500 transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-pink-200/50 relative max-w-[700px] w-full" style={{ zIndex: 30 }}>
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-500 rounded-full blur-2xl opacity-40 animate-pulse"></div>
-                  <div className="relative bg-gradient-to-br from-pink-100 to-purple-100 p-6 rounded-full">
-                    <ImageIcon className="w-20 h-20 text-pink-600" strokeWidth={1.5} />
+              <div className="flex flex-col items-center justify-center w-full h-full group px-4">
+                <div 
+                  onClick={triggerFileSelect}
+                  className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-pink-400 group-hover:border-pink-500 transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-pink-200/50 relative max-w-[700px] w-full cursor-pointer" 
+                  style={{ zIndex: 30 }}
+                >
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-500 rounded-full blur-2xl opacity-40 animate-pulse"></div>
+                    <div className="relative bg-gradient-to-br from-pink-100 to-purple-100 p-6 rounded-full">
+                      <ImageIcon className="w-20 h-20 text-pink-600" strokeWidth={1.5} />
+                    </div>
                   </div>
+                  
+                  <div className="text-center space-y-3">
+                    <p className="text-gray-800 text-xl font-semibold">
+                      Kéo ảnh hoặc video vào đây
+                    </p>
+                    <p className="text-gray-500 text-sm">
+                      Hỗ trợ JPG, PNG, GIF • Tối đa 10MB
+                    </p>
+                  </div>
+                  
+                  <button className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600">
+                    Chọn từ máy tính
+                  </button>
                 </div>
                 
-                <div className="text-center space-y-3">
-                  <p className="text-gray-800 text-xl font-semibold">
-                    Kéo ảnh hoặc video vào đây
-                  </p>
-                  <p className="text-gray-500 text-sm">
-                    Hỗ trợ JPG, PNG, GIF • Tối đa 10MB
-                  </p>
-                </div>
-                
-                <button className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600">
-                  Chọn từ máy tính
-                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
               </div>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              </label>
             </>
           ) : (
             <div

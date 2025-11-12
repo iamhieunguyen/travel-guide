@@ -10,6 +10,8 @@ export function CreatePostModalProvider({ children }) {
   const [step, setStep] = useState(1);
   const [image, setImage] = useState(null);
   const [aspect, setAspect] = useState("1:1");
+  const [editMode, setEditMode] = useState(false);
+  const [editPostData, setEditPostData] = useState(null);
   const { getIdToken, refreshAuth } = useAuth();
 
   const openModal = useCallback(() => {
@@ -21,9 +23,33 @@ export function CreatePostModalProvider({ children }) {
     setStep(1);
     setImage(null);
     setAspect("1:1");
+    setEditMode(false);
+    setEditPostData(null);
   }, [getIdToken]);
 
-  const closeModal = useCallback(() => setIsOpen(false), []);
+  const openEditModal = useCallback((post) => {
+    if (!getIdToken()) {
+      alert('Vui lòng đăng nhập để chỉnh sửa bài đăng');
+      return;
+    }
+    setIsOpen(true);
+    setStep(2); // Skip to PostDetails step
+    setEditMode(true);
+    setEditPostData(post);
+    // Set image from post
+    if (post.imageKey) {
+      const imageUrl = post.imageKey.startsWith('http') 
+        ? post.imageKey 
+        : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`;
+      setImage(imageUrl);
+    }
+  }, [getIdToken]);
+
+  const closeModal = useCallback(() => {
+    setIsOpen(false);
+    setEditMode(false);
+    setEditPostData(null);
+  }, []);
 
   // Data URL -> File (có guard)
   const dataURLToFile = useCallback((dataurl, filename) => {
@@ -44,111 +70,93 @@ export function CreatePostModalProvider({ children }) {
   // Nếu FE truyền full URL (CloudFront/S3), tách ra imageKey (path sau domain)
   const normalizeImageKeyFromUrl = (maybeUrl) => {
     try {
-      const url = new URL(maybeUrl);
-      return url.pathname.replace(/^\/+/, ""); // bỏ dấu '/' đầu
-    } catch {
-      return maybeUrl; // không phải URL, giữ nguyên
-    }
-  };
-
-  const handleShare = useCallback(
-    async (postData) => {
-      try {
-        if (!getIdToken()) {
-          const refreshed = await refreshAuth();
-          if (!refreshed) {
-            throw new Error("Vui lòng đăng nhập lại");
-          }
+      console.log('📤 handleShare - Starting...', postData);
+      console.log('🔧 Edit mode:', editMode);
+      console.log('📝 Edit post data:', editPostData);
+      
+      if (!getIdToken()) {
+        console.log('⚠️ No token, trying to refresh...');
+        // Thử refresh auth
+        const refreshed = await refreshAuth();
+        if (!refreshed) {
+          throw new Error('Vui lòng đăng nhập lại');
         }
 
-        // Validate tọa độ
-        const lat = Number(postData?.location?.lat);
-        const lng = Number(postData?.location?.lng);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          throw new Error("Thiếu toạ độ hợp lệ. Vui lòng chọn vị trí trên bản đồ.");
-        }
-
-        // 1) Ảnh là data URL -> convert & upload
-        if (typeof postData.image === "string" && postData.image.startsWith("data:")) {
-          const file = dataURLToFile(postData.image, "post-image.jpg");
-          return await api.createArticleWithUpload({
-            file,
-            title: postData.caption,
-            content: postData.caption,
-            visibility: postData.privacy || "public",
-            lat,
-            lng,
-            tags: Array.isArray(postData.tags) ? postData.tags : [],
-          });
-        }
-
-        // 2) Ảnh là File/Blob -> upload
-        if (postData.image instanceof File || postData.image instanceof Blob) {
-          return await api.createArticleWithUpload({
-            file: postData.image,
-            title: postData.caption,
-            content: postData.caption,
-            visibility: postData.privacy || "public",
-            lat,
-            lng,
-            tags: Array.isArray(postData.tags) ? postData.tags : [],
-          });
-        }
-
-        // 3) Ảnh là blob: URL -> fetch blob rồi upload
-        if (typeof postData.image === "string" && postData.image.startsWith("blob:")) {
-          const resp = await fetch(postData.image);
-          const blob = await resp.blob();
-          const file = new File([blob], "post-image.jpg", {
-            type: blob.type || "image/jpeg",
-          });
-          return await api.createArticleWithUpload({
-            file,
-            title: postData.caption,
-            content: postData.caption,
-            visibility: postData.privacy || "public",
-            lat,
-            lng,
-            tags: Array.isArray(postData.tags) ? postData.tags : [],
-          });
-        }
-
-        // 4) Có sẵn imageKey hoặc full URL (CloudFront/S3) -> tạo trực tiếp
-        const imageKey =
-          typeof postData.image === "string" && postData.image
-            ? normalizeImageKeyFromUrl(postData.image)
-            : undefined;
-
-        return await api.createArticle({
+      console.log('✅ Token OK');
+      
+      // Nếu đang ở chế độ edit
+      if (editMode && editPostData) {
+        console.log('✏️ Updating existing article:', editPostData.articleId);
+        
+        const updateData = {
           title: postData.caption,
           content: postData.caption,
-          visibility: postData.privacy || "public",
-          lat,
-          lng,
-          imageKey,
-          tags: Array.isArray(postData.tags) ? postData.tags : [],
-        });
-      } catch (error) {
-        console.error("Error sharing post:", error);
-        throw error;
+          visibility: postData.privacy || 'public',
+          lat: postData.location.lat,
+          lng: postData.location.lng,
+        };
+        
+        const result = await api.updateArticle(editPostData.articleId, updateData);
+        console.log('✅ Update success:', result);
+        return result;
       }
-    },
-    [getIdToken, refreshAuth, dataURLToFile]
-  );
+      
+      // Nếu đang tạo mới
+      console.log('🖼️ Image type:', typeof postData.image);
+      console.log('🖼️ Image value:', postData.image);
+      
+      // Check if image is array (from ImageSelector)
+      const imageToUpload = Array.isArray(postData.image) ? postData.image[0] : postData.image;
+      console.log('🖼️ Image to upload:', imageToUpload?.substring(0, 100));
+
+      if (imageToUpload && typeof imageToUpload === 'string' && imageToUpload.startsWith('data:image/')) {
+        console.log('📸 Uploading new image...');
+        const file = dataURLToFile(imageToUpload, 'post-image.jpg');
+        console.log('📦 File created:', file.size, 'bytes');
+        
+        const result = await api.createArticleWithUpload({
+          file: file,
+          title: postData.caption,
+          content: postData.caption,
+          visibility: postData.privacy || 'public',
+          lat: postData.location.lat,
+          lng: postData.location.lng,
+          tags: []
+        });
+        console.log('✅ Upload success:', result);
+        return result;
+      } else {
+        console.error('❌ Image is not a data URL!');
+        console.error('Image value:', imageToUpload);
+        throw new Error('Vui lòng chọn lại ảnh. Image format không hợp lệ.');
+      }
+    } catch (error) {
+      console.error('❌ Error in handleShare:', error);
+      console.error('Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      throw error;
+    }
+  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData]);
 
   return (
     <CreatePostModalContext.Provider
-      value={{
-        isOpen,
+      value={{ 
+        isOpen, 
         openModal,
-        closeModal,
-        step,
-        setStep,
-        image,
-        setImage,
-        aspect,
+        openEditModal,
+        closeModal, 
+        step, 
+        setStep, 
+        image, 
+        setImage, 
+        aspect, 
         setAspect,
         handleShare,
+        editMode,
+        editPostData
       }}
     >
       {children}

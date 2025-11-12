@@ -1,7 +1,7 @@
 // context/CreatePostModalContext.jsx
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { useAuth } from './AuthContext';
-import api from '../services/article';
+import { useAuth } from "./AuthContext";
+import api from "../services/article";
 
 const CreatePostModalContext = createContext();
 
@@ -16,7 +16,7 @@ export function CreatePostModalProvider({ children }) {
 
   const openModal = useCallback(() => {
     if (!getIdToken()) {
-      alert('Vui lòng đăng nhập để tạo bài đăng');
+      alert("Vui lòng đăng nhập để tạo bài đăng");
       return;
     }
     setIsOpen(true);
@@ -51,20 +51,24 @@ export function CreatePostModalProvider({ children }) {
     setEditPostData(null);
   }, []);
 
-  // Di chuyển dataURLToFile ra ngoài để tránh dependency loop
+  // Data URL -> File (có guard)
   const dataURLToFile = useCallback((dataurl, filename) => {
-    const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
+    if (typeof dataurl !== "string" || !dataurl.startsWith("data:")) {
+      throw new Error("Ảnh không phải data URL hợp lệ");
+    }
+    const arr = dataurl.split(",");
+    if (arr.length < 2) throw new Error("Data URL không hợp lệ");
+    const m = arr[0].match(/^data:(.*?);base64$/i);
+    const mime = m ? m[1] : "application/octet-stream";
     const bstr = atob(arr[1]);
     let n = bstr.length;
     const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
     return new File([u8arr], filename, { type: mime });
   }, []);
 
-  const handleShare = useCallback(async (postData) => {
+  // Nếu FE truyền full URL (CloudFront/S3), tách ra imageKey (path sau domain)
+  const normalizeImageKeyFromUrl = (maybeUrl) => {
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -77,7 +81,6 @@ export function CreatePostModalProvider({ children }) {
         if (!refreshed) {
           throw new Error('Vui lòng đăng nhập lại');
         }
-      }
 
       console.log('✅ Token OK');
       
@@ -164,9 +167,7 @@ export function CreatePostModalProvider({ children }) {
 export function useCreatePostModal() {
   const context = useContext(CreatePostModalContext);
   if (!context) {
-    throw new Error(
-      "useCreatePostModal must be used within CreatePostModalProvider"
-    );
+    throw new Error("useCreatePostModal must be used within CreatePostModalProvider");
   }
   return context;
 }

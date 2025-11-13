@@ -7,6 +7,7 @@ import {
   refreshToken as cognitoRefreshToken,
   signOut as cognitoSignOut
 } from '../services/cognito';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true); // Bây giờ dùng biến này
   const [authChecked, setAuthChecked] = useState(false);
+  const navigate = useNavigate();
 
   // Memoized functions để tránh re-render không cần thiết
   const checkAuthStatus = useCallback(async () => {
@@ -73,6 +75,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     cognitoSignOut();
     setUser(null);
+    navigate("/")
   }, []);
 
   const refreshAuth = useCallback(async () => {

@@ -2,6 +2,7 @@ import os
 import json
 import uuid
 import boto3
+from cors import ok, error, options
 
 s3 = boto3.client("s3")
 BUCKET = os.environ["BUCKET_NAME"]
@@ -17,6 +18,10 @@ def _resp(status, body):
     }
 
 def lambda_handler(event, context):
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
+    
     try:
         body = json.loads(event.get("body") or "{}")
         filename = (body.get("filename") or "").strip()

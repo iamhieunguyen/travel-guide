@@ -1,6 +1,8 @@
 import os
 import json
 import boto3
+from decimal import Decimal
+from cors import ok, error, options
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -19,6 +21,9 @@ def _response(status, body_dict):
     }
 
 def lambda_handler(event, context):
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
     try:
         path_params = event.get("pathParameters") or {}
         article_id = path_params.get("articleId")
@@ -26,25 +31,34 @@ def lambda_handler(event, context):
         if not article_id:
             return _response(400, {"error": "articleId is required"})
 
-        # Lấy item để xóa ảnh nếu có
         response = table.get_item(Key={'articleId': article_id})
+
         if 'Item' not in response:
             return _response(404, {"error": "Article not found"})
 
         item = response['Item']
-        image_key = item.get('imageKey')
 
-        # Xóa item trong DB
-        table.delete_item(Key={'articleId': article_id})
+        # Chuyển Decimal sang float
+        processed_item = dict(item)
+        if 'lat' in processed_item:
+            processed_item['lat'] = float(processed_item['lat'])
+        if 'lng' in processed_item:
+            processed_item['lng'] = float(processed_item['lng'])
 
-        # Xóa ảnh khỏi S3 nếu có
-        if image_key:
+        # Nếu có query param presign=1, tạo presigned URL cho ảnh
+        params = event.get("queryStringParameters") or {}
+        if params.get('presign') == '1' and 'imageKey' in processed_item:
             import boto3
             s3 = boto3.client('s3')
-            s3.delete_object(Bucket=BUCKET_NAME, Key=image_key)
+            presigned_url = s3.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': BUCKET_NAME, 'Key': processed_item['imageKey']},
+                ExpiresIn=3600
+            )
+            processed_item['imageUrl'] = presigned_url
 
-        return _response(200, {"message": "Article deleted successfully"})
+        return _response(200, processed_item)
 
     except Exception as e:
-        print(f"Error in delete_article: {e}")
+        print(f"Error in get_article: {e}")
         return _response(500, {"error": f"internal error: {e}"})

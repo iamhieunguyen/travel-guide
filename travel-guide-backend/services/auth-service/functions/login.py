@@ -1,54 +1,68 @@
-import boto3
-import json
 import os
+import json
+import boto3
+from utils.cors import _response, options_response
 
-client = boto3.client('cognito-idp')
+# Environment variables
+USER_POOL_ID = os.environ["USER_POOL_ID"]
+CLIENT_ID = os.environ["CLIENT_ID"]
+ENVIRONMENT = os.environ["ENVIRONMENT"]
+
+# Initialize Cognito client
+cognito = boto3.client('cognito-idp')
 
 def lambda_handler(event, context):
+    # Xử lý OPTIONS request
+    http_method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method", ""))
+    if http_method == "OPTIONS":
+        return options_response(os.environ.get("CORS_ORIGIN"))
+    
     try:
-        body = json.loads(event['body'])
-        username = body['username']
-        password = body['password']
-
-        response = client.admin_initiate_auth(
-            UserPoolId=os.environ['USER_POOL_ID'],
-            ClientId=os.environ['CLIENT_ID'],
+        # Parse request body
+        body_str = event.get("body") or "{}"
+        if event.get("isBase64Encoded"):
+            body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
+        body = json.loads(body_str)
+        
+        username = body.get('username', '').strip()
+        password = body.get('password', '')
+        
+        # Validate required fields
+        if not username:
+            return _response(400, {"error": "Username is required"}, os.environ.get("CORS_ORIGIN"))
+        
+        if not password:
+            return _response(400, {"error": "Password is required"}, os.environ.get("CORS_ORIGIN"))
+        
+        # Admin authentication
+        response = cognito.admin_initiate_auth(
+            UserPoolId=USER_POOL_ID,
+            ClientId=CLIENT_ID,
             AuthFlow='ADMIN_NO_SRP_AUTH',
             AuthParameters={
                 'USERNAME': username,
                 'PASSWORD': password
             }
         )
-
-        id_token = response['AuthenticationResult']['IdToken']
-        refresh_token = response['AuthenticationResult']['RefreshToken']
-
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*',
-            },
-            'body': json.dumps({
-                'message': 'Login successful',
-                'id_token': id_token,
-                'refresh_token': refresh_token
-            })
-        }
-    except client.exceptions.UserNotFoundException:
-        return error_response(400, 'User not found')
-    except client.exceptions.NotAuthorizedException:
-        return error_response(400, 'Incorrect username or password')
+        
+        auth_result = response['AuthenticationResult']
+        
+        return _response(200, {
+            "message": "Login successful",
+            "idToken": auth_result['IdToken'],
+            "refreshToken": auth_result['RefreshToken'],
+            "accessToken": auth_result['AccessToken'],
+            "tokenType": auth_result['TokenType'],
+            "expiresIn": auth_result['ExpiresIn'],
+            "username": username
+        }, os.environ.get("CORS_ORIGIN"))
+    
+    except cognito.exceptions.UserNotFoundException:
+        return _response(400, {"error": "User not found"}, os.environ.get("CORS_ORIGIN"))
+    except cognito.exceptions.NotAuthorizedException:
+        return _response(400, {"error": "Incorrect username or password"}, os.environ.get("CORS_ORIGIN"))
+    except cognito.exceptions.UserNotConfirmedException:
+        return _response(400, {"error": "User is not confirmed. Please check your email for confirmation code."}, os.environ.get("CORS_ORIGIN"))
     except Exception as e:
         print(f"Login error: {e}")
-        return error_response(500, f'Login failed: {str(e)}')
-
-def error_response(status, message):
-    return {
-        'statusCode': status,
-        'headers': {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-        },
-        'body': json.dumps({'error': message})
-    }
+        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))

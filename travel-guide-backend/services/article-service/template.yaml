@@ -1,0 +1,402 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Article Service - CRUD operations, search, uploads
+
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, prod]
+    Description: Environment name
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: CORS origin for API Gateway
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub article-service-common-${Environment}
+      Description: Shared dependencies for article service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  ##############################
+  # LAMBDA FUNCTIONS
+  ##############################
+  CreateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: create_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 20
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          AWS_REGION: !Ref AWS::Region
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        CreateArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles
+            Method: POST
+            RestApiId: !Ref ArticleApi
+
+  GetArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - S3ReadPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        GetArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: GET
+            RestApiId: !Ref ArticleApi
+
+  UpdateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: update_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 20
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        UpdateArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: PATCH
+            RestApiId: !Ref ArticleApi
+
+  DeleteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: delete_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        DeleteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: DELETE
+            RestApiId: !Ref ArticleApi
+
+  ListArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: list_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ListArticlesApi:
+          Type: Api
+          Properties:
+            Path: /articles
+            Method: GET
+            RestApiId: !Ref ArticleApi
+
+  SearchArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: search_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        SearchArticlesApi:
+          Type: Api
+          Properties:
+            Path: /search
+            Method: GET
+            RestApiId: !Ref ArticleApi
+
+  GetUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_upload_url.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - S3WritePolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        GetUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /upload-url
+            Method: POST
+            RestApiId: !Ref ArticleApi
+
+  ##############################
+  # API GATEWAY
+  ##############################
+  ArticleApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub TravelGuide-ArticleAPI-${Environment}
+      EndpointConfiguration: REGIONAL
+      Cors:
+        AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+        AllowOrigin: !Ref CorsOrigin
+        MaxAge: "'7200'"
+      Auth:
+        ApiKeyRequired: false
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource: execute-api:/*
+
+Outputs:
+  ArticleApiUrl:
+    Value: !Sub "https://${ArticleApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

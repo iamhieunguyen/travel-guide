@@ -1,97 +1,106 @@
 import os
 import json
 import boto3
-from decimal import Decimal
-from cors import ok, error, options
+from utils.cors import _response, options_response
+from utils.jwt_validator import get_user_id_from_event
+from utils.geo_utils import convert_decimals
 
-dynamodb = boto3.resource("dynamodb")
-
+# Environment variables
 TABLE_NAME = os.environ["TABLE_NAME"]
+USER_POOL_ID = os.environ.get("USER_POOL_ID")
+CLIENT_ID = os.environ.get("CLIENT_ID")
+AWS_REGION = os.environ.get("AWS_REGION")
+ENVIRONMENT = os.environ["ENVIRONMENT"]
+
+# Initialize resources
+dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
 def lambda_handler(event, context):
-    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
-    if method == "OPTIONS":
-        return options()
-
+    # Xử lý OPTIONS request
+    http_method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method", ""))
+    if http_method == "OPTIONS":
+        return options_response(os.environ.get("CORS_ORIGIN"))
+    
     try:
-        # Đây là một ví dụ đơn giản về tìm kiếm toàn văn bản
-        # Bạn có thể cải tiến để tìm kiếm theo bbox, tags, v.v.
+        # Get query parameters
         params = event.get("queryStringParameters") or {}
-        q = params.get("q", "")
-        bbox = params.get("bbox") # Ví dụ: "minLng,minLat,maxLng,maxLat"
-        tags = params.get("tags", "")
-        scope = params.get("scope", "public")
+        q = params.get("q", "").strip()
+        tags = params.get("tags", "").strip()
         limit = int(params.get("limit", 10))
         next_token = params.get("nextToken")
-
-        # Điều kiện query
-        filter_expression = "contains(#title, :q) OR contains(#content, :q)"
-        expression_attribute_names = {"#title": "title", "#content": "content"}
-        expression_attribute_values = {":q": q}
-
+        
+        # Basic validation
+        if not q:
+            return _response(400, {"error": "Search query 'q' is required"}, os.environ.get("CORS_ORIGIN"))
+        
+        # Prepare filter expressions
+        filter_expressions = []
+        expression_attribute_names = {}
+        expression_attribute_values = {}
+        
+        # Add title/content search
+        filter_expressions.append("(contains(#title, :q) OR contains(#content, :q))")
+        expression_attribute_names["#title"] = "title"
+        expression_attribute_names["#content"] = "content"
+        expression_attribute_values[":q"] = q
+        
+        # Add tag filtering if provided
         if tags:
-            tag_list = tags.split(',')
-            filter_expression += " AND ("
-            for i, tag in enumerate(tag_list):
-                tag_key = f":tag{i}"
-                filter_expression += f"contains(#tags, {tag_key})"
-                if i < len(tag_list) - 1:
-                    filter_expression += " OR "
-                expression_attribute_names[f"#tag{i}"] = "tags"
-                expression_attribute_values[tag_key] = tag.strip()
-            filter_expression += ")"
-
+            tag_list = [tag.strip() for tag in tags.split(",") if tag.strip()]
+            if tag_list:
+                tag_conditions = []
+                for i, tag in enumerate(tag_list):
+                    tag_key = f":tag{i}"
+                    tag_alias = f"#tag{i}"
+                    tag_conditions.append(f"contains({tag_alias}, {tag_key})")
+                    expression_attribute_names[tag_alias] = "tags"
+                    expression_attribute_values[tag_key] = tag
+                
+                if tag_conditions:
+                    filter_expressions.append(f"({' OR '.join(tag_conditions)})")
+        
+        # Build the query parameters
         query_params = {
-            'IndexName': 'gsi_visibility_createdAt', # Dùng GSI để query nhanh
+            'IndexName': 'gsi_visibility_createdAt',
             'KeyConditionExpression': 'visibility = :visibility',
-            'FilterExpression': filter_expression,
+            'FilterExpression': " AND ".join(filter_expressions),
             'ExpressionAttributeNames': expression_attribute_names,
-            'ExpressionAttributeValues': expression_attribute_values,
-            'ScanIndexForward': False, # Mới nhất trước
+            'ExpressionAttributeValues': {
+                **expression_attribute_values,
+                ":visibility": "public"
+            },
+            'ScanIndexForward': False,  # Newest first
             'Limit': limit
         }
-
-        if scope != "public":
-            # Nếu không phải public, có thể cần logic khác hoặc query riêng theo ownerId
-            pass
-
+        
+        # Add pagination token if provided
         if next_token:
-            query_params['ExclusiveStartKey'] = json.loads(next_token)
-
+            try:
+                query_params['ExclusiveStartKey'] = json.loads(next_token)
+            except json.JSONDecodeError:
+                return _response(400, {"error": "Invalid nextToken format"}, os.environ.get("CORS_ORIGIN"))
+        
+        # Execute query
         response = table.query(**query_params)
-
         items = response['Items']
-        next_key = response.get('LastEvaluatedKey')
-
-        # Chuyển Decimal sang float cho frontend
-        processed_items = []
-        for item in items:
-            processed_item = dict(item)
-            if 'lat' in processed_item:
-                processed_item['lat'] = float(processed_item['lat'])
-            if 'lng' in processed_item:
-                processed_item['lng'] = float(processed_item['lng'])
-            processed_items.append(processed_item)
-
+        
+        # Process items - convert Decimal values
+        processed_items = [convert_decimals(item) for item in items]
+        
+        # Prepare result
         result = {
-            'items': processed_items
+            'items': processed_items,
+            'query': q,
+            'count': len(processed_items)
         }
-        if next_key:
-            result['nextToken'] = json.dumps(next_key)
-
-        return _response(200, result)
-
+        
+        # Add next token for pagination if available
+        if 'LastEvaluatedKey' in response:
+            result['nextToken'] = json.dumps(response['LastEvaluatedKey'])
+        
+        return _response(200, result, os.environ.get("CORS_ORIGIN"))
+    
     except Exception as e:
         print(f"Error in search_articles: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))

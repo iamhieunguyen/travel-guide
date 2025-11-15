@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Media Service - Image processing and thumbnails
+
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, prod]
+    Description: Environment name
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub media-service-common-${Environment}
+      Description: Shared dependencies for media service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  ##############################
+  # LAMBDA FUNCTIONS
+  ##############################
+  ThumbnailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: thumbnail_generator.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 1024  # Higher memory for image processing
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub 
+                - "${bucketArn}/*"
+                - bucketArn: !ImportValue '${CoreStackName}-ArticleImagesBucketName.Arn'
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !ImportValue '${CoreStackName}-ArticleImagesBucketName.Arn'
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        S3Trigger:
+          Type: S3
+          Properties:
+            Bucket: !ImportValue '${CoreStackName}-ArticleImagesBucketName'
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: articles/
+                  - Name: suffix
+                    Value: .jpg
+                  - Name: suffix
+                    Value: .jpeg
+                  - Name: suffix
+                    Value: .png
+                  - Name: suffix
+                    Value: .webp
+
+Outputs:
+  ThumbnailFunctionArn:
+    Value: !GetAtt ThumbnailFunction.Arn

@@ -1,0 +1,178 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Auth Service - User authentication and registration
+
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, prod]
+    Description: Environment name
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: CORS origin for API Gateway
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub auth-service-common-${Environment}
+      Description: Shared dependencies for auth service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  ##############################
+  # LAMBDA FUNCTIONS
+  ##############################
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: register.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:SignUp
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        RegisterApi:
+          Type: Api
+          Properties:
+            Path: /auth/register
+            Method: POST
+            RestApiId: !Ref AuthApi
+
+  ConfirmUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: confirm_user.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ConfirmSignUp
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ConfirmApi:
+          Type: Api
+          Properties:
+            Path: /auth/confirm
+            Method: POST
+            RestApiId: !Ref AuthApi
+
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: login.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminInitiateAuth
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+            RestApiId: !Ref AuthApi
+
+  ##############################
+  # API GATEWAY
+  ##############################
+  AuthApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub TravelGuide-AuthAPI-${Environment}
+      EndpointConfiguration: REGIONAL
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+        AllowOrigin: !Ref CorsOrigin
+        MaxAge: "'7200'"
+
+Outputs:
+  AuthApiUrl:
+    Value: !Sub "https://${AuthApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

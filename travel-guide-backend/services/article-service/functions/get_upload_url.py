@@ -2,55 +2,80 @@ import os
 import json
 import uuid
 import boto3
-from cors import ok, error, options
+from utils.cors import _response, options_response
 
+# Environment variables
+BUCKET_NAME = os.environ["BUCKET_NAME"]
+ENVIRONMENT = os.environ["ENVIRONMENT"]
+
+# Initialize resources
 s3 = boto3.client("s3")
-BUCKET = os.environ["BUCKET_NAME"]
-
-def _resp(status, body):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body, ensure_ascii=False),
-    }
 
 def lambda_handler(event, context):
-    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
-    if method == "OPTIONS":
-        return options()
+    # Xử lý OPTIONS request
+    http_method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method", ""))
+    if http_method == "OPTIONS":
+        return options_response(os.environ.get("CORS_ORIGIN"))
     
     try:
-        body = json.loads(event.get("body") or "{}")
+        # Parse request body
+        body_str = event.get("body") or "{}"
+        if event.get("isBase64Encoded"):
+            body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
+        body = json.loads(body_str)
+        
         filename = (body.get("filename") or "").strip()
         content_type = (body.get("contentType") or "").strip()
-
+        
         if not filename:
-            return _resp(400, {"error": "filename is required"})
+            return _response(400, {"error": "filename is required"}, os.environ.get("CORS_ORIGIN"))
+        
         if not content_type:
-            return _resp(400, {"error": "contentType is required"})
-
-        # Lấy extension từ filename
+            return _response(400, {"error": "contentType is required"}, os.environ.get("CORS_ORIGIN"))
+        
+        # Validate content type
+        allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+        if content_type not in allowed_types:
+            return _response(400, {
+                "error": f"contentType must be one of: {', '.join(allowed_types)}",
+                "allowedTypes": allowed_types
+            }, os.environ.get("CORS_ORIGIN"))
+        
+        # Get file extension
         ext = ""
         if "." in filename:
             ext = filename.split(".")[-1].lower()
-
-        # Tạo key chuẩn hóa
-        key = f"articles/{uuid.uuid4()}.{ext or 'bin'}"
-
-        # Tạo presigned URL cho PUT object
+        else:
+            # Determine extension from content type
+            ext_map = {
+                "image/png": "png",
+                "image/jpeg": "jpg",
+                "image/jpg": "jpg",
+                "image/webp": "webp"
+            }
+            ext = ext_map.get(content_type, "bin")
+        
+        # Create unique key
+        key = f"articles/{uuid.uuid4()}.{ext}"
+        
+        # Generate presigned URL for PUT object
         url = s3.generate_presigned_url(
             "put_object",
             Params={
-                "Bucket": BUCKET,
+                "Bucket": BUCKET_NAME,
                 "Key": key,
                 "ContentType": content_type,
+                "ACL": "private"
             },
-            ExpiresIn=900  # 15 phút
+            ExpiresIn=900  # 15 minutes
         )
-
-        return _resp(200, {"uploadUrl": url, "key": key, "expiresIn": 900})
+        
+        return _response(200, {
+            "uploadUrl": url,
+            "key": key,
+            "expiresIn": 900
+        }, os.environ.get("CORS_ORIGIN"))
+    
     except Exception as e:
-        return _resp(500, {"error": f"internal error: {e}"})
+        print(f"Error in get_upload_url: {e}")
+        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))

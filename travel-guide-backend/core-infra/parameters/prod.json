@@ -1,0 +1,4 @@
+{
+  "Environment": "prod",
+  "CorsOrigin": "https://your-production-domain.com"
+}

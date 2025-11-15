@@ -1,102 +1,86 @@
 import os
 import json
 import boto3
-from decimal import Decimal
-from cors import ok, error, options
+from utils.cors import _response, options_response
+from utils.jwt_validator import get_user_id_from_event
+from utils.geo_utils import convert_decimals
 
-dynamodb = boto3.resource("dynamodb")
-
+# Environment variables
 TABLE_NAME = os.environ["TABLE_NAME"]
+USER_POOL_ID = os.environ.get("USER_POOL_ID")
+CLIENT_ID = os.environ.get("CLIENT_ID")
+AWS_REGION = os.environ.get("AWS_REGION")
+ENVIRONMENT = os.environ["ENVIRONMENT"]
+
+# Initialize resources
+dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE_NAME)
 
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
-def _get_user_id(event):
-    """Hàm hỗ trợ lấy user ID từ cả JWT và X-User-Id như trong create_article"""
-    headers = event.get("headers") or {}
-    x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
-    if x_user_id:
-        return x_user_id
-
-    auth_header = headers.get("Authorization") or headers.get("authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        # Bạn có thể thêm logic JWT ở đây nếu cần
-        # hoặc chỉ cần kiểm tra có token hay không
-        return "authenticated_user" # hoặc parse từ token
-
-    return None
-
 def lambda_handler(event, context):
-    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
-    if method == "OPTIONS":
-        return options()
-
+    # Xử lý OPTIONS request
+    http_method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method", ""))
+    if http_method == "OPTIONS":
+        return options_response(os.environ.get("CORS_ORIGIN"))
+    
     try:
+        # Get query parameters
         params = event.get("queryStringParameters") or {}
         scope = params.get("scope", "public")
         limit = int(params.get("limit", 10))
         next_token = params.get("nextToken")
-
-        user_id = _get_user_id(event)
-
-        # Query DynamoDB
+        
+        # Get user ID for authentication
+        user_id = get_user_id_from_event(event, USER_POOL_ID, CLIENT_ID, AWS_REGION) if USER_POOL_ID and CLIENT_ID else None
+        
+        # Prepare query parameters based on scope
         if scope == "mine" and user_id:
-            # Query theo ownerId nếu scope là mine
+            # Query articles owned by the current user
             query_params = {
                 'IndexName': 'gsi_owner_createdAt',
                 'KeyConditionExpression': 'ownerId = :owner_id',
                 'ExpressionAttributeValues': {
                     ':owner_id': user_id
                 },
-                'ScanIndexForward': False, # Mới nhất trước
+                'ScanIndexForward': False,  # Newest first
                 'Limit': limit
             }
         else:
-            # Query theo visibility nếu scope là public
+            # Query public articles
             query_params = {
                 'IndexName': 'gsi_visibility_createdAt',
                 'KeyConditionExpression': 'visibility = :visibility',
                 'ExpressionAttributeValues': {
                     ':visibility': 'public'
                 },
-                'ScanIndexForward': False, # Mới nhất trước
+                'ScanIndexForward': False,  # Newest first
                 'Limit': limit
             }
-
+        
+        # Add pagination token if provided
         if next_token:
-            query_params['ExclusiveStartKey'] = json.loads(next_token)
-
+            try:
+                query_params['ExclusiveStartKey'] = json.loads(next_token)
+            except json.JSONDecodeError:
+                return _response(400, {"error": "Invalid nextToken format"}, os.environ.get("CORS_ORIGIN"))
+        
+        # Execute query
         response = table.query(**query_params)
-
         items = response['Items']
-        next_key = response.get('LastEvaluatedKey')
-
-        # Chuyển Decimal sang float cho frontend
-        processed_items = []
-        for item in items:
-            processed_item = dict(item)
-            if 'lat' in processed_item:
-                processed_item['lat'] = float(processed_item['lat'])
-            if 'lng' in processed_item:
-                processed_item['lng'] = float(processed_item['lng'])
-            processed_items.append(processed_item)
-
+        
+        # Process items - convert Decimal values
+        processed_items = [convert_decimals(item) for item in items]
+        
+        # Prepare result
         result = {
             'items': processed_items
         }
-        if next_key:
-            result['nextToken'] = json.dumps(next_key)
-
-        return _response(200, result)
-
+        
+        # Add next token for pagination if available
+        if 'LastEvaluatedKey' in response:
+            result['nextToken'] = json.dumps(response['LastEvaluatedKey'])
+        
+        return _response(200, result, os.environ.get("CORS_ORIGIN"))
+    
     except Exception as e:
         print(f"Error in list_articles: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))

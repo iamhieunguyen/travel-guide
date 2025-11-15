@@ -12,6 +12,8 @@ export function CreatePostModalProvider({ children }) {
   const [aspect, setAspect] = useState("1:1");
   const [editMode, setEditMode] = useState(false);
   const [editPostData, setEditPostData] = useState(null);
+  const [caption, setCaption] = useState("");
+  const [privacy, setPrivacy] = useState("public");
   const { getIdToken, refreshAuth } = useAuth();
 
   const openModal = useCallback(() => {
@@ -49,6 +51,8 @@ export function CreatePostModalProvider({ children }) {
     setIsOpen(false);
     setEditMode(false);
     setEditPostData(null);
+    setCaption("");
+    setPrivacy("public");
   }, []);
 
   // Data URL -> File (có guard)
@@ -67,8 +71,7 @@ export function CreatePostModalProvider({ children }) {
     return new File([u8arr], filename, { type: mime });
   }, []);
 
-  // Nếu FE truyền full URL (CloudFront/S3), tách ra imageKey (path sau domain)
-  const normalizeImageKeyFromUrl = (maybeUrl) => {
+  const handleShare = useCallback(async (postData) => {
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -81,6 +84,7 @@ export function CreatePostModalProvider({ children }) {
         if (!refreshed) {
           throw new Error('Vui lòng đăng nhập lại');
         }
+      }
 
       console.log('✅ Token OK');
       
@@ -156,7 +160,11 @@ export function CreatePostModalProvider({ children }) {
         setAspect,
         handleShare,
         editMode,
-        editPostData
+        editPostData,
+        caption,
+        setCaption,
+        privacy,
+        setPrivacy
       }}
     >
       {children}

@@ -13,20 +13,22 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true); // Bây giờ dùng biến này
+  const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const navigate = useNavigate();
 
-  // Memoized functions để tránh re-render không cần thiết
   const checkAuthStatus = useCallback(async () => {
-    setLoading(true); // Bây giờ dùng biến loading
+    setLoading(true);
     if (cognitoIsAuthenticated()) {
       try {
         const userData = await cognitoGetCurrentUser();
         if (userData) {
+          // ✅ LẤY SUB TỪ ATTRIBUTES CỦA COGNITO
+          const sub = userData.attributes?.sub;
           setUser({
             username: userData.username,
             email: userData.attributes?.email,
+            sub, // 👈 ĐÃ THÊM SUB VÀO USER
             ...userData
           });
         }
@@ -37,9 +39,11 @@ export function AuthProvider({ children }) {
         if (refreshedToken) {
           const userData = await cognitoGetCurrentUser();
           if (userData) {
+            const sub = userData.attributes?.sub;
             setUser({
               username: userData.username,
               email: userData.attributes?.email,
+              sub,
               ...userData
             });
           }
@@ -60,9 +64,12 @@ export function AuthProvider({ children }) {
     try {
       await cognitoLogin(username, password);
       const userData = await cognitoGetCurrentUser();
+      // ✅ LẤY SUB KHI ĐĂNG NHẬP
+      const sub = userData.attributes?.sub;
       setUser({
         username: userData.username,
         email: userData.attributes?.email,
+        sub, // 👈 ĐÃ THÊM SUB VÀO USER
         ...userData
       });
       return { success: true };
@@ -75,17 +82,20 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     cognitoSignOut();
     setUser(null);
-    navigate("/")
-  }, []);
+    navigate("/");
+  }, [navigate]);
 
   const refreshAuth = useCallback(async () => {
     const refreshedToken = await cognitoRefreshToken();
     if (refreshedToken) {
       const userData = await cognitoGetCurrentUser();
       if (userData) {
+        // ✅ LẤY SUB KHI REFRESH
+        const sub = userData.attributes?.sub;
         setUser({
           username: userData.username,
           email: userData.attributes?.email,
+          sub, // 👈 ĐÃ THÊM SUB VÀO USER
           ...userData
         });
         return true;
@@ -102,12 +112,12 @@ export function AuthProvider({ children }) {
     getIdToken: () => localStorage.getItem('idToken'),
     refreshAuth,
     authChecked,
-    loading // Thêm loading vào value để có thể sử dụng
+    loading
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children} {/* Không kiểm tra authChecked ở đây nữa */}
+      {children}
     </AuthContext.Provider>
   );
 }

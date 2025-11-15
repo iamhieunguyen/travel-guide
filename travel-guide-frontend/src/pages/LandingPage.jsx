@@ -14,13 +14,13 @@ export default function LandingPage() {
             <h1 className="text-2xl font-bold text-indigo-600">Travel Guide</h1>
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?mode=login')}
                 className="text-indigo-600 hover:text-indigo-800 transition font-medium"
               >
                 Đăng nhập
               </button>
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/auth?mode=register')}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition"
               >
                 Đăng ký
@@ -41,18 +41,12 @@ export default function LandingPage() {
             và kết nối với cộng đồng du lịch toàn cầu
           </p>
           
-          <div className="flex justify-center space-x-4 mb-12">
+          <div className="flex justify-center mb-12">
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=register')}
               className="bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition text-lg font-medium"
             >
               Bắt đầu ngay
-            </button>
-            <button
-              onClick={() => navigate('/posts')}
-              className="bg-white text-indigo-600 px-8 py-4 rounded-lg hover:bg-gray-50 transition text-lg font-medium border border-indigo-200"
-            >
-              Xem bài viết
             </button>
           </div>
 
@@ -86,7 +80,7 @@ export default function LandingPage() {
             <h2 className="text-3xl font-bold mb-4">Sẵn sàng bắt đầu hành trình của bạn?</h2>
             <p className="text-xl mb-6 opacity-90">Tham gia cộng đồng Travel Guide ngay hôm nay</p>
             <button
-              onClick={() => navigate('/auth')}
+              onClick={() => navigate('/auth?mode=register')}
               className="bg-white text-indigo-600 px-8 py-4 rounded-lg hover:bg-gray-100 transition text-lg font-medium"
             >
               Tạo tài khoản miễn phí

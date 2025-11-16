@@ -45,11 +45,23 @@ def lambda_handler(event, context):
         return options()
 
     try:
-        # LẤY SUB TỪ COGNITO AUTHORIZER (GIỐNG HỆT DELETE)
-        claims = event.get("requestContext", {}).get("authorizer", {}).get("claims", {})
+        # LẤY SUB TỪ COGNITO AUTHORIZER
+        rc = event.get("requestContext", {}) or {}
+        auth = rc.get("authorizer") or {}
+        claims = auth.get("claims") or {}
+
         owner_id = claims.get("sub")
         if not owner_id:
             return _response(401, {"error": "Unauthorized: Missing sub in token"})
+
+        # ✅ Lấy username hiển thị từ token (tuỳ pool mà chọn field phù hợp)
+        display_name = (
+            claims.get("cognito:username")
+            or claims.get("preferred_username")
+            or claims.get("email")
+            or ""
+        )
+        display_name = display_name.strip()
 
         # Parse body
         body_str = event.get("body") or ""
@@ -83,6 +95,9 @@ def lambda_handler(event, context):
             return _response(400, {"error": "tags must be an array"})
         tags = list({str(t).strip() for t in tags if str(t).strip()})
 
+        # ✅ Location name (không bắt buộc)
+        location_name = (data.get("locationName") or "").strip()
+
         # Article ID & time
         article_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
@@ -101,7 +116,7 @@ def lambda_handler(event, context):
         # Build item
         item = {
             "articleId": article_id,
-            "ownerId": owner_id,  # ĐẢM BẢO LÀ SUB TỪ COGNITO
+            "ownerId": owner_id,  # sub từ Cognito để check quyền
             "title": title,
             "content": content,
             "createdAt": created_at,
@@ -112,9 +127,16 @@ def lambda_handler(event, context):
             "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
         }
+
         if image_key:
             item["imageKey"] = image_key
             item["thumbnailKey"] = _thumb_from_image_key(image_key)
+
+        if location_name:
+            item["locationName"] = location_name
+
+        if display_name:
+            item["username"] = display_name
 
         # Lưu vào DynamoDB
         table.put_item(Item=item)

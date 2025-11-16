@@ -90,7 +90,8 @@ def lambda_handler(event, context):
         data = json.loads(body_str or "{}")
         print("DEBUG parsed_data =", data)
 
-        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", "imageKey"]
+        # ✅ Cho phép update locationName
+        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", "imageKey", "locationName"]
         update_expression = "SET "
         expression_attribute_names = {}
         expression_attribute_values = {}

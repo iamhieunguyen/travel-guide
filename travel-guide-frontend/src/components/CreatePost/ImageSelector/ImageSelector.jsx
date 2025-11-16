@@ -18,7 +18,7 @@ export default function ImageSelector({ onNext }) {
   const [showAspectMenu, setShowAspectMenu] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
-  const { setImage, aspect, setAspect } = useCreatePostModal();
+  const { setImage, aspect, setAspect, closeModal } = useCreatePostModal();
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -43,12 +43,6 @@ export default function ImageSelector({ onNext }) {
       fileInputRef.current.value = "";
       fileInputRef.current.click();
     }
-  };
-
-  const handleRemoveAll = () => {
-    setImages([]);
-    setZoom(100);
-    setCurrentIndex(0);
   };
 
   const handleBack = () => {
@@ -110,7 +104,7 @@ export default function ImageSelector({ onNext }) {
         
         <div className="absolute top-3 left-3 z-40">
           <button
-            onClick={images.length > 0 ? handleRemoveAll : null}
+            onClick={closeModal}
             className="bg-white/95 hover:bg-white text-gray-600 hover:text-gray-800 p-2.5 rounded-full shadow-xl backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90"
           >
             <X size={20} strokeWidth={2.5} />

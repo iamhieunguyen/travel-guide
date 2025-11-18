@@ -2,7 +2,9 @@ import os
 import json
 import uuid
 import boto3
-from cors import ok, error, options
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 s3 = boto3.client("s3")
 BUCKET = os.environ["BUCKET_NAME"]

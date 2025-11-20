@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getCurrentUser } from "../../services/cognito";
 
-export default function InstagramStyleHeader() {
+export default function CreatePostStyleHeader() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {

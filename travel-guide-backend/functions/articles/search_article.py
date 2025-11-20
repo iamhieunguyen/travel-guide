@@ -2,6 +2,9 @@ import os
 import json
 import boto3
 from decimal import Decimal
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -19,6 +22,10 @@ def _response(status, body_dict):
     }
 
 def lambda_handler(event, context):
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
+
     try:
         # Đây là một ví dụ đơn giản về tìm kiếm toàn văn bản
         # Bạn có thể cải tiến để tìm kiếm theo bbox, tags, v.v.

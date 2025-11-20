@@ -2,6 +2,9 @@ import os
 import json
 import boto3
 from decimal import Decimal
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 dynamodb = boto3.resource("dynamodb")
 
@@ -34,6 +37,10 @@ def _get_user_id(event):
     return None
 
 def lambda_handler(event, context):
+    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    if method == "OPTIONS":
+        return options()
+
     try:
         params = event.get("queryStringParameters") or {}
         scope = params.get("scope", "public")

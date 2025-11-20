@@ -1,7 +1,7 @@
 // src/pages/Login.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, getCurrentUser } from "../services/cognito"; // 👈 thêm hàm check user
+import { login } from "../services/cognito";
 
 export default function Login({ embed = false }) {
   const [username, setUsername] = useState("");
@@ -11,23 +11,14 @@ export default function Login({ embed = false }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // ✅ Nếu user vẫn đăng nhập, tự động chuyển sang /home
-    const checkSession = async () => {
-      const user = await getCurrentUser();
-      if (user) {
-        navigate("/home");
-        return;
-      }
-
-      // ✅ Điền sẵn username nếu có
-      const saved = localStorage.getItem("remember_username");
-      if (saved) {
-        setUsername(saved);
-        setRemember(true);
-      }
-    };
-    checkSession();
-  }, [navigate]);
+    // ✅ Điền sẵn username nếu có
+    const saved = localStorage.getItem("remember_username");
+    if (saved) {
+      setUsername(saved);
+      setRemember(true);
+    }
+    // ✅ Không tự động redirect - để user tự đăng nhập
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

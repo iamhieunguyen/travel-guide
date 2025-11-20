@@ -1,5 +1,5 @@
 // components/CreatePost/CreatePostModal.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCreatePostModal } from "../../context/CreatePostModalContext";
 import ImageSelector from "./ImageSelector/ImageSelector";
 import PostDetails from "./PostDetails/PostDetails";
@@ -8,8 +8,44 @@ import CreatePostStyleHeader from "./CreatePostStyleHeader";
 import { X } from "lucide-react";
 
 export default function CreatePostModal() {
-  const { isOpen, closeModal, step, setStep, image, handleShare } = useCreatePostModal();
+  const { isOpen, closeModal, step, setStep, image, handleShare, editMode, editPostData } = useCreatePostModal();
   const [locationData, setLocationData] = useState(null);
+
+  // Update location khi editPostData thay đổi
+  useEffect(() => {
+    if (editMode && editPostData && editPostData.lat && editPostData.lng) {
+      // Nếu có location name sẵn, dùng luôn
+      if (editPostData.location?.name) {
+        setLocationData({
+          position: { lat: editPostData.lat, lng: editPostData.lng },
+          locationName: editPostData.location.name
+        });
+      } else {
+        // Nếu không có, fetch từ Nominatim
+        const fetchLocationName = async () => {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${editPostData.lat}&lon=${editPostData.lng}&format=json&addressdetails=1`,
+              { headers: { 'Accept-Language': 'vi' } }
+            );
+            const data = await response.json();
+            const locationName = data.display_name || `${editPostData.lat}, ${editPostData.lng}`;
+            setLocationData({
+              position: { lat: editPostData.lat, lng: editPostData.lng },
+              locationName: locationName
+            });
+          } catch (error) {
+            console.error('Error fetching location name:', error);
+            setLocationData({
+              position: { lat: editPostData.lat, lng: editPostData.lng },
+              locationName: `${editPostData.lat}, ${editPostData.lng}`
+            });
+          }
+        };
+        fetchLocationName();
+      }
+    }
+  }, [editMode, editPostData]);
 
   if (!isOpen) return null;
 

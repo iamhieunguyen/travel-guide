@@ -23,6 +23,21 @@ export default function PostListPage() {
   const { openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
 
+  // Fetch location name từ tọa độ
+  const fetchLocationName = async (lat, lng) => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
+        { headers: { 'Accept-Language': 'vi' } }
+      );
+      const data = await response.json();
+      return data.display_name || `${lat}, ${lng}`;
+    } catch (error) {
+      console.error('Error fetching location:', error);
+      return null;
+    }
+  };
+
   const loadPosts = useCallback(async (token = null) => {
     try {
       if (!token) setLoading(true);
@@ -34,10 +49,21 @@ export default function PostListPage() {
         nextToken: token
       });
 
+      // Fetch location names cho các posts có lat/lng nhưng không có location
+      const postsWithLocation = await Promise.all(
+        response.items.map(async (post) => {
+          if (post.lat && post.lng && !post.location) {
+            const locationName = await fetchLocationName(post.lat, post.lng);
+            return { ...post, location: locationName };
+          }
+          return post;
+        })
+      );
+
       if (token) {
-        setPosts(prev => [...prev, ...response.items]);
+        setPosts(prev => [...prev, ...postsWithLocation]);
       } else {
-        setPosts(response.items);
+        setPosts(postsWithLocation);
       }
       setNextToken(response.nextToken);
     } catch (error) {
@@ -248,6 +274,16 @@ export default function PostListPage() {
                     post.ownerId === user['cognito:username']
                   );
                   
+                  // Debug username
+                  console.log('👤 User info:', {
+                    username: user?.username,
+                    sub: user?.sub,
+                    'cognito:username': user?.['cognito:username'],
+                    postOwnerId: post.ownerId,
+                    postUsername: post.username,
+                    isOwner
+                  });
+                  
                   return (
                     <div key={post.articleId} className="bg-white rounded-xl shadow-lg overflow-hidden">
                       {/* Post header */}
@@ -261,7 +297,10 @@ export default function PostListPage() {
                             </div>
                             <div>
                               <p className="font-semibold text-gray-800">
-                                {post.username || (scope === 'mine' && user?.username) || 'Ẩn danh'}
+                                {post.username || 
+                                 (isOwner ? user?.username : null) || 
+                                 (scope === 'mine' ? user?.username : null) || 
+                                 `User_${post.ownerId?.substring(0, 6) || 'unknown'}`}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center">
                                 <Clock className="w-3 h-3 mr-1" />
@@ -281,31 +320,35 @@ export default function PostListPage() {
                                 </svg>
                               </button>
                             
-                              {/* Dropdown Menu */}
+                              {/* Dropdown Menu - Style giống ConfirmDialog */}
                               {openMenuId === post.articleId && (
                                 <>
                                   <div 
-                                    className="fixed inset-0 z-10" 
+                                    className="fixed inset-0 z-[9998]" 
                                     onClick={() => setOpenMenuId(null)}
                                   />
-                                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-20 border border-gray-200 overflow-hidden">
+                                  <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-2xl z-[9999] border border-gray-100 overflow-hidden animate-fadeIn">
                                     <button
                                       onClick={() => handleEditPost(post)}
-                                      className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-2 border-b border-gray-100"
+                                      className="w-full text-left px-5 py-4 text-gray-700 hover:bg-indigo-50 transition-all duration-200 flex items-center space-x-3 border-b border-gray-100 group"
                                     >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                      </svg>
-                                      <span className="font-medium">Chỉnh sửa</span>
+                                      <div className="w-9 h-9 rounded-full bg-indigo-100 group-hover:bg-indigo-200 flex items-center justify-center transition-colors">
+                                        <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                      </div>
+                                      <span className="font-semibold text-gray-800">Chỉnh sửa</span>
                                     </button>
                                     <button
                                       onClick={() => handleDeletePost(post.articleId)}
-                                      className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition-colors flex items-center space-x-2"
+                                      className="w-full text-left px-5 py-4 text-red-600 hover:bg-red-50 transition-all duration-200 flex items-center space-x-3 group"
                                     >
-                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                      </svg>
-                                      <span className="font-medium">Xóa bài viết</span>
+                                      <div className="w-9 h-9 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center transition-colors">
+                                        <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      </div>
+                                      <span className="font-semibold text-red-700">Xóa bài viết</span>
                                     </button>
                                   </div>
                                 </>
@@ -314,10 +357,12 @@ export default function PostListPage() {
                           )}
                         </div>
                         
-                        {post.location && (
+                        {(post.location?.name || post.location) && (
                           <div className="flex items-center mt-2 text-sm text-gray-600">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span>{post.location.name || post.location}</span>
+                            <MapPin className="w-4 h-4 mr-1 text-indigo-600" />
+                            <span className="line-clamp-1">
+                              {post.location?.name || post.location}
+                            </span>
                           </div>
                         )}
                       </div>

@@ -11,12 +11,8 @@ export default function PostDetails({
   onLocationSelect, 
   onShare 
 }) {
-  // ✅ Chỉ lấy những giá trị CÓ trong CreatePostModalContext
-  const { editMode, editPostData, closeModal, handleShare } = useCreatePostModal();
-  
-  // ✅ Dùng state LOCAL cho caption và privacy (không cần context)
-  const [caption, setCaption] = useState("");
-  const [privacy, setPrivacy] = useState("public");
+  // ✅ Lấy caption và privacy từ Context để giữ khi chuyển trang
+  const { editMode, editPostData, closeModal, handleShare, caption, setCaption, privacy, setPrivacy } = useCreatePostModal();
   
   const [activeIndex, setActiveIndex] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -24,15 +20,17 @@ export default function PostDetails({
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [hasLoadedEditData, setHasLoadedEditData] = useState(false);
   
   // Debug locationData
   useEffect(() => {
     console.log('📍 LocationData changed:', locationData);
   }, [locationData]);
   
-  // Load dữ liệu khi ở chế độ edit
+  // Load dữ liệu khi ở chế độ edit - CHỈ caption và privacy
   useEffect(() => {
-    if (editMode && editPostData) {
+    if (editMode && editPostData && !hasLoadedEditData) {
+      setHasLoadedEditData(true);
       console.log('📝 Loading edit data:', editPostData);
       const initialCaption = editPostData.content || editPostData.title || "";
       const initialPrivacy = editPostData.visibility || "public";
@@ -41,54 +39,15 @@ export default function PostDetails({
       
       setCaption(initialCaption);
       setPrivacy(initialPrivacy);
-      
-      // Xử lý location
-      if (editPostData.location) {
-        const locationName = editPostData.location.name || editPostData.location;
-        setLocationSearch(locationName);
-        if (editPostData.lat && editPostData.lng) {
-          onLocationSelect({
-            locationName: locationName,
-            position: { 
-              lat: editPostData.lat, 
-              lng: editPostData.lng 
-            }
-          });
-        }
-      } else if (editPostData.lat && editPostData.lng) {
-        const fetchLocationName = async () => {
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?lat=${editPostData.lat}&lon=${editPostData.lng}&format=json&addressdetails=1`,
-              { headers: { 'Accept-Language': 'vi' } }
-            );
-            const data = await response.json();
-            const locationName = data.display_name || editPostData.geohash || "Vị trí đã chọn";
-            setLocationSearch(locationName);
-            onLocationSelect({
-              locationName: locationName,
-              position: { 
-                lat: editPostData.lat, 
-                lng: editPostData.lng 
-              }
-            });
-          } catch (error) {
-            console.error('Error fetching location name:', error);
-            const locationName = editPostData.geohash || "Vị trí đã chọn";
-            setLocationSearch(locationName);
-            onLocationSelect({
-              locationName: locationName,
-              position: { 
-                lat: editPostData.lat, 
-                lng: editPostData.lng 
-              }
-            });
-          }
-        };
-        fetchLocationName();
-      }
     }
-  }, [editMode, editPostData, onLocationSelect]);
+  }, [editMode, editPostData, hasLoadedEditData]);
+  
+  // Update locationSearch khi locationData thay đổi
+  useEffect(() => {
+    if (locationData?.locationName) {
+      setLocationSearch(locationData.locationName);
+    }
+  }, [locationData]);
 
   // Tìm kiếm vị trí
   useEffect(() => {
@@ -143,6 +102,10 @@ export default function PostDetails({
 
   const handleSharePost = async () => {
     try {
+      console.log('🔍 Current locationData:', locationData);
+      console.log('🔍 Current caption:', caption);
+      console.log('🔍 Current privacy:', privacy);
+      
       // Validate dữ liệu
       if (!caption?.trim() || !locationData) {
         alert('Vui lòng nhập caption và chọn vị trí');
@@ -180,6 +143,7 @@ export default function PostDetails({
         setCaption('');
         setLocationSearch('');
         setShowLocationSuggestions(false);
+        setHasLoadedEditData(false);
         
         // Reload trang nếu là edit mode
         if (editMode) {
@@ -198,14 +162,14 @@ export default function PostDetails({
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4">
       {/* --- Ảnh preview (50%) --- */}
-      <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-gray-100 rounded-xl overflow-hidden border relative">
+      <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-black rounded-xl overflow-hidden relative">
         {Array.isArray(image) && image.length > 1 && (
           <>
             <button
               onClick={() =>
                 setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
               }
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow z-10"
             >
               ←
             </button>
@@ -213,7 +177,7 @@ export default function PostDetails({
               onClick={() =>
                 setActiveIndex((prev) => (prev === image.length - 1 ? 0 : prev + 1))
               }
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow z-10"
             >
               →
             </button>
@@ -221,12 +185,20 @@ export default function PostDetails({
         )}
 
         {currentImage && (
-          <div className="relative w-full" style={{ paddingTop: getAspectStyle() }}>
-            <img
-              src={currentImage}
-              alt="preview"
-              className="absolute top-0 left-0 w-full h-full object-cover rounded-xl transition-all"
-            />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div
+              className="relative"
+              style={{
+                width: aspect === "4:5" ? "80%" : "100%",
+                paddingTop: aspect === "original" ? "100%" : getAspectStyle(),
+              }}
+            >
+              <img
+                src={currentImage}
+                alt="preview"
+                className="absolute top-0 left-0 w-full h-full object-cover transition-all"
+              />
+            </div>
           </div>
         )}
 

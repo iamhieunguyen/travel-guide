@@ -1,7 +1,9 @@
 import os
 import json
 import boto3
-from cors import ok, error, options  # Giữ nguyên nếu bạn dùng module cors riêng
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 # Khởi tạo clients
 dynamodb = boto3.resource("dynamodb")

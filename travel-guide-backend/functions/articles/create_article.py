@@ -4,7 +4,9 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import requests
 from jose import jwt
-from cors import ok, error, options
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")

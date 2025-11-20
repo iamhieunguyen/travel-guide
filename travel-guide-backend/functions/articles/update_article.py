@@ -3,7 +3,9 @@ import json
 import base64
 import boto3
 from decimal import Decimal
-from cors import ok, error, options
+import sys
+sys.path.insert(0, '/var/task/functions')
+from utils import *
 
 dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]

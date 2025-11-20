@@ -1,7 +1,6 @@
 import os
 import json
 import boto3
-from cors import options
 import sys
 sys.path.insert(0, '/var/task/functions')
 from utils import *

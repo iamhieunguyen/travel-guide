@@ -5,9 +5,6 @@ import base64
 from datetime import datetime, timezone
 from decimal import Decimal
 import boto3
-from cors import options
-import requests
-from jose import jwt
 import sys
 sys.path.insert(0, '/var/task/functions')
 from utils import *

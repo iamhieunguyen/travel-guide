@@ -288,7 +288,8 @@ Resources:
           Properties:
             Path: /articles
             Method: POST
-
+            Auth:                  
+              Authorizer: CognitoAuthorizer
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -350,6 +351,8 @@ Resources:
           Properties:
             Path: /articles/{articleId}
             Method: PATCH
+            Auth:                  
+              Authorizer: CognitoAuthorizer
 
   DeleteArticleFunction:
     Type: AWS::Serverless::Function

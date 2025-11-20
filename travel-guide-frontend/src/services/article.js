@@ -38,7 +38,6 @@ function authHeaders(hasBody = false) {
   const h = {};
   if (hasBody) h["Content-Type"] = "application/json"; // tránh preflight cho GET
   if (idToken) h.Authorization = `Bearer ${idToken}`;
-  if (X_USER_ID) h["X-User-Id"] = X_USER_ID;
   return h;
 }
 

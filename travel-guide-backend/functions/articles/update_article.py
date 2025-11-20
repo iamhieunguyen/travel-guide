@@ -7,7 +7,6 @@ import sys
 sys.path.insert(0, '/var/task/functions')
 from utils import *
 
-# Khởi tạo clients
 dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
@@ -28,22 +27,21 @@ def _response(status_code, body_dict):
 
 
 def _get_user_id(event):
-    """Trích xuất user ID từ Cognito JWT token (REST API hoặc HTTP API)"""
     rc = event.get("requestContext") or {}
     auth = rc.get("authorizer") or {}
 
-    # Trường hợp REST API với Cognito Authorizer
+    # REST API + Cognito User Pool Authorizer
     claims = auth.get("claims") or {}
     if claims:
         return claims.get("sub") or claims.get("cognito:username")
 
-    # Trường hợp HTTP API (nếu có)
+    # HTTP API + JWT Authorizer
     jwt = auth.get("jwt") or {}
     jwt_claims = jwt.get("claims") or {}
     if jwt_claims:
         return jwt_claims.get("sub") or jwt_claims.get("cognito:username")
 
-    # Fallback dev (KHÔNG DÙNG TRONG PROD)
+    # Dev fallback
     headers = event.get("headers") or {}
     return headers.get("X-User-Id") or headers.get("x-user-id")
 
@@ -57,22 +55,30 @@ def lambda_handler(event, context):
     try:
         #  1. Lấy ID người dùng hiện tại
         current_user_id = _get_user_id(event)
+        print("DEBUG current_user_id =", current_user_id)
+
         if not current_user_id:
             return _response(401, {"error": "Unauthorized: User identity not found"})
 
         #  2. Lấy articleId từ path
         path_params = event.get("pathParameters") or {}
         article_id = path_params.get("articleId")
+        print("DEBUG article_id =", article_id)
+
         if not article_id:
             return _response(400, {"error": "articleId is required"})
 
         #  3. Lấy bài viết hiện tại để kiểm tra quyền
         current_item_response = table.get_item(Key={"articleId": article_id})
+        print("DEBUG TABLE_NAME =", TABLE_NAME)
+        print("DEBUG get_item response =", current_item_response)
+
         if "Item" not in current_item_response:
             return _response(404, {"error": "Article not found"})
 
         current_article = current_item_response["Item"]
         owner_id = current_article.get("ownerId")
+        print("DEBUG db_owner_id =", owner_id)
 
         #  4. Kiểm tra quyền sở hữu
         if owner_id != current_user_id:
@@ -82,10 +88,12 @@ def lambda_handler(event, context):
         body_str = event.get("body") or ""
         if event.get("isBase64Encoded"):
             body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
+        print("DEBUG raw_body =", body_str)
         data = json.loads(body_str or "{}")
+        print("DEBUG parsed_data =", data)
 
-        # Chỉ cho phép cập nhật các field hợp lệ
-        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", "imageKey"]
+        # ✅ Cho phép update locationName
+        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", "imageKey", "locationName"]
         update_expression = "SET "
         expression_attribute_names = {}
         expression_attribute_values = {}
@@ -98,6 +106,10 @@ def lambda_handler(event, context):
                     expression_attribute_values[f":{key}"] = Decimal(str(value))
                 else:
                     expression_attribute_values[f":{key}"] = value
+
+        print("DEBUG update_expression =", update_expression)
+        print("DEBUG expr_attr_names =", expression_attribute_names)
+        print("DEBUG expr_attr_values =", expression_attribute_values)
 
         if len(expression_attribute_values) == 0:
             return _response(400, {"error": "No valid fields to update"})
@@ -113,7 +125,8 @@ def lambda_handler(event, context):
             ReturnValues="ALL_NEW"
         )
 
-        # Xử lý Decimal → float cho JSON
+        print("DEBUG update_item result =", response)
+
         item = response["Attributes"]
         processed_item = {}
         for k, v in item.items():

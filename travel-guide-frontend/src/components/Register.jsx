@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+// import { useNavigate } from "react-router-dom";
 import {
   register,
   confirmRegistration,
@@ -7,7 +7,7 @@ import {
 } from "../services/cognito";
 
 export default function Register({ embed = false, onSwitchToLogin}) {
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
   const [step, setStep] = useState("form");
 
   const [username, setUsername] = useState("");

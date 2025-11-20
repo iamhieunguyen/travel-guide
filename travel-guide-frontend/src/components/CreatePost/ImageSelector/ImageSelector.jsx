@@ -19,6 +19,7 @@ export default function ImageSelector({ onNext }) {
   const [showAspectMenu, setShowAspectMenu] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
+  const { setImage, aspect, setAspect, closeModal } = useCreatePostModal();
 
   // Load ảnh từ context khi quay lại
   useEffect(() => {
@@ -50,12 +51,6 @@ export default function ImageSelector({ onNext }) {
       fileInputRef.current.value = "";
       fileInputRef.current.click();
     }
-  };
-
-  const handleRemoveAll = () => {
-    setImages([]);
-    setZoom(100);
-    setCurrentIndex(0);
   };
 
   const handleBack = () => {

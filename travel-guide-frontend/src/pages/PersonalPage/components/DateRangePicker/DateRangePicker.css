@@ -1,0 +1,244 @@
+.date-range-picker-wrapper {
+  position: relative;
+}
+
+.date-range-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card, #FFFFFF);
+  border: 1px solid var(--border-light, rgba(2, 132, 199, 0.2));
+  border-radius: 0.75rem;
+  color: var(--text-primary, #0c4a6e);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  min-width: 250px;
+  position: relative;
+}
+
+.date-range-picker-trigger:hover {
+  border-color: var(--accent-primary, #06b6d4);
+  background: var(--accent-soft, #cffafe);
+}
+
+.date-range-picker-trigger:focus {
+  outline: none;
+  border-color: var(--accent-primary, #06b6d4);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
+}
+
+.date-range-text {
+  flex: 1;
+  text-align: left;
+}
+
+.date-range-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted, #0284c7);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.2s ease;
+}
+
+.date-range-clear:hover {
+  background: var(--accent-light, #67e8f9);
+  color: var(--accent-primary, #06b6d4);
+}
+
+.date-range-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+/* Đảm bảo overlay không chặn dropdown menu */
+.date-range-overlay ~ * [data-radix-popper-content-wrapper] {
+  z-index: 10001 !important;
+}
+
+.date-range-calendar-popup {
+  position: fixed;
+  z-index: 10002;
+  background: var(--bg-card, #FFFFFF);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  border: 1px solid var(--border-light, rgba(2, 132, 199, 0.2));
+  padding: 1rem;
+  animation: slideDown 0.2s ease;
+  isolation: isolate;
+  pointer-events: auto;
+  min-width: 300px;
+  max-width: 90vw;
+  display: block !important;
+}
+
+/* Đảm bảo dropdown menu hiển thị trên cùng */
+.date-range-calendar-popup [data-radix-popper-content-wrapper] {
+  z-index: 10001 !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.date-range-calendar {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #06b6d4;
+  --rdp-background-color: #cffafe;
+  --rdp-accent-color-dark: #0891b2;
+  --rdp-outline: 2px solid var(--rdp-accent-color);
+  --rdp-outline-selected: 2px solid var(--rdp-accent-color);
+  --rdp-selected-border: 1px solid var(--rdp-accent-color);
+}
+
+.date-range-calendar .rdp {
+  margin: 0;
+}
+
+.date-range-calendar .rdp-day {
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 1;
+}
+
+.date-range-calendar .rdp-day:hover {
+  background: var(--rdp-background-color);
+}
+
+.date-range-calendar .rdp-day_selected,
+.date-range-calendar .rdp-day_range_start,
+.date-range-calendar .rdp-day_range_end {
+  background: var(--rdp-accent-color);
+  color: white;
+  font-weight: 600;
+}
+
+.date-range-calendar .rdp-day_range_middle {
+  background: var(--rdp-background-color);
+  color: var(--rdp-accent-color-dark);
+}
+
+.date-range-calendar .rdp-day_today {
+  font-weight: 600;
+  border: 2px solid var(--rdp-accent-color);
+}
+
+.date-range-calendar .rdp-caption_label {
+  font-weight: 600;
+  color: var(--text-primary, #0c4a6e);
+  font-size: 1rem;
+}
+
+.date-range-calendar .rdp-nav {
+  display: none !important;
+}
+
+.date-range-calendar .rdp-nav_button {
+  display: none !important;
+}
+
+.date-range-calendar .rdp-head_cell {
+  color: var(--text-muted, #0284c7);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Custom Caption với dropdown */
+.calendar-with-dropdown {
+  display: flex;
+  flex-direction: column;
+}
+
+.date-range-calendar .rdp-caption {
+  display: none !important;
+}
+
+.custom-caption {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0;
+  width: 100%;
+  position: relative;
+  z-index: 10002;
+}
+
+.caption-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  height: 40px;
+  width: 40px;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-light, rgba(2, 132, 199, 0.2));
+  background: transparent;
+  color: var(--text-primary, #0c4a6e);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.caption-nav-btn:hover {
+  background: var(--accent-soft, #cffafe);
+  border-color: var(--accent-primary, #06b6d4);
+  color: var(--accent-primary, #06b6d4);
+}
+
+.caption-selectors {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  justify-content: center;
+  position: relative;
+  z-index: 10003;
+}
+
+.caption-dropdown-btn {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 120px;
+  height: 40px;
+  font-weight: 600;
+  border: 1px solid var(--border-light, rgba(2, 132, 199, 0.2)) !important;
+  background: var(--bg-card, #FFFFFF) !important;
+  color: var(--text-primary, #0c4a6e) !important;
+}
+
+.caption-dropdown-btn:hover {
+  border-color: var(--accent-primary, #06b6d4) !important;
+  background: var(--accent-soft, #cffafe) !important;
+  color: var(--accent-primary, #06b6d4) !important;
+}
+

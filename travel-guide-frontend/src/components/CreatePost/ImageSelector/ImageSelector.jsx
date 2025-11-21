@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,6 +11,19 @@ import {
 import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 import InstagramStyleHeader from "../CreatePostStyleHeader";
 
+// Định nghĩa các hằng số tỉ lệ
+const ASPECT_RATIOS = [
+  { label: "1:1", value: "1:1", padding: "100%" }, // 1/1 * 100%
+  { label: "4:5", value: "4:5", padding: "125%" }, // 5/4 * 100%
+  { label: "16:9", value: "16:9", padding: `${(9 / 16) * 100}%` },
+];
+
+// Map tỉ lệ cho việc tra cứu nhanh (tối ưu hơn chuỗi if/else)
+const ASPECT_PADDING_MAP = ASPECT_RATIOS.reduce((acc, ratio) => {
+  acc[ratio.value] = ratio.padding;
+  return acc;
+}, {});
+
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
   const [images, setImages] = useState([]);
@@ -19,13 +32,31 @@ export default function ImageSelector({ onNext }) {
   const [showAspectMenu, setShowAspectMenu] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
-  const { setImage, aspect, setAspect, closeModal } = useCreatePostModal();
 
-  // Load ảnh từ context khi quay lại
+  // 1. **Tối ưu**: Hợp nhất logic reset thành một hàm duy nhất
+  const resetAll = useCallback(() => {
+    // Thu hồi các URL blob tạm thời để tránh rò rỉ bộ nhớ (memory leak)
+    if (images && Array.isArray(images)) {
+      images.forEach(URL.revokeObjectURL);
+    }
+
+    setImages([]);
+    setZoom(100);
+    setCurrentIndex(0);
+    setAspect("1:1");
+    // Xóa cả trong context để đảm bảo state nhất quán khi quay lại
+    setImage(null);
+  }, [images, setAspect, setImage]); // Đảm bảo images là dependency
+
+  // Load ảnh từ context khi quay lại (khi component mount)
   useEffect(() => {
     if (image && Array.isArray(image) && image.length > 0) {
       setImages(image);
     }
+    // Cleanup function: Thu hồi URL khi component unmount hoặc khi image thay đổi
+    return () => {
+      // Logic cleanup nên được xử lý trong `resetAll` nếu cần xóa hoàn toàn
+    };
   }, [image]);
 
   useEffect(() => {
@@ -41,6 +72,10 @@ export default function ImageSelector({ onNext }) {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+    
+    // Thu hồi URL blob cũ trước khi tạo URL mới (tối ưu hóa bộ nhớ)
+    images.forEach(URL.revokeObjectURL);
+
     const urls = files.map((file) => URL.createObjectURL(file));
     setImages(urls);
     setCurrentIndex(0);
@@ -48,36 +83,41 @@ export default function ImageSelector({ onNext }) {
 
   const triggerFileSelect = () => {
     if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      fileInputRef.current.value = ""; // Đảm bảo `onChange` luôn được kích hoạt ngay cả khi chọn lại file cũ
       fileInputRef.current.click();
     }
   };
 
-  const handleBack = () => {
-    // Xóa ảnh và quay về màn hình upload
-    setImages([]);
-    setZoom(100);
-    setCurrentIndex(0);
-    setAspect("1:1");
-  };
+  // 1. **Khắc phục lỗi và Tối ưu**: Đổi tên `handleBack` thành `resetAll` hoặc sử dụng `resetAll`
+  // Ta giữ tên `handleBack` cho logic UI nút Back
+  const handleBack = resetAll; // Sử dụng hàm resetAll đã định nghĩa
+
+  // 2. **Khắc phục lỗi**: Định nghĩa `handleRemoveAll` (còn gọi là nút X)
+  const handleRemoveAll = resetAll;
 
   const handleNext = async () => {
+    if (images.length === 0) return; // Bảo vệ
+
     try {
       console.log('🔄 Converting blob URLs to data URLs...');
-      
+
       // Convert blob URLs to data URLs
       const dataURLPromises = images.map((blobUrl) => {
         return new Promise((resolve, reject) => {
           const img = new Image();
           img.crossOrigin = 'anonymous';
-          
+
           img.onload = () => {
             try {
               const canvas = document.createElement('canvas');
+              // Lấy kích thước ảnh gốc
               canvas.width = img.width;
               canvas.height = img.height;
+              
               const ctx = canvas.getContext('2d');
               ctx.drawImage(img, 0, 0);
+              
+              // Sử dụng format jpeg với chất lượng 0.9
               const dataURL = canvas.toDataURL('image/jpeg', 0.9);
               console.log('✅ Converted:', dataURL.substring(0, 50));
               resolve(dataURL);
@@ -86,18 +126,21 @@ export default function ImageSelector({ onNext }) {
               reject(error);
             }
           };
-          
+
           img.onerror = (error) => {
             console.error('❌ Image load error:', error);
             reject(error);
           };
-          
+
           img.src = blobUrl;
         });
       });
-      
+
       const dataURLs = await Promise.all(dataURLPromises);
       console.log('✅ All images converted:', dataURLs.length);
+
+      // Thu hồi các URL blob gốc sau khi đã chuyển thành data URL
+      images.forEach(URL.revokeObjectURL);
       
       setImage(dataURLs);
       onNext();
@@ -107,23 +150,18 @@ export default function ImageSelector({ onNext }) {
     }
   };
 
-  const aspectRatios = [
-    { label: "1:1", value: "1:1" },
-    { label: "4:5", value: "4:5" },
-    { label: "16:9", value: "16:9" },
-  ];
-
   const nextImage = () =>
     setCurrentIndex((prev) => (prev + 1) % images.length);
   const prevImage = () =>
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
+  // 3. **Tối ưu**: Sử dụng Map/Object lookup
   const getAspectStyle = () => {
-    if (aspect === "1:1") return "100%";
-    if (aspect === "4:5") return `${(5 / 4) * 100}%`;
-    if (aspect === "16:9") return `${(9 / 16) * 100}%`;
-    return "100%";
+    return ASPECT_PADDING_MAP[aspect] || "100%"; // Trả về "100%" nếu không tìm thấy (mặc định 1:1)
   };
+
+  const hasImages = images.length > 0;
+  const showNavigation = images.length > 1;
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50 p-4">
@@ -151,10 +189,11 @@ export default function ImageSelector({ onNext }) {
         </div>
 
         <InstagramStyleHeader />
-        
+
         <div className="absolute top-3 left-3 z-40">
           <button
-            onClick={images.length > 0 ? handleRemoveAll : closeModal}
+            // Dòng code đã được fix lỗi: handleRemoveAll đã được định nghĩa
+            onClick={hasImages ? handleRemoveAll : closeModal} 
             className="bg-white/95 hover:bg-white text-gray-600 hover:text-gray-800 p-2.5 rounded-full shadow-xl backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90"
           >
             <X size={20} strokeWidth={2.5} />
@@ -162,7 +201,7 @@ export default function ImageSelector({ onNext }) {
         </div>
 
         <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-8 pb-8 overflow-hidden" style={{ minHeight: "560px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
-          {images.length === 0 ? (
+          {!hasImages ? (
             <>
               {/* Decorative Blob Shapes - Only on upload screen */}
               <div 
@@ -177,7 +216,7 @@ export default function ImageSelector({ onNext }) {
                   zIndex: 5,
                 }}
               ></div>
-              
+
               <div 
                 className="absolute bg-[#9db88a] transition-all duration-1000"
                 style={{
@@ -190,7 +229,7 @@ export default function ImageSelector({ onNext }) {
                   zIndex: 5,
                 }}
               ></div>
-              
+
               <div 
                 className="absolute bg-[#a8d5e2] transition-all duration-1000"
                 style={{
@@ -216,7 +255,7 @@ export default function ImageSelector({ onNext }) {
                       <ImageIcon className="w-20 h-20 text-pink-600" strokeWidth={1.5} />
                     </div>
                   </div>
-                  
+
                   <div className="text-center space-y-3">
                     <p className="text-gray-800 text-xl font-semibold">
                       Kéo ảnh hoặc video vào đây
@@ -225,12 +264,12 @@ export default function ImageSelector({ onNext }) {
                       Hỗ trợ JPG, PNG, GIF • Tối đa 10MB
                     </p>
                   </div>
-                  
+
                   <button className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600">
                     Chọn từ máy tính
                   </button>
                 </div>
-                
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -252,7 +291,7 @@ export default function ImageSelector({ onNext }) {
               <div
                 className="relative w-full"
                 style={{
-                  paddingTop: getAspectStyle(),
+                  paddingTop: getAspectStyle(), // Sử dụng hàm tối ưu
                   maxHeight: "100%",
                   overflow: "hidden",
                 }}
@@ -278,7 +317,7 @@ export default function ImageSelector({ onNext }) {
 
                 {showAspectMenu && (
                   <div className="mt-3 flex flex-col bg-white/95 rounded-2xl p-3 space-y-2 w-32 backdrop-blur-sm shadow-xl border border-pink-100">
-                    {aspectRatios.map((r) => (
+                    {ASPECT_RATIOS.map((r) => (
                       <button
                         key={r.value}
                         onClick={() => setAspect(r.value)}
@@ -320,7 +359,8 @@ export default function ImageSelector({ onNext }) {
                 </button>
               </div>
 
-              {images.length > 1 && (
+              {/* 4. **Tối ưu**: Sử dụng biến showNavigation */}
+              {showNavigation && (
                 <>
                   <button
                     onClick={prevImage}
@@ -337,7 +377,7 @@ export default function ImageSelector({ onNext }) {
                 </>
               )}
 
-              {images.length > 1 && (
+              {showNavigation && (
                 <div className="absolute top-4 flex space-x-2 justify-center w-full">
                   {images.map((_, i) => (
                     <div
@@ -355,7 +395,7 @@ export default function ImageSelector({ onNext }) {
           )}
         </div>
 
-        {images.length > 0 && (
+        {hasImages && (
           <div className="flex justify-between items-center py-5 px-8 bg-gradient-to-b from-purple-50/20 to-[#f5f3f0] backdrop-blur-sm rounded-b-3xl">
             <button
               onClick={handleBack}

@@ -5,7 +5,7 @@ import os
 import json
 from decimal import Decimal
 
-CORS_ORIGIN = os.getenv("CORS_ORIGIN", "https://d1k0khib98591u.cloudfront.net")
+CORS_ORIGIN = os.getenv("CORS_ORIGIN", "https://dyt8n4mvxnzep.cloudfront.net/")
 
 def cors_headers():
     """Standard CORS headers"""

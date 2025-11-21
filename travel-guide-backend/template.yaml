@@ -13,46 +13,14 @@ Globals:
         CognitoAuthorizer:
           UserPoolArn: !GetAtt UserPool.Arn
           IdentitySource: "method.request.header.Authorization"
-  Function:
-    Runtime: python3.11
-    Timeout: 30
-    MemorySize: 512
-    Environment:
-      Variables:
-        CORS_ORIGIN: !Sub "https://${CloudFrontDistribution.DomainName}"
-        CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-        PYTHONPATH: /var/task/functions
-        LOG_LEVEL: INFO
-    Layers:
-      - !Ref PythonDependenciesLayer
-
 
 Resources:
-  ##############################
-  # LAMBDA LAYER (Shared Dependencies)
-  ##############################
-  PythonDependenciesLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: travel-guide-dependencies
-      Description: Shared Python dependencies
-      ContentUri: layers/python-dependencies/
-      CompatibleRuntimes:
-        - python3.11
-    Metadata:
-      BuildMethod: python3.11
-
   ##############################
   # DATA LAYER
   ##############################
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
-    DependsOn:
-      - DetectLabelsFunctionPermission
-      - DetectTextFunctionPermission
-      - ContentModerationFunctionPermission
     Properties:
-      BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
       VersioningConfiguration:
         Status: Enabled
       CorsConfiguration:
@@ -62,54 +30,14 @@ Resources:
             AllowedHeaders: ["*"]
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: false
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ThumbnailFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt DetectLabelsFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ContentModerationFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ImageValidatorFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ImageAnalyzerFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
 
   ArticlesTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub '${AWS::StackName}-articles'
       BillingMode: PAY_PER_REQUEST
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
       AttributeDefinitions:
         - AttributeName: articleId
           AttributeType: S
@@ -141,31 +69,12 @@ Resources:
             ProjectionType: ALL
 
   ##############################
-  # MESSAGE QUEUES
-  ##############################
-  NotificationQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AWS::StackName}-notifications'
-      VisibilityTimeout: 300
-      MessageRetentionPeriod: 1209600  # 14 days
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
-        maxReceiveCount: 3
-
-  NotificationDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AWS::StackName}-notifications-dlq'
-      MessageRetentionPeriod: 1209600
-
-  ##############################
   # AUTH (COGNITO)
   ##############################
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: !Sub '${AWS::StackName}-users'
+      UserPoolName: TravelGuideUserPool
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -191,8 +100,9 @@ Resources:
       GenerateSecret: false
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
-        - ALLOW_REFRESH_TOKEN_AUTH
 
+
+  
   ##############################
   # AUTH FUNCTIONS
   ##############################
@@ -201,6 +111,8 @@ Resources:
     Properties:
       CodeUri: functions/auth/
       Handler: login.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
       Environment:
         Variables:
           USER_POOL_ID: !Ref UserPool
@@ -210,6 +122,7 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
+                - cognito-idp:InitiateAuth
                 - cognito-idp:AdminInitiateAuth
               Resource: !GetAtt UserPool.Arn
       Events:
@@ -224,6 +137,8 @@ Resources:
     Properties:
       CodeUri: functions/auth/
       Handler: register.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
       Environment:
         Variables:
           CLIENT_ID: !Ref UserPoolClient
@@ -246,6 +161,8 @@ Resources:
     Properties:
       CodeUri: functions/auth/
       Handler: confirm_user.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
       Environment:
         Variables:
           CLIENT_ID: !Ref UserPoolClient
@@ -271,40 +188,62 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: create_article.lambda_handler
+      Runtime: python3.11
       Timeout: 20
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         CreateArticleApi:
           Type: Api
           Properties:
             Path: /articles
             Method: POST
-            Auth:                  
-              Authorizer: CognitoAuthorizer
+            Auth:
+             Authorizer: CognitoAuthorizer
+
+
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: get_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+          RETURN_403_ON_PRIVATE: "false"
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         GetArticleApi:
           Type: Api
@@ -317,12 +256,23 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: list_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         ListArticlesApi:
           Type: Api
@@ -335,57 +285,89 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: update_article.lambda_handler
+      Runtime: python3.11
       Timeout: 20
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         UpdateArticleApi:
           Type: Api
           Properties:
             Path: /articles/{articleId}
             Method: PATCH
-            Auth:                  
-              Authorizer: CognitoAuthorizer
 
   DeleteArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: delete_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         DeleteArticleApi:
           Type: Api
           Properties:
             Path: /articles/{articleId}
             Method: DELETE
+            Auth:
+             Authorizer: CognitoAuthorizer
 
   SearchArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: search_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:GetUser
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         SearchArticlesApi:
           Type: Api
@@ -398,6 +380,7 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: get_upload_url.lambda_handler
+      Runtime: python3.11
       Timeout: 10
       Environment:
         Variables:
@@ -413,180 +396,36 @@ Resources:
             Method: POST
 
   ##############################
-  # GEOSPATIAL FUNCTIONS
+  # THUMBNAIL GENERATOR (S3 trigger)
   ##############################
-  SearchByLocationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/geospatial/
-      Handler: search_by_location.lambda_handler
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref ArticlesTable
-      Events:
-        SearchByLocationApi:
-          Type: Api
-          Properties:
-            Path: /search/nearby
-            Method: GET
-
-  ##############################
-  # IMAGE PROCESSING FUNCTIONS
-  ##############################
-
-  ImageValidatorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/image_validator/
-      Handler: app.lambda_handler
-      Timeout: 15
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          MAX_FILE_SIZE: "10485760"      # 10MB
-          MIN_FILE_SIZE: "10240"         # 10KB
-          MAX_WIDTH: "8192"
-          MAX_HEIGHT: "8192"
-          MIN_WIDTH: "200"
-          MIN_HEIGHT: "200"
-
-  ImageAnalyzerFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/image_analyzer/
-      Handler: app.lambda_handler
-      Timeout: 20
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
-
   ThumbnailFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/image_processing/
-      Handler: thumbnail_generator.lambda_handler
+      CodeUri: functions/thumbnail_generator/
+      Handler: app.lambda_handler
+      Runtime: python3.11
       Timeout: 30
       MemorySize: 1024
       Environment:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
       Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref ArticleImagesBucket
-
-  ImageValidatorFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ImageValidatorFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn++
-
-  ImageAnalyzerFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ImageAnalyzerFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ThumbnailFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ThumbnailFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-  
-  ##############################
-  # REKOGNITION FUNCTIONS
-  ##############################
-  DetectLabelsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/rekognition/
-      Handler: detect_labels.lambda_handler
-      Timeout: 30
-      Environment:
-        Variables:
-          CUSTOM_LABELS_MODEL_ARN: "arn:aws:rekognition:ap-southeast-1:709107513862:project/TravelGuide-CustomLabels/version/TravelGuide-CustomLabels.2025-11-12T19.58.05/1762952285699"
-          TABLE_NAME: !Ref ArticlesTable
-          MIN_CONFIDENCE: "75.0"      # Minimum confidence (0-100)
-          MAX_LABELS: "10"            # Max labels per image
-      Policies:
-        - S3ReadPolicy:
-            BucketName: !Ref ArticleImagesBucket
-        - DynamoDBCrudPolicy:
-            TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
-                - rekognition:DetectLabels
-              Resource: '*'
-
-  DetectLabelsFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt DetectLabelsFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ContentModerationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/rekognition/
-      Handler: content_moderation.lambda_handler
-      Timeout: 30
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
-          MODERATION_CONFIDENCE: "75.0"
-          MODERATION_SNS_TOPIC: !Ref ModerationAlertTopic  # Optional
-      Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref ArticleImagesBucket
-        - Version: '2012-10-17'
-          Statement:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub "${ArticleImagesBucket.Arn}/*"
+            - Effect: Allow
+              Action: s3:ListBucket
+              Resource: !GetAtt ArticleImagesBucket.Arn
             - Effect: Allow
               Action:
-                - rekognition:DetectModerationLabels
-              Resource: '*'
-
-  ContentModerationFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !GetAtt ContentModerationFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ##############################
-  # NOTIFICATION FUNCTIONS
-  ##############################
-  SendEmailFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/notifications/
-      Handler: send_email.lambda_handler
-      Environment:
-        Variables:
-          FROM_EMAIL: !Sub 'noreply@${AWS::StackName}.com'
-      Policies:
-        - SESCrudPolicy:
-            IdentityName: !Sub '${AWS::StackName}.com'
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt NotificationQueue.Arn
-            BatchSize: 10
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
 
   ##############################
   # STATIC SITE + CLOUDFRONT (OAI)
@@ -594,10 +433,9 @@ Resources:
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${AWS::StackName}-static-${AWS::AccountId}'
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: true
+        BlockPublicPolicy: false
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
@@ -605,35 +443,35 @@ Resources:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub 'OAI for ${AWS::StackName}'
+        Comment: !Sub "OAI for ${AWS::StackName}"
 
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref StaticSiteBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontOAI
+          - Sid: AllowCloudFrontOAIReadOnly
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
-            Action: 's3:GetObject'
-            Resource: !Sub '${StaticSiteBucket.Arn}/*'
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${StaticSiteBucket.Arn}/*"
 
   ArticleImagesBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket: !Ref ArticleImagesBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontOAI
+          - Sid: AllowCloudFrontOAIReadImages
             Effect: Allow
             Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
-            Action: 's3:GetObject'
-            Resource: !Sub '${ArticleImagesBucket.Arn}/*'
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${ArticleImagesBucket.Arn}/*"
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -643,11 +481,13 @@ Resources:
           - Id: S3OriginStatic
             DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
             S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+
           - Id: S3OriginImages
             DomainName: !GetAtt ArticleImagesBucket.RegionalDomainName
             S3OriginConfig:
-              OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CloudFrontOAI}'
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+
         Enabled: true
         DefaultRootObject: index.html
         DefaultCacheBehavior:
@@ -660,8 +500,9 @@ Resources:
             Cookies:
               Forward: none
           Compress: true
+
         CacheBehaviors:
-          - PathPattern: 'articles/*'
+          - PathPattern: "articles/*"
             TargetOriginId: S3OriginImages
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD]
@@ -671,7 +512,8 @@ Resources:
               Cookies:
                 Forward: none
             Compress: true
-          - PathPattern: 'thumbnails/*'
+
+          - PathPattern: "thumbnails/*"
             TargetOriginId: S3OriginImages
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD]
@@ -681,55 +523,24 @@ Resources:
               Cookies:
                 Forward: none
             Compress: true
+
         PriceClass: PriceClass_100
         HttpVersion: http2
         IPV6Enabled: true
-
+        
 Outputs:
   ApiUrl:
-    Description: API Gateway endpoint URL
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'
-    Export:
-      Name: !Sub '${AWS::StackName}-ApiUrl'
-
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
   UserPoolId:
-    Description: Cognito User Pool ID
     Value: !Ref UserPool
-    Export:
-      Name: !Sub '${AWS::StackName}-UserPoolId'
-
   UserPoolClientId:
-    Description: Cognito User Pool Client ID
     Value: !Ref UserPoolClient
-    Export:
-      Name: !Sub '${AWS::StackName}-UserPoolClientId'
-
   ArticleImagesBucketName:
-    Description: S3 bucket for article images
     Value: !Ref ArticleImagesBucket
-    Export:
-      Name: !Sub '${AWS::StackName}-ImagesBucket'
-
   StaticSiteBucketName:
-    Description: S3 bucket for static site
     Value: !Ref StaticSiteBucket
-    Export:
-      Name: !Sub '${AWS::StackName}-StaticBucket'
-
   CloudFrontDomain:
-    Description: CloudFront distribution domain
     Value: !GetAtt CloudFrontDistribution.DomainName
-    Export:
-      Name: !Sub '${AWS::StackName}-CloudFrontDomain'
-
-  ArticlesTableName:
-    Description: DynamoDB table name
-    Value: !Ref ArticlesTable
-    Export:
-      Name: !Sub '${AWS::StackName}-ArticlesTable'
-
-  NotificationQueueUrl:
-    Description: SQS notification queue URL
-    Value: !Ref NotificationQueue
-    Export:
-      Name: !Sub '${AWS::StackName}-NotificationQueue'
+  CloudFrontDomainForImages:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: Use this domain for serving images via CloudFront for better performance

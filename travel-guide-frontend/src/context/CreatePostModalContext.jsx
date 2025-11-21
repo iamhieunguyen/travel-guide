@@ -67,8 +67,8 @@ export function CreatePostModalProvider({ children }) {
     return new File([u8arr], filename, { type: mime });
   }, []);
 
-  // Nếu FE truyền full URL (CloudFront/S3), tách ra imageKey (path sau domain)
-  const normalizeImageKeyFromUrl = (maybeUrl) => {
+  // handleShare – đã thêm async và dependency đầy đủ
+  const handleShare = useCallback(async (postData) => {
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -81,6 +81,7 @@ export function CreatePostModalProvider({ children }) {
         if (!refreshed) {
           throw new Error('Vui lòng đăng nhập lại');
         }
+      }
 
       console.log('✅ Token OK');
       
@@ -139,7 +140,8 @@ export function CreatePostModalProvider({ children }) {
       });
       throw error;
     }
-  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData]);
+  }, [getIdToken, refreshAuth, editMode, editPostData, dataURLToFile]);
+  // ← Đã thêm đầy đủ dependency để tránh warning React
 
   return (
     <CreatePostModalContext.Provider

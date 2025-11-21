@@ -12,7 +12,7 @@ def cors_headers(cors_origin=None):
     
     return {
         "Access-Control-Allow-Origin": origin,
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id,X-Requested-With",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id,X-Requested-With,Content-Length",
         "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PATCH,DELETE,PUT",
         "Access-Control-Max-Age": "86400"  # 24 hours cache
     }
@@ -21,6 +21,11 @@ def _response(status_code, body_dict, cors_origin=None):
     """Standardized response format with CORS headers"""
     headers = cors_headers(cors_origin)
     headers["Content-Type"] = "application/json"
+    
+    # Add security headers
+    headers["X-Content-Type-Options"] = "nosniff"
+    headers["X-Frame-Options"] = "DENY"
+    headers["X-XSS-Protection"] = "1; mode=block"
     
     return {
         "statusCode": status_code,

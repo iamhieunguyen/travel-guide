@@ -7,6 +7,8 @@ from utils.cors import _response, options_response
 # Environment variables
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 ENVIRONMENT = os.environ["ENVIRONMENT"]
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+ALLOWED_TYPES = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
 
 # Initialize resources
 s3 = boto3.client("s3")
@@ -26,6 +28,7 @@ def lambda_handler(event, context):
         
         filename = (body.get("filename") or "").strip()
         content_type = (body.get("contentType") or "").strip()
+        file_size = body.get("fileSize", 0)
         
         if not filename:
             return _response(400, {"error": "filename is required"}, os.environ.get("CORS_ORIGIN"))
@@ -34,12 +37,24 @@ def lambda_handler(event, context):
             return _response(400, {"error": "contentType is required"}, os.environ.get("CORS_ORIGIN"))
         
         # Validate content type
-        allowed_types = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
-        if content_type not in allowed_types:
+        if content_type not in ALLOWED_TYPES:
             return _response(400, {
-                "error": f"contentType must be one of: {', '.join(allowed_types)}",
-                "allowedTypes": allowed_types
+                "error": f"contentType must be one of: {', '.join(ALLOWED_TYPES)}",
+                "allowedTypes": ALLOWED_TYPES
             }, os.environ.get("CORS_ORIGIN"))
+        
+        # Validate file size
+        try:
+            file_size = int(file_size)
+            if file_size == 0:
+                return _response(400, {"error": "fileSize is required"})
+            if file_size > MAX_FILE_SIZE:
+                return _response(400, {
+                    "error": f"File size exceeds maximum limit of {MAX_FILE_SIZE // (1024*1024)}MB",
+                    "maxFileSize": MAX_FILE_SIZE
+                }, os.environ.get("CORS_ORIGIN"))
+        except (TypeError, ValueError):
+            return _response(400, {"error": "fileSize must be a valid number"}, os.environ.get("CORS_ORIGIN"))
         
         # Get file extension
         ext = ""
@@ -65,7 +80,8 @@ def lambda_handler(event, context):
                 "Bucket": BUCKET_NAME,
                 "Key": key,
                 "ContentType": content_type,
-                "ACL": "private"
+                "ACL": "private",
+                "ContentLength": file_size
             },
             ExpiresIn=900  # 15 minutes
         )
@@ -76,6 +92,8 @@ def lambda_handler(event, context):
             "expiresIn": 900
         }, os.environ.get("CORS_ORIGIN"))
     
+    except json.JSONDecodeError:
+        return _response(400, {"error": "Invalid JSON in request body"}, os.environ.get("CORS_ORIGIN"))
     except Exception as e:
         print(f"Error in get_upload_url: {e}")
-        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))
+        return _response(500, {"error": f"Internal server error"}, os.environ.get("CORS_ORIGIN"))

@@ -131,7 +131,6 @@ Resources:
       GenerateSecret: false
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
-        - ALLOW_USER_PASSWORD_AUTH
       PreventUserExistenceErrors: ENABLED
 
   ##############################

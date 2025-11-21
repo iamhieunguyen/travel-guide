@@ -9,7 +9,7 @@ import requests
 from utils.cors import _response, options_response
 from utils.jwt_validator import get_user_id_from_event
 from utils.geo_utils import geohash_encode, convert_decimals
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 
 # Environment variables
@@ -19,6 +19,7 @@ USER_POOL_ID = os.environ["USER_POOL_ID"]
 CLIENT_ID = os.environ["CLIENT_ID"]
 AWS_REGION = os.environ["AWS_REGION"]
 ENVIRONMENT = os.environ["ENVIRONMENT"]
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 
 # Initialize resources
 dynamodb = boto3.resource("dynamodb")
@@ -31,9 +32,50 @@ def _thumb_from_image_key(image_key: str) -> str:
     stem = os.path.splitext(base)[0]
     return f"thumbnails/{stem}_256.webp"
 
+def _optimize_image(image_data, mime_type, max_size=(1920, 1080), quality=85):
+    """Optimize image: resize if too large and compress"""
+    try:
+        image = Image.open(io.BytesIO(image_data))
+        
+        # Convert mode if needed
+        if image.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', image.size, (255, 255, 255))
+            if image.mode == 'P':
+                image = image.convert('RGBA')
+            if image.mode == 'RGBA':
+                background.paste(image, mask=image.split()[-1])
+            image = background
+        
+        # Resize if too large
+        if image.width > max_size[0] or image.height > max_size[1]:
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        # Save optimized image
+        buffer = io.BytesIO()
+        
+        # Determine save format based on mime type
+        save_format = "JPEG"
+        if mime_type == "image/png":
+            save_format = "PNG"
+        elif mime_type == "image/webp":
+            save_format = "WEBP"
+        
+        # Save with appropriate settings
+        if save_format == "JPEG":
+            image.save(buffer, format=save_format, optimize=True, quality=quality)
+        else:
+            image.save(buffer, format=save_format, optimize=True)
+        
+        buffer.seek(0)
+        return buffer.getvalue()
+    except Exception as e:
+        print(f"Error optimizing image: {e}")
+        raise
+
 def _process_direct_image_upload(data, article_id):
     """Process direct image upload when image_data_url or image_base64 is provided"""
     image_key = None
+    optimized_data = None
     
     # Mode B: gửi base64/data URL trực tiếp (frontend có thể gửi khi upload trực tiếp)
     image_data_url = data.get("image_data_url")
@@ -63,8 +105,12 @@ def _process_direct_image_upload(data, article_id):
         
         try:
             raw = base64.b64decode(b64)
+            if len(raw) > MAX_IMAGE_SIZE:
+                return None, _response(400, {"error": f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB"})
+            
+            optimized_data = _optimize_image(raw, mime)
             image_key = f"articles/{article_id}.{ext}"
-            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=raw, ContentType=mime, ACL="private")
+            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=optimized_data, ContentType=mime, ACL="private")
         except Exception as e:
             return None, _response(400, {"error": f"Failed to process image: {str(e)}"})
     
@@ -83,8 +129,12 @@ def _process_direct_image_upload(data, article_id):
         
         try:
             raw = base64.b64decode(image_b64)
+            if len(raw) > MAX_IMAGE_SIZE:
+                return None, _response(400, {"error": f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB"})
+            
+            optimized_data = _optimize_image(raw, mime)
             image_key = f"articles/{article_id}.{image_ext}"
-            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=raw, ContentType=mime, ACL="private")
+            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=optimized_data, ContentType=mime, ACL="private")
         except Exception as e:
             return None, _response(400, {"error": f"Failed to process base64 image: {str(e)}"})
     
@@ -124,11 +174,11 @@ def lambda_handler(event, context):
         try:
             lat_f = float(data.get("lat"))
             lng_f = float(data.get("lng"))
-        except Exception:
-            return _response(400, {"error": "lat/lng is required and must be numbers"}, os.environ.get("CORS_ORIGIN"))
+        except (TypeError, ValueError):
+            return _response(400, {"error": "lat/lng is required and must be valid numbers"}, os.environ.get("CORS_ORIGIN"))
         
         if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
-            return _response(400, {"error": "lat/lng out of range"}, os.environ.get("CORS_ORIGIN"))
+            return _response(400, {"error": "lat/lng out of valid range"}, os.environ.get("CORS_ORIGIN"))
         
         # Tạo geohash
         geohash = geohash_encode(lat_f, lng_f, precision=9)
@@ -151,7 +201,8 @@ def lambda_handler(event, context):
             image_key = data["imageKey"].strip()
             try:
                 s3.head_object(Bucket=BUCKET_NAME, Key=image_key)
-            except Exception:
+            except Exception as e:
+                print(f"Image not found in S3: {image_key}, error: {str(e)}")
                 return _response(400, {"error": f"imageKey not found in S3: {image_key}"}, os.environ.get("CORS_ORIGIN"))
         
         # Mode B: upload trực tiếp qua base64/data URL
@@ -185,6 +236,8 @@ def lambda_handler(event, context):
         resp = convert_decimals(item)
         return _response(201, resp, os.environ.get("CORS_ORIGIN"))
     
+    except json.JSONDecodeError:
+        return _response(400, {"error": "Invalid JSON in request body"}, os.environ.get("CORS_ORIGIN"))
     except Exception as e:
         print(f"Error in create_article: {e}")
-        return _response(500, {"error": f"Internal server error: {str(e)}"}, os.environ.get("CORS_ORIGIN"))
+        return _response(500, {"error": f"Internal server error"}, os.environ.get("CORS_ORIGIN"))

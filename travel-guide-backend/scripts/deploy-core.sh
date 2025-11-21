@@ -102,3 +102,5 @@ echo "  - To deploy article service: ./scripts/deploy-article.sh $ENV"
 echo "  - To deploy media service: ./scripts/deploy-media.sh $ENV"
 echo ""
 echo "🔧 You can also run all services at once: ./scripts/deploy-all.sh $ENV"
+
+read -p "Press [Enter] to exit..."  # Giữ cửa sổ mở cho đến khi nhấn Enter

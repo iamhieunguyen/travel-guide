@@ -1,13 +1,25 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Travel Guide Backend - Full Stack
+Description: Travel Guide Backend - Full Stack (Fixed CORS + CloudFront + Cognito)
 
 Globals:
+  Function:
+    Timeout: 20
+    Runtime: python3.11
+    MemorySize: 512
+    Environment:
+      Variables:
+        # Tự động lấy domain CloudFront thật – không hardcode
+        CORS_ORIGIN: !Sub "https://${CloudFrontDistribution.DomainName}"
+  
   Api:
+    # Giữ lại để API Gateway tự handle OPTIONS (có tác dụng với route không có Authorizer)
     Cors:
-      AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
-      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
-      AllowOrigin: "'*'"
+      AllowOrigin: !Sub "'https://${CloudFrontDistribution.DomainName}'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+      AllowMethods: "'GET,POST,PUT,PATCH,DELETE,OPTIONS'"
+      AllowCredentials: true
+      MaxAge: "'600'"
     Auth:
       Authorizers:
         CognitoAuthorizer:
@@ -15,9 +27,7 @@ Globals:
           IdentitySource: "method.request.header.Authorization"
 
 Resources:
-  ##############################
-  # DATA LAYER
-  ##############################
+  # ============================== DATA LAYER ==============================
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -25,12 +35,12 @@ Resources:
         Status: Enabled
       CorsConfiguration:
         CorsRules:
-          - AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"]
+          - AllowedMethods: [GET, PUT, POST, DELETE, HEAD]
             AllowedOrigins: ["*"]
             AllowedHeaders: ["*"]
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: false
+        BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
@@ -68,9 +78,7 @@ Resources:
           Projection:
             ProjectionType: ALL
 
-  ##############################
-  # AUTH (COGNITO)
-  ##############################
+  # ============================== COGNITO ==============================
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -102,31 +110,20 @@ Resources:
         - USER_PASSWORD_AUTH
 
 
-  
-  ##############################
-  # AUTH FUNCTIONS
-  ##############################
+  # ============================== AUTH FUNCTIONS ==============================
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/auth/
       Handler: login.lambda_handler
-      Runtime: python3.11
-      Timeout: 10
       Environment:
         Variables:
           USER_POOL_ID: !Ref UserPool
           CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:InitiateAuth
-                - cognito-idp:AdminInitiateAuth
-              Resource: !GetAtt UserPool.Arn
+        - AmazonCognitoPowerUser
       Events:
-        LoginApi:
+        Api:
           Type: Api
           Properties:
             Path: /auth/login
@@ -137,20 +134,10 @@ Resources:
     Properties:
       CodeUri: functions/auth/
       Handler: register.lambda_handler
-      Runtime: python3.11
-      Timeout: 10
-      Environment:
-        Variables:
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:SignUp
-              Resource: !GetAtt UserPool.Arn
+        - AmazonCognitoPowerUser
       Events:
-        RegisterApi:
+        Api:
           Type: Api
           Properties:
             Path: /auth/register
@@ -161,91 +148,51 @@ Resources:
     Properties:
       CodeUri: functions/auth/
       Handler: confirm_user.lambda_handler
-      Runtime: python3.11
-      Timeout: 10
-      Environment:
-        Variables:
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:ConfirmSignUp
-              Resource: !GetAtt UserPool.Arn
+        - AmazonCognitoPowerUser
       Events:
-        ConfirmApi:
+        Api:
           Type: Api
           Properties:
             Path: /auth/confirm
             Method: POST
 
-  ##############################
-  # ARTICLE FUNCTIONS
-  ##############################
+  # ============================== ARTICLE FUNCTIONS ==============================
   CreateArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: create_article.lambda_handler
-      Runtime: python3.11
-      Timeout: 20
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
+        - AmazonCognitoReadOnly
       Events:
-        CreateArticleApi:
+        Api:
           Type: Api
           Properties:
             Path: /articles
             Method: POST
             Auth:
-             Authorizer: CognitoAuthorizer
-
+              Authorizer: CognitoAuthorizer
 
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: get_article.lambda_handler
-      Runtime: python3.11
-      Timeout: 15
       Environment:
         Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
           RETURN_403_ON_PRIVATE: "false"
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
       Events:
-        GetArticleApi:
+        Api:
           Type: Api
           Properties:
             Path: /articles/{articleId}
@@ -256,25 +203,11 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: list_articles.lambda_handler
-      Runtime: python3.11
-      Timeout: 15
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
       Events:
-        ListArticlesApi:
+        Api:
           Type: Api
           Properties:
             Path: /articles
@@ -285,91 +218,49 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: update_article.lambda_handler
-      Runtime: python3.11
-      Timeout: 20
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
       Events:
-        UpdateArticleApi:
+        Api:
           Type: Api
           Properties:
             Path: /articles/{articleId}
             Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   DeleteArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: delete_article.lambda_handler
-      Runtime: python3.11
-      Timeout: 15
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          BUCKET_NAME: !Ref ArticleImagesBucket
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
       Events:
-        DeleteArticleApi:
+        Api:
           Type: Api
           Properties:
             Path: /articles/{articleId}
             Method: DELETE
             Auth:
-             Authorizer: CognitoAuthorizer
+              Authorizer: CognitoAuthorizer
 
   SearchArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/articles/
       Handler: search_articles.lambda_handler
-      Runtime: python3.11
-      Timeout: 15
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-          USER_POOL_ID: !Ref UserPool
-          CLIENT_ID: !Ref UserPoolClient
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - cognito-idp:GetUser
-                - cognito-idp:AdminGetUser
-              Resource: !GetAtt UserPool.Arn
       Events:
-        SearchArticlesApi:
+        Api:
           Type: Api
           Properties:
             Path: /search
@@ -380,62 +271,76 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: get_upload_url.lambda_handler
-      Runtime: python3.11
-      Timeout: 10
-      Environment:
-        Variables:
-          BUCKET_NAME: !Ref ArticleImagesBucket
       Policies:
         - S3WritePolicy:
             BucketName: !Ref ArticleImagesBucket
       Events:
-        GetUploadUrlApi:
+        Api:
           Type: Api
           Properties:
             Path: /upload-url
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+  # ============================== THUMBNAIL ==============================
 
-  ##############################
-  # THUMBNAIL GENERATOR (S3 trigger)
-  ##############################
-  ThumbnailFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/thumbnail_generator/
-      Handler: app.lambda_handler
-      Runtime: python3.11
-      Timeout: 30
-      MemorySize: 1024
-      Environment:
-        Variables:
-          BUCKET_NAME: !Ref ArticleImagesBucket
-      Policies:
-        - Version: "2012-10-17"
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:GetObject
-                - s3:PutObject
-              Resource: !Sub "${ArticleImagesBucket.Arn}/*"
-            - Effect: Allow
-              Action: s3:ListBucket
-              Resource: !GetAtt ArticleImagesBucket.Arn
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
+  # ThumbnailFunction:
+  #   Type: AWS::Serverless::Function
+  #   Properties:
+  #     CodeUri: functions/thumbnail_generator/
+  #     Handler: app.lambda_handler
+  #     Runtime: python3.11
+  #     Timeout: 30
+  #     MemorySize: 1024
+  #     Environment:
+  #       Variables:
+  #         BUCKET_NAME: !Ref ArticleImagesBucket
+  #     Policies:
+  #       - Version: "2012-10-17"
+  #         Statement:
+  #           - Effect: Allow
+  #             Action: [s3:GetObject, s3:PutObject]
+  #             Resource: !Sub "${ArticleImagesBucket.Arn}/*"
+  #           - Effect: Allow
+  #             Action: s3:ListBucket
+  #             Resource: !GetAtt ArticleImagesBucket.Arn
 
-  ##############################
-  # STATIC SITE + CLOUDFRONT (OAI)
-  ##############################
+  # # PHÁ VÒNG LẶP: Tách ra
+  # ThumbnailFunctionBucketEventPermission:
+  #   Type: AWS::Lambda::Permission
+  #   Properties:
+  #     FunctionName: !Ref ThumbnailFunction
+  #     Action: lambda:InvokeFunction
+  #     Principal: s3.amazonaws.com
+  #     SourceAccount: !Ref AWS::AccountId
+  #     SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  # ArticleImagesBucketNotification:
+  #   Type: AWS::S3::BucketNotification
+  #   Properties:
+  #     Bucket: !Ref ArticleImagesBucket
+  #     NotificationConfiguration:
+  #       LambdaFunctionConfigurations:
+  #         - Event: s3:ObjectCreated:*
+  #           Function: !GetAtt ThumbnailFunction.Arn
+  #           Filter:
+  #             S3Key:
+  #               Rules:
+  #                 - Name: prefix
+  #                   Value: original/
+  #   DependsOn: ThumbnailFunctionBucketEventPermission
+
+
+  # ============================== STATIC SITE + CLOUDFRONT ==============================
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
-        BlockPublicPolicy: false
+        BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
 
@@ -443,7 +348,7 @@ Resources:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: !Sub "OAI for ${AWS::StackName}"
+        Comment: OAI for Travel Guide
 
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
@@ -452,8 +357,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontOAIReadOnly
-            Effect: Allow
+          - Effect: Allow
             Principal:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
@@ -466,8 +370,7 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontOAIReadImages
-            Effect: Allow
+          - Effect: Allow
             Principal:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
@@ -478,69 +381,55 @@ Resources:
     Properties:
       DistributionConfig:
         Origins:
-          - Id: S3OriginStatic
+          - Id: StaticSite
             DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
             S3OriginConfig:
               OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
-
-          - Id: S3OriginImages
+          - Id: Images
             DomainName: !GetAtt ArticleImagesBucket.RegionalDomainName
             S3OriginConfig:
               OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
-
         Enabled: true
         DefaultRootObject: index.html
         DefaultCacheBehavior:
-          TargetOriginId: S3OriginStatic
+          TargetOriginId: StaticSite
           ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD]
+          AllowedMethods: [GET, HEAD, OPTIONS]
           CachedMethods: [GET, HEAD]
+          Compress: true
           ForwardedValues:
             QueryString: false
             Cookies:
               Forward: none
-          Compress: true
-
         CacheBehaviors:
           - PathPattern: "articles/*"
-            TargetOriginId: S3OriginImages
+            TargetOriginId: Images
             ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            CachedMethods: [GET, HEAD]
             ForwardedValues:
               QueryString: false
               Cookies:
                 Forward: none
             Compress: true
-
           - PathPattern: "thumbnails/*"
-            TargetOriginId: S3OriginImages
+            TargetOriginId: Images
             ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            CachedMethods: [GET, HEAD]
             ForwardedValues:
               QueryString: false
               Cookies:
                 Forward: none
             Compress: true
-
         PriceClass: PriceClass_100
         HttpVersion: http2
         IPV6Enabled: true
-        
+
 Outputs:
   ApiUrl:
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  FrontendUrl:
+    Value: !Sub "https://${CloudFrontDistribution.DomainName}"
   UserPoolId:
     Value: !Ref UserPool
   UserPoolClientId:
     Value: !Ref UserPoolClient
-  ArticleImagesBucketName:
-    Value: !Ref ArticleImagesBucket
-  StaticSiteBucketName:
-    Value: !Ref StaticSiteBucket
-  CloudFrontDomain:
-    Value: !GetAtt CloudFrontDistribution.DomainName
-  CloudFrontDomainForImages:
-    Value: !GetAtt CloudFrontDistribution.DomainName
-    Description: Use this domain for serving images via CloudFront for better performance
+  ImagesUrl:
+    Value: !Sub "https://${CloudFrontDistribution.DomainName}/articles/"

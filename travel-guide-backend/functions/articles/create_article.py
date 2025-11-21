@@ -6,8 +6,15 @@ from datetime import datetime, timezone
 from decimal import Decimal
 import boto3
 import sys
-sys.path.insert(0, '/var/task/functions')
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_parent_dir = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, parent_parent_dir)
+
 from utils import *
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Clients
 s3 = boto3.client("s3")
@@ -42,6 +49,8 @@ def _thumb_from_image_key(image_key: str) -> str:
 
 
 def lambda_handler(event, context):
+
+    logger.info(f"Article Create Event: {json.dumps(event)}")
     method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
     if method == "OPTIONS":
         return options()

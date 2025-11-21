@@ -1,101 +1,52 @@
 """
-Centralized CORS and response utilities
+utils/response.py - Production ready CORS handler
 """
 import os
 import json
 from decimal import Decimal
 
-CORS_ORIGIN = os.getenv("CORS_ORIGIN", "https://dyt8n4mvxnzep.cloudfront.net/")
+CORS_ORIGIN = os.getenv("CORS_ORIGIN", "http://localhost:3000")  # fallback dev
 
 def cors_headers():
-    """Standard CORS headers"""
     return {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": CORS_ORIGIN,
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id",
-        "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PATCH,DELETE,PUT",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Max-Age": "600",
     }
 
 class DecimalEncoder(json.JSONEncoder):
-    """Custom JSON encoder for DynamoDB Decimal types"""
     def default(self, obj):
         if isinstance(obj, Decimal):
             return float(obj) if obj % 1 else int(obj)
         return super().default(obj)
 
-def response(status_code, body, extra_headers=None):
-    """Standard Lambda response"""
+def response(status_code: int, body=None, extra_headers=None):
     headers = cors_headers()
     if extra_headers:
         headers.update(extra_headers)
-    
+
     return {
         "statusCode": status_code,
         "headers": headers,
-        "body": json.dumps(body, ensure_ascii=False, cls=DecimalEncoder)
+        "body": json.dumps(body, ensure_ascii=False, cls=DecimalEncoder) if body is not None else ""
     }
 
-def ok(body, status_code=200):
-    """Success response"""
-    return response(status_code, body)
-
-def created(body):
-    """201 Created"""
-    return response(201, body)
-
-def error(message, status_code=400, **extra_fields):
-    """Error response"""
-    body = {"error": message}
-    body.update(extra_fields)
-    return response(status_code, body)
-
-def unauthorized(message="Unauthorized"):
-    """401 Unauthorized"""
-    return error(message, 401)
-
-def forbidden(message="Forbidden"):
-    """403 Forbidden"""
-    return error(message, 403)
-
-def not_found(message="Not found"):
-    """404 Not Found"""
-    return error(message, 404)
-
-def bad_request(message):
-    """400 Bad Request"""
-    return error(message, 400)
-
-def internal_error(message="Internal server error"):
-    """500 Internal Server Error"""
-    return error(message, 500)
+# Helper functions
+ok = lambda body=None: response(200, body)
+created = lambda body: response(201, body)
+no_content = lambda: response(204)
+bad_request = lambda msg="Bad request": response(400, {"error": msg})
+unauthorized = lambda msg="Unauthorized": response(401, {"error": msg})
+forbidden = lambda msg="Forbidden": response(403, {"error": msg})
+not_found = lambda msg="Not found": response(404, {"error": msg})
+internal_error = lambda msg="Internal server error": response(500, {"error": msg})
 
 def options():
-    """Handle OPTIONS preflight"""
     return {
-        "statusCode": 204,
-        "headers": cors_headers(),
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Length": "0"},
         "body": ""
     }
-
-def parse_json_body(event):
-    """Parse JSON body from API Gateway event"""
-    import base64
-    
-    body_str = event.get("body", "")
-    if not body_str:
-        return {}
-    
-    if event.get("isBase64Encoded"):
-        body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
-    
-    try:
-        return json.loads(body_str)
-    except json.JSONDecodeError:
-        raise ValueError("Invalid JSON in request body")
-
-def get_http_method(event):
-    """Extract HTTP method from event"""
-    method = event.get("httpMethod")
-    if not method:
-        method = event.get("requestContext", {}).get("http", {}).get("method")
-    return method

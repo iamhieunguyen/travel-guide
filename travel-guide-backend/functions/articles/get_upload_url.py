@@ -3,7 +3,11 @@ import json
 import uuid
 import boto3
 import sys
-sys.path.insert(0, '/var/task/functions')
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_parent_dir = os.path.join(current_dir, '..', '..')
+sys.path.insert(0, parent_parent_dir)
+
 from utils import *
 
 s3 = boto3.client("s3")

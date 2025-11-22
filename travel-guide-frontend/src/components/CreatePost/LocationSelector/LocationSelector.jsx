@@ -40,12 +40,26 @@ function MapUpdater({ position }) {
 }
 
 export default function LocationSelector({ onBack, onNext, initialLocation, initialSearch }) {
-  const [position, setPosition] = useState(initialLocation);
+  const [position, setPosition] = useState(initialLocation || null);
   const [locationSearch, setLocationSearch] = useState(initialSearch || "");
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+
+  // Update position khi initialLocation thay đổi (khi mở edit modal)
+  useEffect(() => {
+    if (initialLocation && initialLocation.lat && initialLocation.lng) {
+      setPosition(initialLocation);
+    }
+  }, [initialLocation]);
+
+  // Update search khi initialSearch thay đổi
+  useEffect(() => {
+    if (initialSearch) {
+      setLocationSearch(initialSearch);
+    }
+  }, [initialSearch]);
 
   // Reverse geocoding
   const reverseGeocode = async (lat, lng) => {

@@ -9,7 +9,7 @@ import {
   Minus,
 } from "lucide-react";
 import { useCreatePostModal } from "../../../context/CreatePostModalContext";
-import InstagramStyleHeader from "../CreatePostStyleHeader";
+import CreatePostStyleHeader from "../CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
@@ -113,6 +113,7 @@ export default function ImageSelector({ onNext }) {
   };
 
   const aspectRatios = [
+    { label: "Gốc", value: "original" },
     { label: "1:1", value: "1:1" },
     { label: "4:5", value: "4:5" },
     { label: "16:9", value: "16:9" },
@@ -124,6 +125,7 @@ export default function ImageSelector({ onNext }) {
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
 
   const getAspectStyle = () => {
+    if (aspect === "original") return "auto";
     if (aspect === "1:1") return "100%";
     if (aspect === "4:5") return `${(5 / 4) * 100}%`;
     if (aspect === "16:9") return `${(9 / 16) * 100}%`;
@@ -155,7 +157,7 @@ export default function ImageSelector({ onNext }) {
           </div>
         </div>
 
-        <InstagramStyleHeader />
+        <CreatePostStyleHeader />
         
         <div className="absolute top-3 left-3 z-40">
           <button
@@ -169,46 +171,6 @@ export default function ImageSelector({ onNext }) {
         <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-8 pb-8 overflow-hidden" style={{ minHeight: "560px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
           {images.length === 0 ? (
             <>
-              {/* Decorative Blob Shapes - Only on upload screen */}
-              <div 
-                className="absolute bg-[#9db88a] transition-all duration-1000"
-                style={{
-                  top: "-25%",
-                  right: "10%",
-                  width: "280px",
-                  height: "400px",
-                  borderRadius: "50% 50% 50% 50% / 50% 50% 50% 50%",
-                  animation: "blob1 8s ease-in-out infinite",
-                  zIndex: 5,
-                }}
-              ></div>
-              
-              <div 
-                className="absolute bg-[#9db88a] transition-all duration-1000"
-                style={{
-                  top: "-10%",
-                  left: "5%",
-                  width: "320px",
-                  height: "420px",
-                  borderRadius: "50% 50% 50% 50% / 50% 50% 50% 50%",
-                  animation: "blob2 10s ease-in-out infinite",
-                  zIndex: 5,
-                }}
-              ></div>
-              
-              <div 
-                className="absolute bg-[#a8d5e2] transition-all duration-1000"
-                style={{
-                  bottom: "-10%",
-                  right: "8%",
-                  width: "200px",
-                  height: "300px",
-                  borderRadius: "50% 50% 50% 50% / 50% 50% 50% 50%",
-                  animation: "blob3 7s ease-in-out infinite",
-                  zIndex: 5,
-                }}
-              ></div>
-
               <div className="flex flex-col items-center justify-center w-full h-full group px-4">
                 <div 
                   onClick={triggerFileSelect}
@@ -255,21 +217,24 @@ export default function ImageSelector({ onNext }) {
               }}
             >
               <div
-                className="relative w-full"
-                style={{
-                  paddingTop: getAspectStyle(),
-                  maxHeight: "100%",
-                  overflow: "hidden",
-                }}
+                className="relative w-full h-full flex items-center justify-center"
               >
-                <img
-                  src={images[currentIndex]}
-                  alt={`Ảnh ${currentIndex + 1}`}
-                  className="absolute top-0 left-0 w-full h-full object-cover transition-transform duration-300"
+                <div
+                  className="relative"
                   style={{
-                    transform: `scale(${zoom / 100})`,
+                    width: aspect === "4:5" ? "496px" : "100%",
+                    paddingTop: aspect === "original" ? "100%" : getAspectStyle(),
                   }}
-                />
+                >
+                  <img
+                    src={images[currentIndex]}
+                    alt={`Ảnh ${currentIndex + 1}`}
+                    className="absolute top-0 left-0 w-full h-full object-cover transition-all duration-300"
+                    style={{
+                      transform: `scale(${zoom / 100})`,
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="absolute bottom-6 left-6" ref={aspectMenuRef}>

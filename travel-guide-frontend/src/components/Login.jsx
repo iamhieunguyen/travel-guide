@@ -39,7 +39,8 @@ export default function Login({ embed = false }) {
       if (remember) localStorage.setItem("remember_username", username);
       else localStorage.removeItem("remember_username");
 
-      navigate("/home");
+      // Reload trang để đảm bảo AuthContext load user trước
+      window.location.href = "/home";
     } catch (err) {
       setError(err.message || "Tên đăng nhập hoặc mật khẩu không đúng");
     }

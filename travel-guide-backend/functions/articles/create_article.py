@@ -5,7 +5,7 @@ import base64
 from datetime import datetime, timezone
 from decimal import Decimal
 import boto3
-from cors import options
+from cors import options, ok, error
 
 # Clients
 s3 = boto3.client("s3")
@@ -14,23 +14,6 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 table = dynamodb.Table(TABLE_NAME)
-
-
-def _cors_headers():
-    return {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": os.getenv("CORS_ORIGIN", "*"),
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "OPTIONS,POST",
-    }
-
-
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": _cors_headers(),
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
 
 
 def _thumb_from_image_key(image_key: str) -> str:
@@ -52,7 +35,7 @@ def lambda_handler(event, context):
 
         owner_id = claims.get("sub")
         if not owner_id:
-            return _response(401, {"error": "Unauthorized: Missing sub in token"})
+            return error(401, "Unauthorized: Missing sub in token")
 
         # ✅ Lấy username hiển thị từ token (tuỳ pool mà chọn field phù hợp)
         display_name = (
@@ -73,7 +56,7 @@ def lambda_handler(event, context):
         title = (data.get("title") or "").strip()
         content = (data.get("content") or "").strip()
         if not title or not content:
-            return _response(400, {"error": "title and content are required"})
+            return error(400, "title and content are required")
 
         # Validate geo
         try:
@@ -82,17 +65,17 @@ def lambda_handler(event, context):
             if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
                 raise ValueError("Invalid coordinates")
         except (KeyError, ValueError, TypeError):
-            return _response(400, {"error": "valid lat/lng required"})
+            return error(400, "valid lat/lng required")
 
         # Visibility
         visibility = (data.get("visibility") or "public").lower()
         if visibility not in ("public", "private"):
-            return _response(400, {"error": "visibility must be public or private"})
+            return error(400, "visibility must be public or private")
 
         # Tags
         tags = data.get("tags") or []
         if not isinstance(tags, list):
-            return _response(400, {"error": "tags must be an array"})
+            return error(400, "tags must be an array")
         tags = list({str(t).strip() for t in tags if str(t).strip()})
 
         # ✅ Location name (không bắt buộc)
@@ -109,9 +92,9 @@ def lambda_handler(event, context):
             try:
                 s3.head_object(Bucket=BUCKET_NAME, Key=image_key)
             except s3.exceptions.ClientError:
-                return _response(400, {"error": f"imageKey not found in S3: {image_key}"})
+                return error(400, f"imageKey not found in S3: {image_key}")
             except Exception as e:
-                return _response(400, {"error": f"S3 error: {str(e)}"})
+                return error(400, f"S3 error: {str(e)}")
 
         # Build item
         item = {
@@ -147,8 +130,8 @@ def lambda_handler(event, context):
             resp[k] = float(v) if isinstance(v, Decimal) else v
 
         print(f"Article created: {article_id} by user {owner_id}")
-        return _response(201, resp)
+        return ok(201, resp)
 
     except Exception as e:
         print(f"Create error: {e}")
-        return _response(500, {"error": "Internal server error"})
+        return error(500, "Internal server error")

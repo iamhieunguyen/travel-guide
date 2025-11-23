@@ -11,19 +11,6 @@ BUCKET_NAME = os.environ["BUCKET_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
 
-def _response(status_code, body_dict):
-    return {
-        "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "PATCH,OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
-
 def _get_user_id(event):
     rc = event.get("requestContext") or {}
     auth = rc.get("authorizer") or {}
@@ -56,7 +43,7 @@ def lambda_handler(event, context):
         print("DEBUG current_user_id =", current_user_id)
 
         if not current_user_id:
-            return _response(401, {"error": "Unauthorized: User identity not found"})
+            return error(401, "Unauthorized: User identity not found")
 
         #  2. Lấy articleId từ path
         path_params = event.get("pathParameters") or {}
@@ -64,7 +51,7 @@ def lambda_handler(event, context):
         print("DEBUG article_id =", article_id)
 
         if not article_id:
-            return _response(400, {"error": "articleId is required"})
+            return error(400, "articleId is required")
 
         #  3. Lấy bài viết hiện tại để kiểm tra quyền
         current_item_response = table.get_item(Key={"articleId": article_id})
@@ -72,7 +59,7 @@ def lambda_handler(event, context):
         print("DEBUG get_item response =", current_item_response)
 
         if "Item" not in current_item_response:
-            return _response(404, {"error": "Article not found"})
+            return error(404, "Article not found")
 
         current_article = current_item_response["Item"]
         owner_id = current_article.get("ownerId")
@@ -80,7 +67,7 @@ def lambda_handler(event, context):
 
         #  4. Kiểm tra quyền sở hữu
         if owner_id != current_user_id:
-            return _response(403, {"error": "Forbidden: You do not own this article"})
+            return error(403, "Forbidden: You do not own this article")
 
         #  5. Parse body
         body_str = event.get("body") or ""
@@ -110,7 +97,7 @@ def lambda_handler(event, context):
         print("DEBUG expr_attr_values =", expression_attribute_values)
 
         if len(expression_attribute_values) == 0:
-            return _response(400, {"error": "No valid fields to update"})
+            return error(400, "No valid fields to update")
 
         update_expression = update_expression.rstrip(", ")
 
@@ -133,10 +120,10 @@ def lambda_handler(event, context):
             else:
                 processed_item[k] = v
 
-        return _response(200, processed_item)
+        return ok(200, processed_item)
 
     except json.JSONDecodeError:
-        return _response(400, {"error": "Invalid JSON in request body"})
+        return error(400, "Invalid JSON in request body")
     except Exception as e:
         print(f"Error in update_article: {e}")
-        return _response(500, {"error": "Internal server error"})
+        return error(500, "Internal server error")

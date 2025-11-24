@@ -45,12 +45,9 @@ Resources:
   ##############################
   # DATA LAYER
   ##############################
+
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
-    DependsOn:
-      - DetectLabelsFunctionPermission
-      - DetectTextFunctionPermission
-      - ContentModerationFunctionPermission
     Properties:
       BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
       VersioningConfiguration:
@@ -65,43 +62,6 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ThumbnailFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt DetectLabelsFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ContentModerationFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ImageValidatorFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
-          - Event: s3:ObjectCreated:*
-            Function: !GetAtt ImageAnalyzerFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: articles/
 
   ArticlesTable:
     Type: AWS::DynamoDB::Table
@@ -141,25 +101,6 @@ Resources:
             ProjectionType: ALL
 
   ##############################
-  # MESSAGE QUEUES
-  ##############################
-  NotificationQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AWS::StackName}-notifications'
-      VisibilityTimeout: 300
-      MessageRetentionPeriod: 1209600  # 14 days
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt NotificationDLQ.Arn
-        maxReceiveCount: 3
-
-  NotificationDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub '${AWS::StackName}-notifications-dlq'
-      MessageRetentionPeriod: 1209600
-
-  ##############################
   # AUTH (COGNITO)
   ##############################
   UserPool:
@@ -190,7 +131,7 @@ Resources:
       UserPoolId: !Ref UserPool
       GenerateSecret: false
       ExplicitAuthFlows:
-        - USER_PASSWORD_AUTH
+        - ALLOW_USER_PASSWORD_AUTH
         - ALLOW_REFRESH_TOKEN_AUTH
 
   ##############################
@@ -290,6 +231,7 @@ Resources:
             Method: POST
             Auth:                  
               Authorizer: CognitoAuthorizer
+
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -413,34 +355,13 @@ Resources:
             Method: POST
 
   ##############################
-  # GEOSPATIAL FUNCTIONS
-  ##############################
-  SearchByLocationFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/geospatial/
-      Handler: search_by_location.lambda_handler
-      Environment:
-        Variables:
-          TABLE_NAME: !Ref ArticlesTable
-      Policies:
-        - DynamoDBReadPolicy:
-            TableName: !Ref ArticlesTable
-      Events:
-        SearchByLocationApi:
-          Type: Api
-          Properties:
-            Path: /search/nearby
-            Method: GET
-
-  ##############################
   # IMAGE PROCESSING FUNCTIONS
   ##############################
 
   ImageValidatorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/image_validator/
+      CodeUri: functions/image_processing/
       Handler: app.lambda_handler
       Timeout: 15
       Environment:
@@ -456,7 +377,7 @@ Resources:
   ImageAnalyzerFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: functions/image_analyzer/
+      CodeUri: functions/image_processing/
       Handler: app.lambda_handler
       Timeout: 20
       Environment:
@@ -481,30 +402,31 @@ Resources:
   ImageValidatorFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt ImageValidatorFunction.Arn
       Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageValidatorFunction
       Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn++
+      SourceArn: !GetAtt ArticleImagesBucket.Arn
 
   ImageAnalyzerFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt ImageAnalyzerFunction.Arn
       Action: lambda:InvokeFunction
+      FunctionName: !Ref ImageAnalyzerFunction
       Principal: s3.amazonaws.com
       SourceArn: !GetAtt ArticleImagesBucket.Arn
 
   ThumbnailFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt ThumbnailFunction.Arn
       Action: lambda:InvokeFunction
+      FunctionName: !Ref ThumbnailFunction
       Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
+      SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
   
   ##############################
   # REKOGNITION FUNCTIONS
   ##############################
+
   DetectLabelsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -532,10 +454,10 @@ Resources:
   DetectLabelsFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt DetectLabelsFunction.Arn
       Action: lambda:InvokeFunction
+      FunctionName: !Ref DetectLabelsFunction
       Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
+      SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
 
   ContentModerationFunction:
     Type: AWS::Serverless::Function
@@ -548,7 +470,6 @@ Resources:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
           MODERATION_CONFIDENCE: "75.0"
-          MODERATION_SNS_TOPIC: !Ref ModerationAlertTopic  # Optional
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -562,31 +483,10 @@ Resources:
   ContentModerationFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !GetAtt ContentModerationFunction.Arn
       Action: lambda:InvokeFunction
+      FunctionName: !Ref ContentModerationFunction
       Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ##############################
-  # NOTIFICATION FUNCTIONS
-  ##############################
-  SendEmailFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/notifications/
-      Handler: send_email.lambda_handler
-      Environment:
-        Variables:
-          FROM_EMAIL: !Sub 'noreply@${AWS::StackName}.com'
-      Policies:
-        - SESCrudPolicy:
-            IdentityName: !Sub '${AWS::StackName}.com'
-      Events:
-        SQSEvent:
-          Type: SQS
-          Properties:
-            Queue: !GetAtt NotificationQueue.Arn
-            BatchSize: 10
+      SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
 
   ##############################
   # STATIC SITE + CLOUDFRONT (OAI)
@@ -620,20 +520,6 @@ Resources:
               AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
             Action: 's3:GetObject'
             Resource: !Sub '${StaticSiteBucket.Arn}/*'
-
-  ArticleImagesBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref ArticleImagesBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: AllowCloudFrontOAI
-            Effect: Allow
-            Principal:
-              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
-            Action: 's3:GetObject'
-            Resource: !Sub '${ArticleImagesBucket.Arn}/*'
 
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
@@ -685,6 +571,20 @@ Resources:
         HttpVersion: http2
         IPV6Enabled: true
 
+  ArticleImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArticleImagesBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontOAI
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}'
+            Action: 's3:GetObject'
+            Resource: !Sub '${ArticleImagesBucket.Arn}/*'
+
 Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
@@ -727,9 +627,3 @@ Outputs:
     Value: !Ref ArticlesTable
     Export:
       Name: !Sub '${AWS::StackName}-ArticlesTable'
-
-  NotificationQueueUrl:
-    Description: SQS notification queue URL
-    Value: !Ref NotificationQueue
-    Export:
-      Name: !Sub '${AWS::StackName}-NotificationQueue'

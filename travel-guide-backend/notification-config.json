@@ -1,0 +1,46 @@
+{
+  "LambdaFunctionConfigurations": [
+    {
+      "LambdaFunctionArn": "$THUMBNAIL_ARN",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "articles/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "LambdaFunctionArn": "$DETECT_ARN",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "articles/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "LambdaFunctionArn": "$MODERATE_ARN",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "articles/"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

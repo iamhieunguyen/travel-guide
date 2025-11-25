@@ -9,16 +9,6 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
 def _get_user_id(event):
     """Hàm hỗ trợ lấy user ID từ cả JWT và X-User-Id như trong create_article"""
     headers = event.get("headers") or {}
@@ -95,8 +85,8 @@ def lambda_handler(event, context):
         if next_key:
             result['nextToken'] = json.dumps(next_key)
 
-        return _response(200, result)
+        return ok(200, result)
 
     except Exception as e:
         print(f"Error in list_articles: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        return error(500, f"internal error: {e}")

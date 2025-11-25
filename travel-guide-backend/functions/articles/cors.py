@@ -1,7 +1,7 @@
 # cors.py
 import os, json
 
-CORS_ORIGIN = os.getenv("CORS_ORIGIN", "https://d1k0khib98591u.cloudfront.net")
+CORS_ORIGIN = os.getenv("CORS_ORIGIN", "*")
 
 def cors_headers():
     return {

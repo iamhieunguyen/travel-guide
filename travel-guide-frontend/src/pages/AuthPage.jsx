@@ -41,7 +41,15 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="auth-wrapper bg-gray-700 min-h-screen flex items-center justify-center">
+    <div className="auth-wrapper bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Floating particles background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="floating-particle" style={{ top: '10%', left: '10%', animationDelay: '0s' }} />
+        <div className="floating-particle" style={{ top: '20%', right: '15%', animationDelay: '2s' }} />
+        <div className="floating-particle" style={{ bottom: '30%', left: '20%', animationDelay: '4s' }} />
+        <div className="floating-particle" style={{ bottom: '20%', right: '25%', animationDelay: '3s' }} />
+      </div>
+
       <div ref={containerRef} className="auth-container">
         {/* LOGIN FORM */}
         <div className="form-box login">
@@ -61,18 +69,18 @@ export default function AuthPage() {
         {/* TOGGLE PANEL */}
         <div className="toggle-box">
           <div className="toggle-panel toggle-left">
-            <h1 className="text-3xl font-semibold mb-2">Hello, Welcome!</h1>
-            <p className="mb-4">Don’t have an account yet</p>
+            <h1 className="text-3xl font-semibold mb-2">Xin chào, Chào mừng!</h1>
+            <p className="mb-4">Chưa có tài khoản?</p>
             <button className="btn" onClick={handleToggleMode}>
-              Register
+              Đăng ký
             </button>
           </div>
 
           <div className="toggle-panel toggle-right">
-            <h1 className="text-3xl font-semibold mb-2">Welcome Back!</h1>
-            <p className="mb-4">Already have an account?</p>
+            <h1 className="text-3xl font-semibold mb-2">Chào mừng trở lại!</h1>
+            <p className="mb-4">Đã có tài khoản?</p>
             <button className="btn" onClick={handleToggleMode}>
-              Login
+              Đăng nhập
             </button>
           </div>
         </div>

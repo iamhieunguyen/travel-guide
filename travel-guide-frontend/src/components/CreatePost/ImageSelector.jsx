@@ -8,8 +8,8 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { useCreatePostModal } from "../../../context/CreatePostModalContext";
-import CreatePostStyleHeader from "../CreatePostStyleHeader";
+import { useCreatePostModal } from "../../context/CreatePostModalContext";
+import CreatePostStyleHeader from "./CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();

@@ -1,9 +1,9 @@
 // components/CreatePost/CreatePostModal.jsx
 import { useState, useEffect } from "react";
 import { useCreatePostModal } from "../../context/CreatePostModalContext";
-import ImageSelector from "./ImageSelector/ImageSelector";
+import ImageSelector from "./ImageSelector";
 import PostDetails from "./PostDetails/PostDetails";
-import LocationSelector from "./LocationSelector/LocationSelector";
+import LocationSelector from "./LocationSelector";
 import CreatePostStyleHeader from "./CreatePostStyleHeader";
 import { X } from "lucide-react";
 

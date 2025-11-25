@@ -2,15 +2,18 @@ import os
 import json
 import boto3
 from decimal import Decimal
-from cors import ok, error, options
+from cors import ok, error, options # Giả định các hàm này đã được định nghĩa
 
+# Clients
 dynamodb = boto3.resource("dynamodb")
+s3_client = boto3.client("s3") # Khởi tạo S3 client global
 
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
 def _response(status, body_dict):
+    """Hàm tạo response chuẩn."""
     return {
         "statusCode": status,
         "headers": {
@@ -24,6 +27,7 @@ def lambda_handler(event, context):
     method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
     if method == "OPTIONS":
         return options()
+    
     try:
         path_params = event.get("pathParameters") or {}
         article_id = path_params.get("articleId")
@@ -31,6 +35,7 @@ def lambda_handler(event, context):
         if not article_id:
             return _response(400, {"error": "articleId is required"})
 
+        # Lấy bài viết từ DynamoDB
         response = table.get_item(Key={'articleId': article_id})
 
         if 'Item' not in response:
@@ -38,24 +43,52 @@ def lambda_handler(event, context):
 
         item = response['Item']
 
-        # Chuyển Decimal sang float
+        # Chuyển Decimal sang float và tạo bản sao cho response
         processed_item = dict(item)
         if 'lat' in processed_item:
             processed_item['lat'] = float(processed_item['lat'])
         if 'lng' in processed_item:
             processed_item['lng'] = float(processed_item['lng'])
+            
+        # Đảm bảo imageKeys là list (DynamoDB có thể lưu Set/List)
+        if 'imageKeys' in processed_item and not isinstance(processed_item['imageKeys'], list):
+            # Ép kiểu nếu cần (ví dụ, nếu lưu dưới dạng DynamoDB Set)
+            processed_item['imageKeys'] = list(processed_item['imageKeys'])
 
-        # Nếu có query param presign=1, tạo presigned URL cho ảnh
+        # ----------------------------------------------------------------------
+        ## 🖼️ Logic Xử lý Presigned URLs
+        # ----------------------------------------------------------------------
         params = event.get("queryStringParameters") or {}
-        if params.get('presign') == '1' and 'imageKey' in processed_item:
-            import boto3
-            s3 = boto3.client('s3')
-            presigned_url = s3.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': BUCKET_NAME, 'Key': processed_item['imageKey']},
-                ExpiresIn=3600
-            )
-            processed_item['imageUrl'] = presigned_url
+        if params.get('presign') == '1':
+            
+            # Ưu tiên xử lý mảng imageKeys (từ bài viết mới)
+            image_keys_to_process = []
+            if 'imageKeys' in processed_item and processed_item['imageKeys']:
+                image_keys_to_process = processed_item['imageKeys']
+            # Fallback cho bài viết cũ chỉ có imageKey
+            elif 'imageKey' in processed_item:
+                image_keys_to_process = [processed_item['imageKey']]
+            
+            # Tạo presigned URLs
+            if image_keys_to_process:
+                image_urls = []
+                for key in image_keys_to_process:
+                    try:
+                        # Tạo presigned URL cho từng key
+                        presigned_url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': BUCKET_NAME, 'Key': key},
+                            ExpiresIn=3600
+                        )
+                        image_urls.append(presigned_url)
+                    except Exception as e:
+                        print(f"Error generating presigned URL for key {key}: {e}")
+                
+                if image_urls:
+                    # Trả về danh sách URL mới
+                    processed_item['imageUrls'] = image_urls
+                    # Trả về imageUrl cho tương thích ngược (ảnh cover)
+                    processed_item['imageUrl'] = image_urls[0]
 
         return _response(200, processed_item)
 

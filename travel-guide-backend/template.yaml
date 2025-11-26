@@ -93,6 +93,20 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+  UserFavoritesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: articleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: articleId
+          KeyType: RANGE
 
   ##############################
   # AUTH (COGNITO)
@@ -354,6 +368,81 @@ Resources:
             Method: POST
 
   ##############################
+  # FAVORITES FUNCTIONS
+  ##############################
+  FavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: favorite_article.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable               # Bảng bài viết
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        FavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  UnfavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: unfavorite_article.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        UnfavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ListFavoriteArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: list_favorite_articles.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        ListFavoriteArticlesApi:
+          Type: Api
+          Properties:
+            Path: /me/favorites
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+  
+  ##############################
   # IMAGE PROCESSING FUNCTIONS
   ##############################
   ImageValidatorFunction:
@@ -449,8 +538,8 @@ Resources:
         Variables:
           CUSTOM_LABELS_MODEL_ARN: "arn:aws:rekognition:ap-southeast-1:709107513862:project/TravelGuide-CustomLabels/version/TravelGuide-CustomLabels.2025-11-12T19.58.05/1762952285699"
           TABLE_NAME: !Ref ArticlesTable
-          MIN_CONFIDENCE: "75.0"      # Minimum confidence (0-100)
-          MAX_LABELS: "10"            # Max labels per image
+          MIN_CONFIDENCE: "75.0"     
+          MAX_LABELS: "10"            
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket

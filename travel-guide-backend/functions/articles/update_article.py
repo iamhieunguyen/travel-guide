@@ -5,10 +5,8 @@ import boto3
 from decimal import Decimal
 from cors import ok, error, options # Giả định các hàm này đã được định nghĩa
 
-# Clients
+# --- INITIALIZATION ---
 dynamodb = boto3.resource("dynamodb")
-# S3 client không cần thiết cho logic update này vì ta bỏ qua bước re-validate S3
-# s3 = boto3.client("s3") 
 
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]

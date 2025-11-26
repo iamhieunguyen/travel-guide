@@ -4,7 +4,75 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MessageCircle, MapPin, Clock, Plus } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Clock, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+
+// Component hiển thị nhiều ảnh với carousel
+function PostImageCarousel({ images, postTitle }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+  
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+  
+  if (!images || images.length === 0) return null;
+  
+  return (
+    <div className="relative bg-black">
+      <img
+        src={images[currentIndex].startsWith('http') 
+          ? images[currentIndex]
+          : `https://${process.env.REACT_APP_CF_DOMAIN}/${images[currentIndex]}`}
+        alt={`${postTitle} - ${currentIndex + 1}`}
+        className="w-full h-96 object-cover"
+        onError={(e) => {
+          e.target.src = 'https://placehold.co/600x600/e2e8f0/64748b?text=No+Image';
+        }}
+      />
+      
+      {images.length > 1 && (
+        <>
+          {/* Navigation buttons */}
+          <button
+            onClick={prevImage}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={nextImage}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          
+          {/* Indicators */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`w-2 h-2 rounded-full transition ${
+                  index === currentIndex 
+                    ? 'bg-white w-6' 
+                    : 'bg-white/50 hover:bg-white/75'
+                }`}
+              />
+            ))}
+          </div>
+          
+          {/* Counter */}
+          <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+            {currentIndex + 1} / {images.length}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { user, logout, authChecked } = useAuth();
@@ -137,6 +205,12 @@ export default function HomePage() {
             </h1>
             <div className="flex items-center space-x-4">
               <button
+                onClick={() => navigate('/posts')}
+                className="text-[#0891b2] hover:text-[#06b6d4] transition font-medium"
+              >
+                Bài viết
+              </button>
+              <button
                 onClick={openModal}
                 className="bg-gradient-to-r from-[#0891b2] to-[#06b6d4] text-white px-4 py-2 rounded-lg hover:shadow-lg transition"
               >
@@ -264,8 +338,10 @@ export default function HomePage() {
                         )}
                       </div>
 
-                      {/* Post Image */}
-                      {post.imageKey && (
+                      {/* Post Images */}
+                      {(post.imageKeys && post.imageKeys.length > 0) ? (
+                        <PostImageCarousel images={post.imageKeys} postTitle={post.title || post.content} />
+                      ) : post.imageKey ? (
                         <div className="relative">
                           <img
                             src={post.imageKey.startsWith('http') 
@@ -278,7 +354,7 @@ export default function HomePage() {
                             }}
                           />
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Post Content */}
                       <div className="p-4">

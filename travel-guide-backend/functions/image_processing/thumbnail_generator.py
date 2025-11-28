@@ -1,13 +1,6 @@
 """
 Thumbnail Generator
 Automatically creates thumbnails for uploaded images
-
-Features:
-- Multiple thumbnail sizes
-- WebP format for better compression
-- Maintains aspect ratio
-- Smart cropping for square thumbnails
-- Optimized quality settings
 """
 import os
 import sys
@@ -16,16 +9,14 @@ import boto3
 from PIL import Image
 import io
 
-# Add utils to path
 sys.path.insert(0, '/var/task/functions')
 
-# Initialize AWS clients
 s3_client = boto3.client('s3')
+sqs_client = boto3.client('sqs')
 
-# Environment variables
 BUCKET_NAME = os.environ.get('BUCKET_NAME', '')
+DETECT_LABELS_QUEUE_URL = os.environ.get('DETECT_LABELS_QUEUE_URL', '')
 
-# Thumbnail configurations
 THUMBNAIL_CONFIGS = [
     {
         'name': 'small',
@@ -49,14 +40,44 @@ THUMBNAIL_CONFIGS = [
 
 
 def extract_filename_parts(s3_key):
-    """
-    Extract path, filename, and extension from S3 key
-    Example: articles/abc-123.jpg -> ('articles', 'abc-123', '.jpg')
-    """
+    """Extract path, filename, and extension from S3 key"""
     path = os.path.dirname(s3_key)
     filename = os.path.basename(s3_key)
     name, ext = os.path.splitext(filename)
     return path, name, ext
+
+
+def forward_to_next_queue(bucket, key, article_id):
+    """Forward image to Detect Labels queue"""
+    if not DETECT_LABELS_QUEUE_URL:
+        print("Detect Labels queue URL not configured")
+        return False
+    
+    try:
+        # Create S3 event message similar to S3 notification
+        s3_event = {
+            'Records': [{
+                's3': {
+                    'bucket': {'name': bucket},
+                    'object': {'key': key}
+                }
+            }]
+        }
+        
+        # Send to next queue
+        sqs_client.send_message(
+            QueueUrl=DETECT_LABELS_QUEUE_URL,
+            MessageBody=json.dumps(s3_event),
+            MessageAttributes={
+                'articleId': {'StringValue': article_id, 'DataType': 'String'},
+                'thumbnails': {'StringValue': 'generated', 'DataType': 'String'}
+            }
+        )
+        print(f"✓ Forwarded to Detect Labels queue: {key}")
+        return True
+    except Exception as e:
+        print(f"Failed to forward to next queue: {e}")
+        return False
 
 
 def download_image_from_s3(bucket, key):
@@ -71,33 +92,22 @@ def download_image_from_s3(bucket, key):
 
 
 def create_thumbnail(image, size, method='contain'):
-    """
-    Create thumbnail with specified size
-    
-    Methods:
-    - contain: Fit within bounds, maintain aspect ratio (recommended)
-    - cover: Fill bounds, crop if needed
-    - exact: Exact size, may distort
-    """
+    """Create thumbnail with specified size"""
     original_width, original_height = image.size
     target_width, target_height = size
     
     if method == 'contain':
-        # Maintain aspect ratio, fit within bounds
         image.thumbnail(size, Image.Resampling.LANCZOS)
         
     elif method == 'cover':
-        # Fill bounds, crop center if needed
         aspect_ratio = original_width / original_height
         target_ratio = target_width / target_height
         
         if aspect_ratio > target_ratio:
-            # Image is wider, crop width
             new_width = int(original_height * target_ratio)
             offset = (original_width - new_width) // 2
             image = image.crop((offset, 0, offset + new_width, original_height))
         else:
-            # Image is taller, crop height
             new_height = int(original_width / target_ratio)
             offset = (original_height - new_height) // 2
             image = image.crop((0, offset, original_width, offset + new_height))
@@ -105,32 +115,23 @@ def create_thumbnail(image, size, method='contain'):
         image = image.resize(size, Image.Resampling.LANCZOS)
         
     elif method == 'exact':
-        # Exact size, may distort
         image = image.resize(size, Image.Resampling.LANCZOS)
     
     return image
 
 
 def optimize_image(image):
-    """
-    Optimize image before saving
-    - Convert RGBA to RGB with white background
-    - Remove unnecessary metadata
-    """
-    # Handle transparency
+    """Optimize image before saving"""
     if image.mode in ('RGBA', 'LA', 'P'):
-        # Create white background
         background = Image.new('RGB', image.size, (255, 255, 255))
         
-        # Paste image on white background
         if image.mode == 'P':
             image = image.convert('RGBA')
         
         if image.mode in ('RGBA', 'LA'):
-            background.paste(image, mask=image.split()[-1])  # Use alpha channel as mask
+            background.paste(image, mask=image.split()[-1])
             image = background
     
-    # Convert to RGB if needed
     if image.mode != 'RGB':
         image = image.convert('RGB')
     
@@ -138,31 +139,26 @@ def optimize_image(image):
 
 
 def save_thumbnail_to_s3(image, bucket, key, quality=85):
-    """
-    Save thumbnail to S3 in WebP format
-    """
+    """Save thumbnail to S3 in WebP format"""
     try:
-        # Optimize image
         image = optimize_image(image)
         
-        # Save to bytes buffer
         buffer = io.BytesIO()
         image.save(
             buffer,
             format='WEBP',
             quality=quality,
-            method=6,  # Slowest but best compression
+            method=6,
             optimize=True
         )
         buffer.seek(0)
         
-        # Upload to S3
         s3_client.put_object(
             Bucket=bucket,
             Key=key,
             Body=buffer.getvalue(),
             ContentType='image/webp',
-            CacheControl='max-age=31536000',  # Cache for 1 year
+            CacheControl='max-age=31536000',
             Metadata={
                 'thumbnail': 'true',
                 'generated-by': 'thumbnail-generator'
@@ -180,9 +176,7 @@ def save_thumbnail_to_s3(image, bucket, key, quality=85):
 
 
 def generate_thumbnails(bucket, source_key):
-    """
-    Generate multiple thumbnail sizes for an image
-    """
+    """Generate multiple thumbnail sizes for an image"""
     results = {
         'source': source_key,
         'thumbnails': [],
@@ -192,32 +186,26 @@ def generate_thumbnails(bucket, source_key):
     }
     
     try:
-        # Download original image
         print(f"Downloading: {source_key}")
         image = download_image_from_s3(bucket, source_key)
         original_size = image.size
         print(f"Original size: {original_size[0]}x{original_size[1]}")
         
-        # Extract filename parts
         path, name, ext = extract_filename_parts(source_key)
         
-        # Generate thumbnails for each size
         for config in THUMBNAIL_CONFIGS:
             print(f"\nGenerating {config['name']} thumbnail...")
             
-            # Create thumbnail key
             thumbnail_key = f"thumbnails/{name}{config['suffix']}.webp"
             
-            # Create thumbnail
             thumbnail = create_thumbnail(
-                image.copy(),  # Copy to avoid modifying original
+                image.copy(),
                 config['size'],
                 method='contain'
             )
             
             print(f"  Resized to: {thumbnail.size[0]}x{thumbnail.size[1]}")
             
-            # Save to S3
             saved_key, file_size = save_thumbnail_to_s3(
                 thumbnail,
                 bucket,
@@ -235,7 +223,6 @@ def generate_thumbnails(bucket, source_key):
                 })
                 results['totalSize'] += file_size
         
-        # Calculate compression ratio
         original_response = s3_client.head_object(Bucket=bucket, Key=source_key)
         original_file_size = original_response['ContentLength']
         compression_ratio = (1 - results['totalSize'] / original_file_size) * 100
@@ -259,10 +246,11 @@ def generate_thumbnails(bucket, source_key):
 
 def lambda_handler(event, context):
     """
+    *** UPDATED FOR SQS ***
     Lambda handler for thumbnail generation
-    Triggered by S3 ObjectCreated events
+    Triggered by SQS containing S3 events
     """
-    print(f"Thumbnail Generator - Processing {len(event.get('Records', []))} images")
+    print(f"Thumbnail Generator - Processing {len(event.get('Records', []))} SQS messages")
     
     summary = {
         'processed': 0,
@@ -272,46 +260,64 @@ def lambda_handler(event, context):
         'totalSize': 0
     }
     
-    for record in event.get('Records', []):
+    failed_messages = []
+    
+    # Loop through SQS records
+    for sqs_record in event.get('Records', []):
         try:
-            # Extract S3 event details
-            s3_info = record.get('s3', {})
-            bucket = s3_info.get('bucket', {}).get('name')
-            key = s3_info.get('object', {}).get('key')
+            # Parse S3 event from SQS body
+            s3_event = json.loads(sqs_record['body'])
             
-            print(f"\n{'='*60}")
-            print(f"Processing: {key}")
-            print(f"{'='*60}")
-            
-            # Skip if already a thumbnail
-            if key.startswith('thumbnails/'):
-                print("Skipping: Already a thumbnail")
-                continue
-            
-            # Skip if not in articles folder
-            if not key.startswith('articles/'):
-                print("Skipping: Not an article image")
-                continue
-            
-            # Generate thumbnails
-            results = generate_thumbnails(bucket, key)
-            
-            summary['processed'] += 1
-            
-            if results['success']:
-                summary['succeeded'] += 1
-                summary['totalThumbnails'] += len(results['thumbnails'])
-                summary['totalSize'] += results['totalSize']
-            else:
-                summary['failed'] += 1
+            # Process each S3 record
+            for s3_record in s3_event.get('Records', []):
+                try:
+                    bucket = s3_record['s3']['bucket']['name']
+                    key = s3_record['s3']['object']['key']
+                    
+                    print(f"\n{'='*60}")
+                    print(f"Processing: {key}")
+                    print(f"{'='*60}")
+                    
+                    if key.startswith('thumbnails/'):
+                        print("Skipping: Already a thumbnail")
+                        continue
+                    
+                    if not key.startswith('articles/'):
+                        print("Skipping: Not an article image")
+                        continue
+                    
+                    results = generate_thumbnails(bucket, key)
+                    
+                    summary['processed'] += 1
+                    
+                    if results['success']:
+                        summary['succeeded'] += 1
+                        summary['totalThumbnails'] += len(results['thumbnails'])
+                        summary['totalSize'] += results['totalSize']
+                        
+                        # Extract article ID
+                        article_id = extract_filename_parts(key)[1]
+                        
+                        # Forward to next queue
+                        forward_to_next_queue(bucket, key, article_id)
+                    else:
+                        summary['failed'] += 1
+                
+                except Exception as e:
+                    print(f"Error processing S3 record: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    summary['failed'] += 1
             
         except Exception as e:
-            print(f"Error processing record: {e}")
+            print(f"Error processing SQS record: {e}")
             import traceback
             traceback.print_exc()
+            failed_messages.append({
+                'itemIdentifier': sqs_record['messageId']
+            })
             summary['failed'] += 1
     
-    # Final summary
     print(f"\n{'='*60}")
     print("THUMBNAIL GENERATION SUMMARY")
     print(f"{'='*60}")
@@ -323,6 +329,5 @@ def lambda_handler(event, context):
     print(f"{'='*60}")
     
     return {
-        'statusCode': 200 if summary['failed'] == 0 else 207,
-        'body': json.dumps(summary)
+        'batchItemFailures': failed_messages
     }

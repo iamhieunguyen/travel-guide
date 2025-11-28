@@ -1,13 +1,6 @@
 """
 Image Analyzer
 Extracts EXIF metadata and analyzes image properties
-
-Features:
-- Extract EXIF data (GPS, camera info, date taken)
-- Extract GPS coordinates
-- Analyze dominant colors
-- Calculate image quality metrics
-- Detect if image was edited
 """
 import os
 import sys
@@ -20,15 +13,14 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from collections import Counter
 
-# Add utils to path
 sys.path.insert(0, '/var/task/functions')
 
-# Initialize AWS clients
 s3_client = boto3.client('s3')
+sqs_client = boto3.client('sqs')
 dynamodb = boto3.resource('dynamodb')
 
-# Environment variables
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
+THUMBNAIL_QUEUE_URL = os.environ.get('THUMBNAIL_QUEUE_URL', '')
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
 
 
@@ -55,24 +47,19 @@ def download_image_from_s3(bucket, key):
 
 
 def extract_exif_data(image):
-    """
-    Extract EXIF metadata from image
-    """
+    """Extract EXIF metadata from image"""
     exif_data = {}
     
     try:
-        # Get raw EXIF data
         exif = image._getexif()
         
         if not exif:
             print("No EXIF data found")
             return exif_data
         
-        # Convert EXIF tags to readable names
         for tag_id, value in exif.items():
             tag = TAGS.get(tag_id, tag_id)
             
-            # Convert bytes to string
             if isinstance(value, bytes):
                 try:
                     value = value.decode('utf-8', errors='ignore')
@@ -92,9 +79,7 @@ def extract_exif_data(image):
 
 
 def convert_gps_to_degrees(value, ref):
-    """
-    Convert GPS coordinates to decimal degrees
-    """
+    """Convert GPS coordinates to decimal degrees"""
     try:
         degrees = value[0]
         minutes = value[1]
@@ -102,7 +87,6 @@ def convert_gps_to_degrees(value, ref):
         
         decimal = degrees + (minutes / 60.0) + (seconds / 3600.0)
         
-        # South and West are negative
         if ref in ['S', 'W']:
             decimal = -decimal
         
@@ -113,9 +97,7 @@ def convert_gps_to_degrees(value, ref):
 
 
 def extract_gps_data(exif_data):
-    """
-    Extract GPS coordinates from EXIF data
-    """
+    """Extract GPS coordinates from EXIF data"""
     gps_info = {}
     
     if 'GPSInfo' not in exif_data:
@@ -127,7 +109,6 @@ def extract_gps_data(exif_data):
             tag = GPSTAGS.get(key, key)
             gps_data[tag] = value
         
-        # Extract latitude
         if 'GPSLatitude' in gps_data and 'GPSLatitudeRef' in gps_data:
             lat = convert_gps_to_degrees(
                 gps_data['GPSLatitude'],
@@ -135,7 +116,6 @@ def extract_gps_data(exif_data):
             )
             gps_info['latitude'] = lat
         
-        # Extract longitude
         if 'GPSLongitude' in gps_data and 'GPSLongitudeRef' in gps_data:
             lng = convert_gps_to_degrees(
                 gps_data['GPSLongitude'],
@@ -143,12 +123,10 @@ def extract_gps_data(exif_data):
             )
             gps_info['longitude'] = lng
         
-        # Extract altitude
         if 'GPSAltitude' in gps_data:
             altitude = float(gps_data['GPSAltitude'])
             gps_info['altitude'] = altitude
         
-        # Extract timestamp
         if 'GPSDateStamp' in gps_data and 'GPSTimeStamp' in gps_data:
             date = gps_data['GPSDateStamp']
             time_parts = gps_data['GPSTimeStamp']
@@ -166,22 +144,17 @@ def extract_gps_data(exif_data):
 
 
 def extract_camera_info(exif_data):
-    """
-    Extract camera and shooting information
-    """
+    """Extract camera and shooting information"""
     camera_info = {}
     
-    # Camera make and model
     if 'Make' in exif_data:
         camera_info['make'] = str(exif_data['Make']).strip()
     if 'Model' in exif_data:
         camera_info['model'] = str(exif_data['Model']).strip()
     
-    # Lens information
     if 'LensModel' in exif_data:
         camera_info['lens'] = str(exif_data['LensModel'])
     
-    # Shooting parameters
     if 'FNumber' in exif_data:
         f_number = exif_data['FNumber']
         if isinstance(f_number, tuple):
@@ -203,7 +176,6 @@ def extract_camera_info(exif_data):
             focal = focal[0] / focal[1]
         camera_info['focalLength'] = f"{focal:.0f}mm"
     
-    # Date taken
     if 'DateTimeOriginal' in exif_data:
         camera_info['dateTaken'] = str(exif_data['DateTimeOriginal'])
     elif 'DateTime' in exif_data:
@@ -213,31 +185,21 @@ def extract_camera_info(exif_data):
 
 
 def analyze_dominant_colors(image, num_colors=5):
-    """
-    Extract dominant colors from image
-    """
+    """Extract dominant colors from image"""
     try:
-        # Resize for faster processing
         image_small = image.copy()
         image_small.thumbnail((150, 150))
         
-        # Convert to RGB
         if image_small.mode != 'RGB':
             image_small = image_small.convert('RGB')
         
-        # Get all pixels
         pixels = list(image_small.getdata())
-        
-        # Count color frequency
         color_counts = Counter(pixels)
-        
-        # Get most common colors
         dominant = color_counts.most_common(num_colors)
         
         colors = []
         for color, count in dominant:
             r, g, b = color
-            # Convert to hex
             hex_color = f"#{r:02x}{g:02x}{b:02x}"
             percentage = (count / len(pixels)) * 100
             
@@ -256,9 +218,7 @@ def analyze_dominant_colors(image, num_colors=5):
 
 
 def calculate_quality_metrics(image, file_size):
-    """
-    Calculate image quality metrics
-    """
+    """Calculate image quality metrics"""
     width, height = image.size
     total_pixels = width * height
     
@@ -274,12 +234,11 @@ def calculate_quality_metrics(image, file_size):
             'megabytes': round(file_size / 1024 / 1024, 2)
         },
         'aspectRatio': round(width / height, 2),
-        'pixelDensity': round(file_size / total_pixels, 2),  # bytes per pixel
+        'pixelDensity': round(file_size / total_pixels, 2),
         'format': image.format,
         'mode': image.mode
     }
     
-    # Quality rating
     if metrics['resolution']['megapixels'] >= 12:
         metrics['qualityRating'] = 'excellent'
     elif metrics['resolution']['megapixels'] >= 8:
@@ -293,21 +252,17 @@ def calculate_quality_metrics(image, file_size):
 
 
 def detect_editing(exif_data):
-    """
-    Detect if image was edited or processed
-    """
+    """Detect if image was edited or processed"""
     editing_info = {
         'edited': False,
         'software': None,
         'indicators': []
     }
     
-    # Check for software tag
     if 'Software' in exif_data:
         software = str(exif_data['Software'])
         editing_info['software'] = software
         
-        # Common editing software
         editing_software = [
             'Adobe Photoshop', 'GIMP', 'Lightroom', 'Snapseed',
             'Instagram', 'VSCO', 'Pixlr'
@@ -317,7 +272,6 @@ def detect_editing(exif_data):
             editing_info['edited'] = True
             editing_info['indicators'].append('editing_software_detected')
     
-    # Check for processing software
     if 'ProcessingSoftware' in exif_data:
         editing_info['edited'] = True
         editing_info['indicators'].append('processing_software_found')
@@ -326,14 +280,11 @@ def detect_editing(exif_data):
 
 
 def update_article_with_metadata(article_id, metadata):
-    """
-    Update article in DynamoDB with image metadata
-    """
+    """Update article in DynamoDB with image metadata"""
     if not table or not article_id:
         return False
     
     try:
-        # Convert floats to Decimals for DynamoDB
         def convert_floats(obj):
             if isinstance(obj, float):
                 return Decimal(str(obj))
@@ -364,10 +315,41 @@ def update_article_with_metadata(article_id, metadata):
         return False
 
 
+def forward_to_next_queue(bucket, key, article_id, analysis):
+    """Forward image to Thumbnail Generator queue"""
+    if not THUMBNAIL_QUEUE_URL:
+        print("Thumbnail queue URL not configured")
+        return False
+    
+    try:
+        # Create S3 event message similar to S3 notification
+        s3_event = {
+            'Records': [{
+                's3': {
+                    'bucket': {'name': bucket},
+                    'object': {'key': key}
+                }
+            }]
+        }
+        
+        # Send to next queue
+        sqs_client.send_message(
+            QueueUrl=THUMBNAIL_QUEUE_URL,
+            MessageBody=json.dumps(s3_event),
+            MessageAttributes={
+                'articleId': {'StringValue': article_id, 'DataType': 'String'},
+                'analysis': {'StringValue': 'completed', 'DataType': 'String'}
+            }
+        )
+        print(f"✓ Forwarded to Thumbnail Generator queue: {key}")
+        return True
+    except Exception as e:
+        print(f"Failed to forward to next queue: {e}")
+        return False
+
+
 def analyze_image(bucket, key):
-    """
-    Main analysis function
-    """
+    """Main analysis function"""
     analysis = {
         'hasExif': False,
         'hasGPS': False,
@@ -376,16 +358,13 @@ def analyze_image(bucket, key):
     }
     
     try:
-        # Download image
         print("Downloading image...")
         image, file_size = download_image_from_s3(bucket, key)
         
-        # Extract EXIF data
         print("Extracting EXIF data...")
         exif_data = extract_exif_data(image)
         analysis['hasExif'] = len(exif_data) > 0
         
-        # Extract GPS coordinates
         if exif_data:
             print("Extracting GPS data...")
             gps_data = extract_gps_data(exif_data)
@@ -393,7 +372,6 @@ def analyze_image(bucket, key):
                 analysis['gps'] = gps_data
                 analysis['hasGPS'] = True
         
-        # Extract camera info
         if exif_data:
             print("Extracting camera info...")
             camera_info = extract_camera_info(exif_data)
@@ -401,18 +379,15 @@ def analyze_image(bucket, key):
                 analysis['camera'] = camera_info
                 analysis['hasCamera'] = True
         
-        # Analyze colors
         print("Analyzing dominant colors...")
         colors = analyze_dominant_colors(image)
         if colors:
             analysis['colors'] = colors
         
-        # Calculate quality metrics
         print("Calculating quality metrics...")
         metrics = calculate_quality_metrics(image, file_size)
         analysis['quality'] = metrics
         
-        # Detect editing
         if exif_data:
             print("Detecting editing...")
             editing = detect_editing(exif_data)
@@ -431,10 +406,11 @@ def analyze_image(bucket, key):
 
 def lambda_handler(event, context):
     """
+    *** UPDATED FOR SQS ***
     Lambda handler for image analysis
-    Triggered by S3 ObjectCreated events or manual invocation
+    Triggered by SQS containing S3 events
     """
-    print(f"Image Analyzer - Processing {len(event.get('Records', []))} images")
+    print(f"Image Analyzer - Processing {len(event.get('Records', []))} SQS messages")
     
     results = {
         'processed': 0,
@@ -444,55 +420,68 @@ def lambda_handler(event, context):
         'withCamera': 0
     }
     
-    for record in event.get('Records', []):
+    failed_messages = []
+    
+    # Loop through SQS records
+    for sqs_record in event.get('Records', []):
         try:
-            s3_info = record.get('s3', {})
-            bucket = s3_info.get('bucket', {}).get('name')
-            key = s3_info.get('object', {}).get('key')
+            # Parse S3 event from SQS body
+            s3_event = json.loads(sqs_record['body'])
             
-            print(f"\n{'='*60}")
-            print(f"Analyzing: {key}")
-            print(f"{'='*60}")
-            
-            # Skip non-article images
-            if not key.startswith('articles/'):
-                print("Skipping non-article image")
-                continue
-            
-            # Skip thumbnails
-            if 'thumbnails/' in key:
-                print("Skipping thumbnail")
-                continue
-            
-            # Extract article ID
-            article_id = extract_article_id_from_key(key)
-            
-            # Analyze image
-            analysis = analyze_image(bucket, key)
-            
-            results['processed'] += 1
-            
-            if analysis['success']:
-                results['succeeded'] += 1
+            # Process each S3 record
+            for s3_record in s3_event.get('Records', []):
+                try:
+                    bucket = s3_record['s3']['bucket']['name']
+                    key = s3_record['s3']['object']['key']
+                    
+                    print(f"\n{'='*60}")
+                    print(f"Analyzing: {key}")
+                    print(f"{'='*60}")
+                    
+                    if not key.startswith('articles/'):
+                        print("Skipping non-article image")
+                        continue
+                    
+                    if 'thumbnails/' in key:
+                        print("Skipping thumbnail")
+                        continue
+                    
+                    article_id = extract_article_id_from_key(key)
+                    analysis = analyze_image(bucket, key)
+                    
+                    results['processed'] += 1
+                    
+                    if analysis['success']:
+                        results['succeeded'] += 1
+                        
+                        if analysis.get('hasGPS'):
+                            results['withGPS'] += 1
+                        
+                        if analysis.get('hasCamera'):
+                            results['withCamera'] += 1
+                        
+                        update_article_with_metadata(article_id, analysis)
+                        
+                        # Forward to next queue
+                        forward_to_next_queue(bucket, key, article_id, analysis)
+                    else:
+                        results['failed'] += 1
                 
-                if analysis.get('hasGPS'):
-                    results['withGPS'] += 1
-                
-                if analysis.get('hasCamera'):
-                    results['withCamera'] += 1
-                
-                # Update article
-                update_article_with_metadata(article_id, analysis)
-            else:
-                results['failed'] += 1
+                except Exception as e:
+                    print(f"Error processing S3 record: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    results['failed'] += 1
             
         except Exception as e:
-            print(f"Error processing record: {e}")
+            print(f"Error processing SQS record: {e}")
             import traceback
             traceback.print_exc()
+            failed_messages.append({
+                'itemIdentifier': sqs_record['messageId']
+            })
             results['failed'] += 1
     
-    # Summary
     print(f"\n{'='*60}")
     print("IMAGE ANALYSIS SUMMARY")
     print(f"{'='*60}")
@@ -504,6 +493,5 @@ def lambda_handler(event, context):
     print(f"{'='*60}")
     
     return {
-        'statusCode': 200 if results['failed'] == 0 else 207,
-        'body': json.dumps(results)
+        'batchItemFailures': failed_messages
     }

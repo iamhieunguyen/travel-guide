@@ -1,9 +1,10 @@
 version = 0.1
 
 [default.deploy.parameters]
-stack_name = "travelguide-stack"
+stack_name = "travel-guided"
 resolve_s3 = true
-s3_prefix = "travelguide-stack"
+s3_prefix = "travel-guided"
+region = "ap-southeast-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
 disable_rollback = true

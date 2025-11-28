@@ -1,5 +1,6 @@
 """
 Enhanced Auto-tagging with Custom Label Prioritization
+*** UPDATED FOR SQS INTEGRATION ***
 Supports loading custom priority rules from config file or environment
 """
 import os
@@ -15,6 +16,7 @@ sys.path.insert(0, '/var/task/functions')
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
 s3_client = boto3.client('s3')
+sqs_client = boto3.client('sqs')
 
 # Environment variables
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
@@ -22,6 +24,7 @@ MIN_CONFIDENCE = float(os.environ.get('MIN_CONFIDENCE', '75.0'))
 MAX_LABELS = int(os.environ.get('MAX_LABELS', '5'))
 CONFIG_BUCKET = os.environ.get('CONFIG_BUCKET', '')
 CONFIG_KEY = os.environ.get('CONFIG_KEY', 'config/label_priority_config.json')
+CONTENT_MODERATION_QUEUE_URL = os.environ.get('CONTENT_MODERATION_QUEUE_URL', '')
 
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
 
@@ -265,9 +268,46 @@ def update_article_with_tags(article_id, labels_data):
         return False
 
 
+def forward_to_next_queue(bucket, key, article_id):
+    """Forward image to Content Moderation queue"""
+    if not CONTENT_MODERATION_QUEUE_URL:
+        print("Content Moderation queue URL not configured")
+        return False
+    
+    try:
+        # Create S3 event message similar to S3 notification
+        s3_event = {
+            'Records': [{
+                's3': {
+                    'bucket': {'name': bucket},
+                    'object': {'key': key}
+                }
+            }]
+        }
+        
+        # Send to next queue
+        sqs_client.send_message(
+            QueueUrl=CONTENT_MODERATION_QUEUE_URL,
+            MessageBody=json.dumps(s3_event),
+            MessageAttributes={
+                'articleId': {'StringValue': article_id, 'DataType': 'String'},
+                'labels': {'StringValue': 'detected', 'DataType': 'String'}
+            }
+        )
+        print(f"✓ Forwarded to Content Moderation queue: {key}")
+        return True
+    except Exception as e:
+        print(f"Failed to forward to next queue: {e}")
+        return False
+
+
 def lambda_handler(event, context):
-    """Lambda handler with custom label prioritization"""
-    print(f"Processing {len(event.get('Records', []))} S3 events")
+    """
+    *** UPDATED FOR SQS ***
+    Lambda handler with custom label prioritization
+    Triggered by SQS containing S3 events
+    """
+    print(f"Detect Labels - Processing {len(event.get('Records', []))} SQS messages")
     
     results = {
         'processed': 0,
@@ -276,70 +316,93 @@ def lambda_handler(event, context):
         'skipped': 0
     }
     
-    for record in event.get('Records', []):
+    failed_messages = []  # Track failed messages for SQS retry
+    
+    # Loop through SQS records
+    for sqs_record in event.get('Records', []):
         try:
-            s3_info = record.get('s3', {})
-            bucket = s3_info.get('bucket', {}).get('name')
-            key = s3_info.get('object', {}).get('key')
+            # Parse S3 event from SQS message body
+            s3_event = json.loads(sqs_record['body'])
             
-            print(f"\n{'='*60}")
-            print(f"Processing: {key}")
-            print(f"{'='*60}")
-            
-            # Skip non-article images
-            if not key.startswith('articles/'):
-                print("Skipping non-article image")
-                results['skipped'] += 1
-                continue
-            
-            # Skip thumbnails
-            if 'thumbnails/' in key or '_thumb' in key:
-                print("Skipping thumbnail")
-                results['skipped'] += 1
-                continue
-            
-            # Extract article ID
-            article_id = extract_article_id_from_key(key)
-            if not article_id:
-                print("Could not extract article ID")
-                results['failed'] += 1
-                continue
-            
-            print(f"Article ID: {article_id}")
-            
-            # Detect and prioritize labels
-            labels_data = detect_labels_in_image(bucket, key)
-            
-            if not labels_data:
-                print("No labels detected after prioritization")
-                results['failed'] += 1
-                continue
-            
-            # Update article
-            success = update_article_with_tags(article_id, labels_data)
-            if success:
-                results['succeeded'] += 1
-            else:
-                results['failed'] += 1
-            
-            results['processed'] += 1
+            # Process each S3 record in the event
+            for s3_record in s3_event.get('Records', []):
+                try:
+                    # Extract S3 information
+                    bucket = s3_record['s3']['bucket']['name']
+                    key = s3_record['s3']['object']['key']
+                    
+                    print(f"\n{'='*60}")
+                    print(f"Processing: {key}")
+                    print(f"{'='*60}")
+                    
+                    # Skip non-article images
+                    if not key.startswith('articles/'):
+                        print("Skipping non-article image")
+                        results['skipped'] += 1
+                        continue
+                    
+                    # Skip thumbnails
+                    if 'thumbnails/' in key or '_thumb' in key:
+                        print("Skipping thumbnail")
+                        results['skipped'] += 1
+                        continue
+                    
+                    # Extract article ID
+                    article_id = extract_article_id_from_key(key)
+                    if not article_id:
+                        print("Could not extract article ID")
+                        results['failed'] += 1
+                        continue
+                    
+                    print(f"Article ID: {article_id}")
+                    
+                    # Detect and prioritize labels
+                    labels_data = detect_labels_in_image(bucket, key)
+                    
+                    if not labels_data:
+                        print("No labels detected after prioritization")
+                        results['failed'] += 1
+                        continue
+                    
+                    # Update article
+                    success = update_article_with_tags(article_id, labels_data)
+                    if success:
+                        results['succeeded'] += 1
+                        
+                        # Forward to next queue
+                        forward_to_next_queue(bucket, key, article_id)
+                    else:
+                        results['failed'] += 1
+                    
+                    results['processed'] += 1
+                
+                except Exception as e:
+                    print(f"Error processing S3 record: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    results['failed'] += 1
             
         except Exception as e:
-            print(f"Error processing record: {e}")
+            print(f"Error processing SQS record: {e}")
             import traceback
             traceback.print_exc()
+            # Add to failed messages for retry
+            failed_messages.append({
+                'itemIdentifier': sqs_record['messageId']
+            })
             results['failed'] += 1
     
     # Summary
     print(f"\n{'='*60}")
-    print("SUMMARY")
+    print("DETECT LABELS SUMMARY")
     print(f"{'='*60}")
     print(f"Processed: {results['processed']}")
     print(f"Succeeded: {results['succeeded']}")
     print(f"Failed: {results['failed']}")
     print(f"Skipped: {results['skipped']}")
+    print(f"{'='*60}")
     
+    # Return batch item failures for SQS partial batch response
     return {
-        'statusCode': 200 if results['failed'] == 0 else 207,
-        'body': json.dumps(results)
+        'batchItemFailures': failed_messages
     }

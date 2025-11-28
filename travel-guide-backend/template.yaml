@@ -40,13 +40,180 @@ Resources:
         - python3.11
     Metadata:
       BuildMethod: python3.11
+  ##############################
+  # SQS QUEUES
+  ##############################
+  
+  # Dead Letter Queue for failed image processing
 
+  ImageProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-processing-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      VisibilityTimeout: 300
+
+  # Main Queue for image processing events
+  
+  DetectLabelsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-detect-labels-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ThumbnailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-thumbnail-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ContentModerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-content-moderation-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+  
+  ImageAnalyzerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-analyzer-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ImageValidatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-validator-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  # Queue Policy to allow S3 to send messages
+  
+  DetectLabelsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DetectLabelsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt DetectLabelsQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+
+  ContentModerationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ContentModerationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ContentModerationQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ThumbnailQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ThumbnailQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ThumbnailQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ImageAnalyzerQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageAnalyzerQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageAnalyzerQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ImageValidatorQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageValidatorQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageValidatorQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
   ##############################
   # DATA LAYER
   ##############################
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
+    DependsOn:
+      - DetectLabelsQueuePolicy
+      - ContentModerationQueuePolicy
+      - ThumbnailQueuePolicy
+      - ImageAnalyzerQueuePolicy
+      - ImageValidatorQueuePolicy
     Properties:
+      BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
       VersioningConfiguration:
         Status: Enabled
       CorsConfiguration:
@@ -59,6 +226,16 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+      NotificationConfiguration:
+        QueueConfigurations:
+          # Send ObjectCreated events to Image Validator (first in pipeline)
+          - Event: s3:ObjectCreated:*
+            Queue: !GetAtt ImageValidatorQueue.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: articles/
 
   ArticlesTable:
     Type: AWS::DynamoDB::Table
@@ -93,6 +270,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+
   UserFavoritesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -442,130 +620,162 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
   
+##############################
+  # IMAGE PROCESSING FUNCTIONS (SQS Triggered)
   ##############################
-  # IMAGE PROCESSING FUNCTIONS
-  ##############################
+
   ImageValidatorFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/image_processing/
       Handler: image_validator.lambda_handler
-      Timeout: 15
+      Timeout: 60
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
           MAX_FILE_SIZE: "10485760"      # 10MB
           MIN_FILE_SIZE: "10240"         # 10KB
           MAX_WIDTH: "8192"
           MAX_HEIGHT: "8192"
           MIN_WIDTH: "200"
           MIN_HEIGHT: "200"
+          IMAGE_ANALYZER_QUEUE_URL: !Ref ImageAnalyzerQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ImageValidatorQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ImageAnalyzerQueue.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ImageValidatorQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
 
   ImageAnalyzerFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/image_processing/
       Handler: image_analyzer.lambda_handler
-      Timeout: 20
+      Timeout: 60
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ImageAnalyzerQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ThumbnailQueue.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ImageAnalyzerQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
 
   ThumbnailFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/image_processing/
       Handler: thumbnail_generator.lambda_handler
-      Timeout: 30
+      Timeout: 90
       MemorySize: 1024
       Environment:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
+          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
       Policies:
-        - Version: "2012-10-17"
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ThumbnailQueue.QueueName
+        - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
-                - s3:GetObject
-                - s3:PutObject
-              Resource: !Sub "${ArticleImagesBucket.Arn}/*"
-            - Effect: Allow
-              Action: s3:ListBucket
-              Resource: !GetAtt ArticleImagesBucket.Arn
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
-
-  # Cho phép S3 gọi các Lambda image_processing
-  ImageValidatorFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ImageValidatorFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ImageAnalyzerFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ImageAnalyzerFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
-
-  ThumbnailFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ThumbnailFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
+                - sqs:SendMessage
+              Resource: !GetAtt DetectLabelsQueue.Arn
+      Events:
+        ThumbnailSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ThumbnailQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
 
   ##############################
-  # REKOGNITION FUNCTIONS
+  # REKOGNITION FUNCTIONS (SQS Triggered)
   ##############################
+
   DetectLabelsFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/rekognition/
       Handler: detect_labels.lambda_handler
-      Timeout: 30
+      Timeout: 90
       Environment:
         Variables:
-          CUSTOM_LABELS_MODEL_ARN: "arn:aws:rekognition:ap-southeast-1:709107513862:project/TravelGuide-CustomLabels/version/TravelGuide-CustomLabels.2025-11-12T19.58.05/1762952285699"
           TABLE_NAME: !Ref ArticlesTable
-          MIN_CONFIDENCE: "75.0"     
-          MAX_LABELS: "10"            
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          MIN_CONFIDENCE: "75.0"
+          MAX_LABELS: "5"
+          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DetectLabelsQueue.QueueName
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - rekognition:DetectLabels
-              Resource: "*"
-
-  DetectLabelsFunctionPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref DetectLabelsFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ContentModerationQueue.Arn
+      Events:
+        DetectLabelsSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DetectLabelsQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
 
   ContentModerationFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/rekognition/
       Handler: content_moderation.lambda_handler
-      Timeout: 30
+      Timeout: 90
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
@@ -574,20 +784,44 @@ Resources:
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ContentModerationQueue.QueueName
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - rekognition:DetectModerationLabels
-              Resource: "*"
+              Resource: '*'
+      Events:
+        ContentModerationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ContentModerationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
 
-  ContentModerationFunctionPermission:
-    Type: AWS::Lambda::Permission
+  ##############################
+  # CLOUDWATCH ALARMS
+  ##############################
+
+  DLQAlarm:
+    Type: AWS::CloudWatch::Alarm
     Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !Ref ContentModerationFunction
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt ArticleImagesBucket.Arn
+      AlarmName: !Sub '${AWS::StackName}-dlq-messages'
+      AlarmDescription: Alert when messages appear in DLQ
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ImageProcessingDLQ.QueueName
 
   ##############################
   # STATIC SITE + CLOUDFRONT (OAI)
@@ -698,6 +932,11 @@ Outputs:
     Value: !Ref StaticSiteBucket
   CloudFrontDomain:
     Value: !GetAtt CloudFrontDistribution.DomainName
+  ImageProcessingDLQUrl:
+    Description: Dead Letter Queue URL
+    Value: !Ref ImageProcessingDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-ImageProcessingDLQUrl'
   CloudFrontDomainForImages:
     Value: !GetAtt CloudFrontDistribution.DomainName
     Description: Use this domain for serving images via CloudFront for better performance

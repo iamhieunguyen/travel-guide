@@ -114,7 +114,7 @@ export default function PostDetails({
 
       // Chuẩn bị dữ liệu để gửi
       const postData = {
-        image: currentImage,
+        image: image,
         caption: caption.trim(),
         location: {
           name: locationData.locationName,

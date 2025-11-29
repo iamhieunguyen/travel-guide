@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-lea
 import "leaflet/dist/leaflet.css";
 import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 
-// ðŸ—ºï¸ Component chá»n vá»‹ trÃ­
+// 📍 Component chọn vị trí
 function LocationPicker({ setPosition, onLocationClick }) {
   useMapEvents({
     click(e) {
@@ -17,10 +17,10 @@ function LocationPicker({ setPosition, onLocationClick }) {
   return null;
 }
 
-// ðŸ—ºï¸ Component tá»± Ä‘á»™ng di chuyá»ƒn map Ä‘áº¿n vá»‹ trÃ­ Ä‘Æ°á»£c chá»n
+// 📍 Component tự động di chuyển map đến vị trí được chọn
 function MapUpdater({ position }) {
   const map = useMap();
-  
+
   useEffect(() => {
     if (position) {
       map.flyTo([position.lat, position.lng], 15, {
@@ -28,7 +28,7 @@ function MapUpdater({ position }) {
       });
     }
   }, [position, map]);
-  
+
   return null;
 }
 
@@ -59,7 +59,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
         }
       );
       const data = await response.json();
-      
+
       if (data && data.display_name) {
         setLocationSearch(data.display_name);
         setSelectedLocation({
@@ -75,7 +75,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
     }
   };
 
-  // Tìm kiếm và trả­ qua Nominatim API (OpenStreetMap)
+  // Tìm kiếm vị trí qua Nominatim API (OpenStreetMap)
   useEffect(() => {
     if (!locationSearch || locationSearch.length < 2) {
       setLocationSuggestions([]);
@@ -99,7 +99,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
           }
         );
         const data = await response.json();
-        
+
         const suggestions = data.map((item, index) => ({
           id: index,
           name: item.display_name,
@@ -108,7 +108,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
           type: item.type,
           address: item.address
         }));
-        
+
         setLocationSuggestions(suggestions);
       } catch (error) {
         console.error("Error fetching locations:", error);
@@ -126,7 +126,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
 
   // Get aspect ratio from context
   const { aspect } = useCreatePostModal();
-  
+
   const getAspectStyle = () => {
     if (aspect === "1:1") return "100%";
     if (aspect === "4:5") return `${(5 / 4) * 100}%`;
@@ -136,15 +136,15 @@ export default function PostDetails({ image = [], onBack, onShare }) {
 
   const handleSharePost = async () => {
     try {
-      // Validate dá»¯ liá»‡u
+      // Validate dữ liệu
       if (!caption || !position) {
-        alert('Vui lÃ²ng nháº­p caption vÃ  chá»n vá»‹ trÃ­');
+        alert('Vui lòng nhập caption và chọn vị trí');
         return;
       }
 
-      // Chuáº©n bá»‹ dá»¯ liá»‡u Ä‘á»ƒ gá»­i
+      // Chuẩn bị dữ liệu gửi lên server
       const postData = {
-        image: currentImage, // CÃ³ thá»ƒ lÃ  base64 hoáº·c URL
+        image: currentImage,
         caption: caption,
         location: {
           name: selectedLocation?.name || locationSearch,
@@ -155,29 +155,28 @@ export default function PostDetails({ image = [], onBack, onShare }) {
         privacy: 'public'
       };
 
-      // Gá»i hÃ m xá»­ lÃ½ Ä‘Äƒng bÃ i tá»« context
       await onShare(postData);
-      
+
     } catch (error) {
       console.error('Error sharing post:', error);
-      alert('Lá»—i khi Ä‘Äƒng bÃ i: ' + error.message);
+      alert('Lỗi khi đăng bài: ' + error.message);
     }
   };
 
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4">
-      {/* --- áº¢nh preview (50%) --- */}
+      {/* --- Ảnh preview (50%) --- */}
       <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-gray-100 rounded-xl overflow-hidden border relative">
         {Array.isArray(image) && image.length > 1 && (
           <>
-            {/* NÃºt chuyá»ƒn áº£nh */}
+            {/* Nút chuyển ảnh */}
             <button
               onClick={() =>
                 setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
               }
               className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
             >
-              â†
+              ←
             </button>
             <button
               onClick={() =>
@@ -185,12 +184,12 @@ export default function PostDetails({ image = [], onBack, onShare }) {
               }
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
             >
-              â†’
+              →
             </button>
           </>
         )}
 
-        {/* áº¢nh hiá»‡n táº¡i */}
+        {/* Ảnh hiện tại */}
         {currentImage && (
           <div className="relative w-full" style={{ paddingTop: getAspectStyle() }}>
             <img
@@ -210,11 +209,10 @@ export default function PostDetails({ image = [], onBack, onShare }) {
                 src={src}
                 alt={`thumb-${idx}`}
                 onClick={() => setActiveIndex(idx)}
-                className={`w-12 h-12 rounded-md cursor-pointer border-2 transition ${
-                  idx === activeIndex
-                    ? "border-indigo-600"
-                    : "border-transparent hover:opacity-80"
-                }`}
+                className={`w-12 h-12 rounded-md cursor-pointer border-2 transition ${idx === activeIndex
+                  ? "border-indigo-600"
+                  : "border-transparent hover:opacity-80"
+                  }`}
               />
             ))}
           </div>
@@ -223,6 +221,7 @@ export default function PostDetails({ image = [], onBack, onShare }) {
 
       {/* --- Caption + Map --- */}
       <div className="md:w-1/2 w-full flex flex-col space-y-5">
+
         {/* Caption */}
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -231,40 +230,53 @@ export default function PostDetails({ image = [], onBack, onShare }) {
           <textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            placeholder="Viáº¿t caption cá»§a báº¡n..."
+            placeholder="Viết caption của bạn..."
             className="w-full h-28 p-3 pb-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
           />
-          {/* NÃºt chá»n emoji - Instagram style */}
+
+          {/* Nút chọn emoji */}
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             className="absolute bottom-2 left-2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
-            title="ThÃªm emoji"
+            title="Thêm emoji"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </button>
-          
-          {/* Emoji picker - Instagram style */}
+
+          {/* Emoji Picker */}
           {showEmojiPicker && (
             <>
-              {/* Backdrop trong suá»‘t */}
-              <div 
-                className="fixed inset-0 z-[9998]" 
+              <div
+                className="fixed inset-0 z-[9998]"
                 onClick={() => setShowEmojiPicker(false)}
               />
-              
-              {/* Picker - Khung nhá» fixed Ä‘Ã¨ lÃªn map */}
+
               <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 bg-white rounded-xl shadow-2xl z-[9999] w-64 max-h-80 overflow-hidden border border-gray-200">
-                {/* Header - Thu gá»n */}
                 <div className="px-2 py-1.5 border-b border-gray-200 flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-800">Emoji</span>
+
                   <button
                     onClick={() => setShowEmojiPicker(false)}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
                     </svg>
                   </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      /</div>
+  )
+}

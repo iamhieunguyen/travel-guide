@@ -265,3 +265,31 @@ const articleService = {
 };
 
 export default articleService;
+export async function createArticleWithMultipleUploads({
+  files, title, content, visibility = "public", lat, lng, tags = [], locationName
+}) {
+  if (!files || files.length === 0) throw new Error("files array is required");
+  
+  const imageKeys = [];
+  
+  for (const file of files) {
+    const contentType = file.type || "application/octet-stream";
+    const { uploadUrl, key } = await getUploadUrl({ 
+      filename: file.name || "image.png", 
+      contentType 
+    });
+    await uploadToS3(uploadUrl, file, contentType);
+    imageKeys.push(key);
+  }
+  
+  return createArticle({ 
+    title, 
+    content, 
+    visibility, 
+    lat, 
+    lng, 
+    tags, 
+    imageKeys: imageKeys,
+    locationName 
+  });
+}

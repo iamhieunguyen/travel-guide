@@ -8,8 +8,8 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { useCreatePostModal } from "../../../context/CreatePostModalContext";
-import CreatePostStyleHeader from "../CreatePostStyleHeader";
+import { useCreatePostModal } from "../../context/CreatePostModalContext";
+import CreatePostStyleHeader from "./CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
@@ -138,25 +138,6 @@ export default function ImageSelector({ onNext }) {
         borderRadius: "24px",
         overflow: "visible"
       }}>
-        {/* Curved top edge for avatar */}
-        <div className="absolute top-0 left-0 right-0 h-12 bg-[#f5f3f0] z-20" style={{
-          clipPath: "ellipse(70px 40px at 50% 0%)"
-        }}></div>
-
-        {/* Cat Ears */}
-        <div className="absolute -top-16 left-1/2 transform -translate-x-1/2 w-full flex justify-between px-20 pointer-events-none">
-          {/* Left Ear */}
-          <div className="relative w-32 h-32">
-            <div className="absolute inset-0 bg-[#b8c89f] rounded-[60%_40%_0%_0%/60%_40%_0%_0%] transform -rotate-12"></div>
-            <div className="absolute inset-3 bg-[#a0b088] rounded-[60%_40%_0%_0%/60%_40%_0%_0%] transform -rotate-12"></div>
-          </div>
-          {/* Right Ear */}
-          <div className="relative w-32 h-32">
-            <div className="absolute inset-0 bg-[#a8d5e2] rounded-[40%_60%_0%_0%/40%_60%_0%_0%] transform rotate-12"></div>
-            <div className="absolute inset-3 bg-[#90c0cd] rounded-[40%_60%_0%_0%/40%_60%_0%_0%] transform rotate-12"></div>
-          </div>
-        </div>
-
         <CreatePostStyleHeader />
         
         <div className="absolute top-3 left-3 z-40">

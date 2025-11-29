@@ -114,7 +114,7 @@ export default function PostDetails({
 
       // Chuẩn bị dữ liệu để gửi
       const postData = {
-        image: currentImage,
+        image: image,
         caption: caption.trim(),
         location: {
           name: locationData.locationName,
@@ -163,27 +163,6 @@ export default function PostDetails({
     <div className="flex flex-col md:flex-row gap-6 p-4">
       {/* --- Ảnh preview (50%) --- */}
       <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-black rounded-xl overflow-hidden relative">
-        {Array.isArray(image) && image.length > 1 && (
-          <>
-            <button
-              onClick={() =>
-                setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
-              }
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow z-10"
-            >
-              ←
-            </button>
-            <button
-              onClick={() =>
-                setActiveIndex((prev) => (prev === image.length - 1 ? 0 : prev + 1))
-              }
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow z-10"
-            >
-              →
-            </button>
-          </>
-        )}
-
         {currentImage && (
           <div className="relative w-full h-full flex items-center justify-center">
             <div
@@ -202,20 +181,71 @@ export default function PostDetails({
           </div>
         )}
 
+        {/* Navigation buttons - chỉ hiện khi có nhiều ảnh */}
         {Array.isArray(image) && image.length > 1 && (
-          <div className="flex space-x-2 mt-2 absolute bottom-2">
+          <>
+            <button
+              onClick={() =>
+                setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
+              }
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
+            >
+              <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={() =>
+                setActiveIndex((prev) => (prev === image.length - 1 ? 0 : prev + 1))
+              }
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
+            >
+              <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            
+            {/* Counter badge */}
+            <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
+              {activeIndex + 1} / {image.length}
+            </div>
+            
+            {/* Indicators dots */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+              {image.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === activeIndex 
+                      ? "bg-white w-8" 
+                      : "bg-white/50 w-2 hover:bg-white/75"
+                  }`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Thumbnails - hiện ở dưới cùng khi có nhiều ảnh */}
+        {Array.isArray(image) && image.length > 1 && (
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
             {image.map((src, idx) => (
-              <img
+              <button
                 key={idx}
-                src={src}
-                alt={`thumb-${idx}`}
                 onClick={() => setActiveIndex(idx)}
-                className={`w-12 h-12 rounded-md cursor-pointer border-2 transition ${
+                className={`relative rounded-lg overflow-hidden transition-all ${
                   idx === activeIndex
-                    ? "border-indigo-600"
-                    : "border-transparent hover:opacity-80"
+                    ? "ring-2 ring-white scale-110"
+                    : "opacity-60 hover:opacity-100"
                 }`}
-              />
+              >
+                <img
+                  src={src}
+                  alt={`thumb-${idx}`}
+                  className="w-14 h-14 object-cover"
+                />
+              </button>
             ))}
           </div>
         )}

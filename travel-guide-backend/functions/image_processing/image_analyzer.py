@@ -21,6 +21,7 @@ dynamodb = boto3.resource('dynamodb')
 
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
 THUMBNAIL_QUEUE_URL = os.environ.get('THUMBNAIL_QUEUE_URL', '')
+CONTENT_MODERATION_QUEUE_URL = os.environ.get('CONTENT_MODERATION_QUEUE_URL', '')
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
 
 
@@ -316,13 +317,17 @@ def update_article_with_metadata(article_id, metadata):
 
 
 def forward_to_next_queue(bucket, key, article_id, analysis):
-    """Forward image to Thumbnail Generator queue"""
-    if not THUMBNAIL_QUEUE_URL:
-        print("Thumbnail queue URL not configured")
+    """Forward image to Content Moderation queue (new flow).
+
+    Previous flow forwarded directly to Thumbnail Generator. After reordering,
+    Image Analyzer should forward to Content Moderation for safety checks.
+    """
+    if not CONTENT_MODERATION_QUEUE_URL:
+        print("Content Moderation queue URL not configured")
         return False
-    
+
     try:
-        # Create S3 event message similar to S3 notification
+        # Create S3-style event payload for the next consumer
         s3_event = {
             'Records': [{
                 's3': {
@@ -331,20 +336,21 @@ def forward_to_next_queue(bucket, key, article_id, analysis):
                 }
             }]
         }
-        
-        # Send to next queue
+
+        # Send to Content Moderation queue
         sqs_client.send_message(
-            QueueUrl=THUMBNAIL_QUEUE_URL,
+            QueueUrl=CONTENT_MODERATION_QUEUE_URL,
             MessageBody=json.dumps(s3_event),
             MessageAttributes={
                 'articleId': {'StringValue': article_id, 'DataType': 'String'},
-                'analysis': {'StringValue': 'completed', 'DataType': 'String'}
+                'analysis': {'StringValue': json.dumps(analysis), 'DataType': 'String'},
+                'source': {'StringValue': 'image-analyzer', 'DataType': 'String'}
             }
         )
-        print(f"✓ Forwarded to Thumbnail Generator queue: {key}")
+        print(f"✓ Forwarded to Content Moderation queue: {key}")
         return True
     except Exception as e:
-        print(f"Failed to forward to next queue: {e}")
+        print(f"Failed to forward to Content Moderation queue: {e}")
         return False
 
 

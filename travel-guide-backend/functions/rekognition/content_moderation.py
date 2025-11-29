@@ -15,11 +15,13 @@ rekognition = boto3.client('rekognition')
 s3_client = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 sns_client = boto3.client('sns')
+sqs_client = boto3.client('sqs')
 
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
 BUCKET_NAME = os.environ.get('BUCKET_NAME', '')
 MIN_CONFIDENCE = float(os.environ.get('MODERATION_CONFIDENCE', '75.0'))
 SNS_TOPIC_ARN = os.environ.get('MODERATION_SNS_TOPIC', '')
+DETECT_LABELS_QUEUE_URL = os.environ.get('DETECT_LABELS_QUEUE_URL', '')
 
 SEVERITY_LEVELS = {
     'Explicit Nudity': 'critical',
@@ -292,6 +294,43 @@ def mark_article_as_approved(article_id):
         print(f"Failed to update article status: {e}")
 
 
+def forward_to_next_queue(bucket, key, article_id, moderation_result):
+    """Forward image to Detect Labels queue (new flow).
+    
+    After content moderation, forward to label detection for travel-focused tagging.
+    """
+    if not DETECT_LABELS_QUEUE_URL:
+        print("Detect Labels queue URL not configured")
+        return False
+    
+    try:
+        # Create S3 event message
+        s3_event = {
+            'Records': [{
+                's3': {
+                    'bucket': {'name': bucket},
+                    'object': {'key': key}
+                }
+            }]
+        }
+        
+        # Send to Detect Labels queue
+        sqs_client.send_message(
+            QueueUrl=DETECT_LABELS_QUEUE_URL,
+            MessageBody=json.dumps(s3_event),
+            MessageAttributes={
+                'articleId': {'StringValue': article_id, 'DataType': 'String'},
+                'moderation': {'StringValue': moderation_result.get('moderationStatus', 'approved'), 'DataType': 'String'},
+                'source': {'StringValue': 'content-moderator', 'DataType': 'String'}
+            }
+        )
+        print(f"✓ Forwarded to Detect Labels queue: {key}")
+        return True
+    except Exception as e:
+        print(f"Failed to forward to Detect Labels queue: {e}")
+        return False
+
+
 def lambda_handler(event, context):
     """
     *** UPDATED FOR SQS ***
@@ -369,6 +408,13 @@ def lambda_handler(event, context):
                         
                         if moderation_result['maxSeverity'] in ['critical', 'high']:
                             send_admin_notification(article_id, key, moderation_result)
+                    
+                    # Forward final status to notification queue
+                    final_status = {
+                        'moderationStatus': moderation_result.get('passed') and 'approved' or 'rejected',
+                        'processed': True
+                    }
+                    forward_to_next_queue(bucket, key, article_id, final_status)
                 
                 except Exception as e:
                     print(f"Error processing S3 record: {e}")

@@ -113,6 +113,17 @@ Resources:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
 
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-notification-queue'
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
   # Queue Policy to allow S3 to send messages
   
   DetectLabelsQueuePolicy:
@@ -208,6 +219,21 @@ Resources:
   ##############################
   # DATA LAYER
   ##############################
+
+  # SNS Topic for user notifications
+  ProcessingNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-processing-notifications'
+      DisplayName: Image Processing Notifications
+
+  # SNS subscription for email (update this email in deployment)
+  ProcessingNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref ProcessingNotificationTopic
+      Endpoint: khiem120805@gmail.com  # CHANGE THIS TO YOUR EMAIL
 
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
@@ -587,7 +613,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
+          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
@@ -600,7 +626,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt ThumbnailQueue.Arn
+              Resource: !GetAtt ContentModerationQueue.Arn
       Events:
         SQSEvent:
           Type: SQS
@@ -620,7 +646,7 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
-          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
+          NOTIFY_WORKER_QUEUE_URL: !Ref NotificationQueue
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -631,7 +657,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt DetectLabelsQueue.Arn
+              Resource: !GetAtt NotificationQueue.Arn
       Events:
         ThumbnailSQSEvent:
           Type: SQS
@@ -657,7 +683,7 @@ Resources:
           BUCKET_NAME: !Ref ArticleImagesBucket
           MIN_CONFIDENCE: "75.0"
           MAX_LABELS: "5"
-          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
+          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -674,7 +700,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt ContentModerationQueue.Arn
+              Resource: !GetAtt ThumbnailQueue.Arn
       Events:
         DetectLabelsSQSEvent:
           Type: SQS
@@ -695,6 +721,7 @@ Resources:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
           MODERATION_CONFIDENCE: "75.0"
+          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -708,11 +735,56 @@ Resources:
               Action:
                 - rekognition:DetectModerationLabels
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt DetectLabelsQueue.Arn
       Events:
         ContentModerationSQSEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt ContentModerationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ##############################
+  # NOTIFICATION FUNCTION
+  ##############################
+
+  NotifyWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/notifications/
+      Handler: notify_worker.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt NotificationQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref ProcessingNotificationTopic
+            - Effect: Allow
+              Action:
+                - logs:GetLogEvents
+              Resource: 'arn:aws:logs:*:*:*'
+      Events:
+        NotificationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt NotificationQueue.Arn
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
@@ -883,3 +955,15 @@ Outputs:
     Value: !Ref ImageProcessingDLQ
     Export:
       Name: !Sub '${AWS::StackName}-ImageProcessingDLQUrl'
+
+  ProcessingNotificationTopicArn:
+    Description: SNS Topic for processing notifications
+    Value: !Ref ProcessingNotificationTopic
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationTopicArn'
+
+  NotificationQueueUrl:
+    Description: SQS Queue for notifications
+    Value: !Ref NotificationQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationQueueUrl'

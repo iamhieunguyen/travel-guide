@@ -1,0 +1,150 @@
+{
+  "label_priorities": {
+    "critical": {
+      "score_boost": 200,
+      "keywords": [
+        "beach",
+        "mountain",
+        "waterfall",
+        "temple",
+        "pagoda",
+        "shrine",
+        "cathedral",
+        "mosque",
+        "church",
+        "palace",
+        "castle",
+        "ruins",
+        "monument",
+        "statue",
+        "landmark",
+        "tower",
+        "bridge",
+        "canyon",
+        "volcano",
+        "lake",
+        "river",
+        "ocean",
+        "sea",
+        "island",
+        "cave",
+        "cliff",
+        "valley",
+        "desert",
+        "forest",
+        "jungle",
+        "park",
+        "garden",
+        "market",
+        "street",
+        "food",
+        "restaurant",
+        "boat",
+        "harbor",
+        "sunset",
+        "sunrise"
+      ]
+    },
+    "high_priority": {
+      "score_boost": 100,
+      "keywords": [
+        "architecture",
+        "heritage",
+        "fort",
+        "museum",
+        "garden",
+        "viewpoint",
+        "promenade",
+        "pier",
+        "waterfront",
+        "landscape"
+      ]
+    },
+    "medium_priority": {
+      "score_boost": 50,
+      "keywords": [
+        "city",
+        "square",
+        "plaza",
+        "sky",
+        "cloud",
+        "tree",
+        "flower",
+        "animal",
+        "wildlife",
+        "bird"
+      ]
+    },
+    "low_priority": {
+      "score_boost": 0,
+      "keywords": [
+        "person",
+        "people",
+        "crowd",
+        "clothing",
+        "indoor",
+        "outdoor",
+        "day",
+        "night",
+        "light"
+      ]
+    }
+  },
+  "generic_penalties": {
+    "penalty_score": -30,
+    "keywords": [
+      "outdoor",
+      "nature",
+      "indoors",
+      "no person",
+      "daylight",
+      "leisure",
+      "horizontal",
+      "vertical"
+    ]
+  },
+  "custom_boosts": {
+    "comment": "Add your specific use cases here",
+    "examples": [
+      {
+        "keyword": "dragon",
+        "score_boost": 200,
+        "reason": "Dragon sculptures are important in Vietnamese temples"
+      },
+      {
+        "keyword": "lotus",
+        "score_boost": 120,
+        "reason": "Lotus flowers are culturally significant"
+      },
+      {
+        "keyword": "lantern",
+        "score_boost": 100,
+        "reason": "Traditional lanterns are key tourist attractions"
+      }
+    ]
+  },
+  "excluded_labels": {
+    "comment": "Labels to completely ignore",
+    "keywords": [
+      "mammal",
+      "vertebrate",
+      "human face",
+      "adult"
+    ]
+  },
+  "min_confidence_overrides": {
+    "comment": "Require higher confidence for certain labels",
+    "rules": [
+      {
+        "keyword": "person",
+        "min_confidence": 95,
+        "reason": "Only include if very confident about people"
+      },
+      {
+        "keyword": "temple",
+        "min_confidence": 70,
+        "reason": "Include temples even with lower confidence"
+      }
+    ]
+  }
+}

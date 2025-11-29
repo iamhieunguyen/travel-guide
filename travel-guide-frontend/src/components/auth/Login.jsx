@@ -1,7 +1,6 @@
-// src/pages/Login.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, getCurrentUser } from "../services/cognito"; // 👈 thêm hàm check user
+import { login, getCurrentUser } from "../../services/cognito"; // 👈 Fixed path
 
 export default function Login({ embed = false }) {
   const [username, setUsername] = useState("");

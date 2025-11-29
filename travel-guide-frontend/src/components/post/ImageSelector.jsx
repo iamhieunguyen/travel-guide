@@ -8,7 +8,7 @@ import {
   Plus,
   Minus,
 } from "lucide-react";
-import { useCreatePostModal } from "../../context/CreatePostModalContext";
+import { useCreatePostModal } from "../../contexts/CreatePostModalContext";
 import CreatePostStyleHeader from "./CreatePostStyleHeader";
 
 export default function ImageSelector({ onNext }) {
@@ -133,7 +133,7 @@ export default function ImageSelector({ onNext }) {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50 p-4">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-[1000] p-4">
       <div className="bg-[#f5f3f0] shadow-2xl w-full max-w-[1000px] flex flex-col relative animate-fadeIn" style={{
         borderRadius: "24px",
         overflow: "visible"

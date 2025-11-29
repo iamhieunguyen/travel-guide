@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import Register from "../components/Register";
-import Login from "../components/Login";
+import Register from "../components/auth/Register";
+import Login from "../components/auth/Login";
 import "../index.css";
 
 export default function AuthPage() {

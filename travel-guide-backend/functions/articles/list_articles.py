@@ -10,17 +10,21 @@ TABLE_NAME = os.environ["TABLE_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
 def _get_user_id(event):
-    """Hàm hỗ trợ lấy user ID từ cả JWT và X-User-Id như trong create_article"""
+    """Lấy user ID từ Cognito Authorizer claims (giống create_article.py)"""
+    # Ưu tiên lấy từ Cognito Authorizer (khi API Gateway đã verify JWT)
+    rc = event.get("requestContext", {}) or {}
+    auth = rc.get("authorizer") or {}
+    claims = auth.get("claims") or {}
+    
+    owner_id = claims.get("sub")
+    if owner_id:
+        return owner_id
+    
+    # Fallback: X-User-Id header (cho testing)
     headers = event.get("headers") or {}
     x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
     if x_user_id:
         return x_user_id
-
-    auth_header = headers.get("Authorization") or headers.get("authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        # Bạn có thể thêm logic JWT ở đây nếu cần
-        # hoặc chỉ cần kiểm tra có token hay không
-        return "authenticated_user" # hoặc parse từ token
 
     return None
 

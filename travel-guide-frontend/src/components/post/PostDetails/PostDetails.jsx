@@ -1,6 +1,6 @@
 // components/CreatePost/PostDetails.jsx
 import { useState, useEffect } from "react";
-import { useCreatePostModal } from "../../../context/CreatePostModalContext";
+import { useCreatePostModal } from "../../../contexts/CreatePostModalContext";
 import { EMOJI_LIST } from "../../../assets/emojis";
 
 export default function PostDetails({ 

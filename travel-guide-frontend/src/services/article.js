@@ -14,10 +14,8 @@ if (!API_BASE) {
 // ===== CF (ẢNH) – KHÔNG default (Giữ nguyên) =====
 const rawCF = (process.env.REACT_APP_CF_DOMAIN || "").trim();
 const CF_BASE = rawCF
-  ? (/^https?:\/\//i.test(rawCF) ? rawCF : `https://${rawCF}`).replace(/\/+$/, "")
-  : "";
-
-const X_USER_ID = process.env.REACT_APP_X_USER_ID || "";
+  ? (/^https?:\/\//i.test(rawCF) ? rawCF : `https://${rawCF}`).replace(/\/+$/, "")
+  : "";
 
 // ===== Simple cache (Giữ nguyên) =====
 const requestCache = new Map();
@@ -144,12 +142,17 @@ export function deleteArticle(articleId) {
 }
 
 // ===== List + Search (Giữ nguyên) =====
-export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
-  const params = new URLSearchParams();
-  params.set("scope", scope);
-  if (limit) params.set("limit", String(limit));
-  if (nextToken) params.set("nextToken", nextToken);
-  return http("GET", `/articles?${params.toString()}`, null, { useCache: true });
+export function listArticles({ scope = "public", limit = 10, nextToken, useCache = true } = {}) {
+  const params = new URLSearchParams();
+  params.set("scope", scope);
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  
+  // Nếu tham số useCache được truyền vào là false, thì không dùng cache
+  // Hoặc nếu scope là 'mine', cũng mặc định không dùng cache
+  const finalUseCache = scope === "mine" ? false : useCache;
+  
+  return http("GET", `/articles?${params.toString()}`, null, { useCache: finalUseCache });
 }
 export function searchArticles({ bbox, q = "", tags = "", scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
@@ -162,17 +165,17 @@ export function searchArticles({ bbox, q = "", tags = "", scope = "public", limi
   return http("GET", `/search?${params.toString()}`, null, { useCache: true });
 }
 
-// ===== Convenience: tạo + upload ảnh (Giữ nguyên) =====
+// ===== Convenience: tạo + upload ảnh =====
 export async function createArticleWithUpload({
-  file, title, content, visibility = "public", lat, lng, tags = [],
+  file, title, content, visibility = "public", lat, lng, locationName, tags = [], // ✅ Thêm locationName
 }) {
-  if (!file) throw new Error("file is required");
-  const contentType = file.type || "application/octet-stream";
+  if (!file) throw new Error("file is required");
+  const contentType = file.type || "application/octet-stream";
 
-  const { uploadUrl, key } = await getUploadUrl({ filename: file.name || "image.png", contentType });
-  await uploadToS3(uploadUrl, file, contentType);
+  const { uploadUrl, key } = await getUploadUrl({ filename: file.name || "image.png", contentType });
+  await uploadToS3(uploadUrl, file, contentType);
 
-  return createArticle({ title, content, visibility, lat, lng, tags, imageKey: key });
+  return createArticle({ title, content, visibility, lat, lng, locationName, tags, imageKey: key }); // ✅ Pass locationName xuống
 }
 
 // ===== Lấy URL hiển thị ảnh cho 1 bài viết (Giữ nguyên) =====

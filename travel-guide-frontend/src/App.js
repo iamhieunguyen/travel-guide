@@ -1,14 +1,16 @@
 // App.js
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from './context/AuthContext';
-import { CreatePostModalProvider } from './context/CreatePostModalContext';
-import CreatePostModal from './components/CreatePost/CreatePostModal';
-import SuccessToast from './components/SuccessToast';
-import ConfirmDialog from './components/ConfirmDialog';
+import { AuthProvider } from './contexts/AuthContext';
+import { CreatePostModalProvider } from './contexts/CreatePostModalContext';
+import CreatePostModal from './components/post/CreatePostModal';
+import SuccessToast from './components/ui/SuccessToast';
+import ConfirmDialog from './components/ui/ConfirmDialog';
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
+import PersonalPage from "./pages/PersonalPage/PersonalPage";
+import SettingsPage from "./pages/SettingsPage/SettingsPage";
 
 // Global functions
 window.showSuccessToast = null;
@@ -48,6 +50,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<HomePage />} />
+            <Route path="/profile" element={<PersonalPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             <Route path="/auth" element={<AuthPage />} />
           </Routes>
           <CreatePostModal />

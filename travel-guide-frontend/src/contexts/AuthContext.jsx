@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
 
   const checkAuthStatus = useCallback(async () => {
     setLoading(true);
+    
     if (cognitoIsAuthenticated()) {
       try {
         const userData = await cognitoGetCurrentUser();
@@ -109,7 +110,9 @@ export function AuthProvider({ children }) {
     login: loginHandler,
     logout,
     isAuthenticated: !!user,
-    getIdToken: () => localStorage.getItem('idToken'),
+    getIdToken: () => {
+      return localStorage.getItem('idToken');
+    },
     refreshAuth,
     authChecked,
     loading

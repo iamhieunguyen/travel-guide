@@ -1,4 +1,4 @@
-import { useCreatePostModal as useCreatePostContext } from '../context/CreatePostModalContext';
+import { useCreatePostModal as useCreatePostContext } from '../contexts/CreatePostModalContext';
 
 export const useCreatePost = () => {
   const context = useCreatePostContext();

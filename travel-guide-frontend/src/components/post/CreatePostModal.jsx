@@ -1,6 +1,6 @@
 // components/CreatePost/CreatePostModal.jsx
 import { useState, useEffect } from "react";
-import { useCreatePostModal } from "../../context/CreatePostModalContext";
+import { useCreatePostModal } from "../../contexts/CreatePostModalContext";
 import ImageSelector from "./ImageSelector";
 import PostDetails from "./PostDetails/PostDetails";
 import LocationSelector from "./LocationSelector";
@@ -53,7 +53,7 @@ export default function CreatePostModal() {
     <>
       {step === 1 && <ImageSelector onNext={() => setStep(2)} />}
       {step === 2 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-[#f5f3f0] shadow-2xl w-full max-w-[900px] flex flex-col relative animate-fadeIn" style={{
             borderRadius: "24px",
             overflow: "visible"
@@ -98,7 +98,7 @@ export default function CreatePostModal() {
       )}
       
       {step === 3 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-white shadow-2xl w-full max-w-[1200px] h-[90vh] flex flex-col relative animate-fadeIn rounded-3xl overflow-hidden">
             <div className="absolute top-3 left-3 z-40">
               <button

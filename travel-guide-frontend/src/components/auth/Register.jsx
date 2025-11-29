@@ -4,7 +4,7 @@ import {
   register,
   confirmRegistration,
   resendConfirmationCode,
-} from "../services/cognito";
+} from "../../services/cognito"; // 👈 Fixed path
 
 export default function Register({ embed = false, onSwitchToLogin}) {
   const navigate = useNavigate();

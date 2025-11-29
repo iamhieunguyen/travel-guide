@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { useCreatePostModal } from "../../../context/CreatePostModalContext";
+import { useCreatePostModal } from "../../../contexts/CreatePostModalContext";
 
 // 📍 Component chọn vị trí
 function LocationPicker({ setPosition, onLocationClick }) {

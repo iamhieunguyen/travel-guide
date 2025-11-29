@@ -14,6 +14,7 @@ export function CreatePostModalProvider({ children }) {
   const [editPostData, setEditPostData] = useState(null);
   const [caption, setCaption] = useState("");
   const [privacy, setPrivacy] = useState("public");
+  const [refreshKey, setRefreshKey] = useState(0);
   const { getIdToken, refreshAuth } = useAuth();
 
   const openModal = useCallback(() => {
@@ -98,11 +99,13 @@ export function CreatePostModalProvider({ children }) {
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
-          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
+          locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`, // ✅ Đổi từ location sang locationName
         };
         
         const result = await api.updateArticle(editPostData.articleId, updateData);
         console.log('✅ Update success:', result);
+        api.clearCache(); // Xóa cache để đảm bảo danh sách bài viết được cập nhật
+        setRefreshKey(prev => prev + 1);
         return result;
       }
       
@@ -126,10 +129,12 @@ export function CreatePostModalProvider({ children }) {
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
-          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
+          locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`, // ✅ Đổi từ location sang locationName
           tags: []
         });
         console.log('✅ Upload success:', result);
+        api.clearCache(); // Xóa cache để đảm bảo danh sách bài viết được cập nhật
+        setRefreshKey(prev => prev + 1);
         return result;
       } else {
         console.error('❌ Image is not a data URL!');
@@ -166,7 +171,8 @@ export function CreatePostModalProvider({ children }) {
         caption,
         setCaption,
         privacy,
-        setPrivacy
+        setPrivacy,
+        refreshKey
       }}
     >
       {children}

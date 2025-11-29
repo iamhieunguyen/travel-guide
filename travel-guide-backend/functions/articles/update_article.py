@@ -3,15 +3,26 @@ import json
 import base64
 import boto3
 from decimal import Decimal
-from cors import ok, error, options
+from cors import ok, error, options # Giả định các hàm này đã được định nghĩa
 
+# --- INITIALIZATION ---
 dynamodb = boto3.resource("dynamodb")
+
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
+# --- CONSTANTS & HELPERS ---
+MAX_IMAGES = 4 # Giới hạn số lượng ảnh tối đa
+
+def _thumb_from_image_key(image_key: str) -> str:
+    """Tạo thumbnailKey từ imageKey."""
+    base = os.path.basename(image_key)
+    stem = os.path.splitext(base)[0]
+    return f"thumbnails/{stem}_256.webp"
 
 def _get_user_id(event):
+    """Lấy user ID từ context/headers."""
     rc = event.get("requestContext") or {}
     auth = rc.get("authorizer") or {}
 
@@ -38,14 +49,14 @@ def lambda_handler(event, context):
         return options()
 
     try:
-        #  1. Lấy ID người dùng hiện tại
+        # 1. Lấy ID người dùng hiện tại
         current_user_id = _get_user_id(event)
         print("DEBUG current_user_id =", current_user_id)
 
         if not current_user_id:
             return error(401, "Unauthorized: User identity not found")
 
-        #  2. Lấy articleId từ path
+        # 2. Lấy articleId từ path
         path_params = event.get("pathParameters") or {}
         article_id = path_params.get("articleId")
         print("DEBUG article_id =", article_id)
@@ -53,7 +64,7 @@ def lambda_handler(event, context):
         if not article_id:
             return error(400, "articleId is required")
 
-        #  3. Lấy bài viết hiện tại để kiểm tra quyền
+        # 3. Lấy bài viết hiện tại để kiểm tra quyền
         current_item_response = table.get_item(Key={"articleId": article_id})
         print("DEBUG TABLE_NAME =", TABLE_NAME)
         print("DEBUG get_item response =", current_item_response)
@@ -65,46 +76,124 @@ def lambda_handler(event, context):
         owner_id = current_article.get("ownerId")
         print("DEBUG db_owner_id =", owner_id)
 
-        #  4. Kiểm tra quyền sở hữu
+        # 4. Kiểm tra quyền sở hữu
         if owner_id != current_user_id:
             return error(403, "Forbidden: You do not own this article")
 
-        #  5. Parse body
+        # 5. Parse body
         body_str = event.get("body") or ""
         if event.get("isBase64Encoded"):
             body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
         print("DEBUG raw_body =", body_str)
         data = json.loads(body_str or "{}")
         print("DEBUG parsed_data =", data)
+        
+        # ----------------------------------------------------------------------
+        ## 🖼️ Logic Xử lý và Validate imageKeys (Mới)
+        # ----------------------------------------------------------------------
+        if "imageKeys" in data:
+            raw_keys = data["imageKeys"]
+            
+            # 1. Check là array
+            if not isinstance(raw_keys, list):
+                return error(400, "imageKeys must be an array")
+            
+            # 2. Check không vượt quá MAX_IMAGES
+            if len(raw_keys) > MAX_IMAGES:
+                return error(400, f"Maximum {MAX_IMAGES} images allowed per article")
+            
+            # 3. Đồng bộ ảnh cover và thumbnail
+            if raw_keys:
+                cover_image_key = str(raw_keys[0]).strip()
+                # Set imageKey cover và thumbnailKey vào data để đưa vào UpdateExpression
+                data["imageKey"] = cover_image_key
+                data["thumbnailKey"] = _thumb_from_image_key(cover_image_key)
+            else:
+                # Nếu mảng rỗng, set các trường liên quan thành None để DynamoDB xóa chúng (REMOVE)
+                data["imageKey"] = None
+                data["thumbnailKey"] = None
+        
+        # ----------------------------------------------------------------------
 
-        # ✅ Cho phép update locationName
-        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", "imageKey", "locationName"]
-        update_expression = "SET "
+        # Danh sách các trường được phép update, bao gồm các trường ảnh mới
+        allowed_fields = ["title", "content", "visibility", "lat", "lng", "tags", 
+                          "imageKey", "imageKeys", "thumbnailKey", "locationName"]
+        
+        set_parts = []
+        remove_fields = []
         expression_attribute_names = {}
         expression_attribute_values = {}
-
+        
+        # Xây dựng UpdateExpression
         for key, value in data.items():
             if key in allowed_fields:
-                update_expression += f"#{key} = :{key}, "
+                
+                # 1. Xử lý trường cần xóa (khi giá trị là None/null)
+                if value is None:
+                    # Chỉ áp dụng cho các trường optional
+                    if key in ["imageKey", "imageKeys", "thumbnailKey", "locationName"]:
+                        remove_fields.append(key)
+                        expression_attribute_names[f"#{key}"] = key
+                    continue
+                
+                # 2. Xử lý trường cần SET
+                set_parts.append(f"#{key} = :{key}")
                 expression_attribute_names[f"#{key}"] = key
+                
+                # Xử lý Decimal cho lat/lng
                 if key in ["lat", "lng"]:
-                    expression_attribute_values[f":{key}"] = Decimal(str(value))
+                    try:
+                        value_decimal = Decimal(str(value))
+                        # Basic validation cho tọa độ
+                        if key == "lat" and not (-90 <= float(value) <= 90):
+                            return error(400, "Invalid latitude")
+                        if key == "lng" and not (-180 <= float(value) <= 180):
+                            return error(400, "Invalid longitude")
+                            
+                        expression_attribute_values[f":{key}"] = value_decimal
+                    except:
+                         return error(400, f"Invalid value for {key}")
                 else:
                     expression_attribute_values[f":{key}"] = value
 
-        print("DEBUG update_expression =", update_expression)
+        # Xử lý auto-update geohash/gh5 nếu lat/lng có trong data
+        if all(k in data for k in ["lat", "lng"]):
+            lat_f = float(data["lat"])
+            lng_f = float(data["lng"])
+            
+            set_parts.append(f"#geohash = :geohash")
+            set_parts.append(f"#gh5 = :gh5")
+            
+            expression_attribute_names["#geohash"] = "geohash"
+            expression_attribute_values[":geohash"] = f"{lat_f:.6f},{lng_f:.6f}"
+            
+            expression_attribute_names["#gh5"] = "gh5"
+            expression_attribute_values[":gh5"] = f"{lat_f:.2f},{lng_f:.2f}"
+
+
+        # Kiểm tra xem có gì để update/remove không
+        if not set_parts and not remove_fields:
+            return error(400, "No valid fields to update")
+
+        # Ghép UpdateExpression cuối cùng
+        final_update_expression = ""
+        if set_parts:
+            final_update_expression += "SET " + ", ".join(set_parts)
+            
+        if remove_fields:
+            if final_update_expression:
+                final_update_expression += " "
+            final_update_expression += "REMOVE " + ", ".join([f"#{f}" for f in remove_fields])
+
+
+        print("DEBUG update_expression =", final_update_expression)
         print("DEBUG expr_attr_names =", expression_attribute_names)
         print("DEBUG expr_attr_values =", expression_attribute_values)
 
-        if len(expression_attribute_values) == 0:
-            return error(400, "No valid fields to update")
-
-        update_expression = update_expression.rstrip(", ")
-
-        #  6. Cập nhật bài viết
+        # 6. Cập nhật bài viết
         response = table.update_item(
             Key={"articleId": article_id},
-            UpdateExpression=update_expression,
+            UpdateExpression=final_update_expression,
             ExpressionAttributeNames=expression_attribute_names,
             ExpressionAttributeValues=expression_attribute_values,
             ReturnValues="ALL_NEW"
@@ -116,6 +205,7 @@ def lambda_handler(event, context):
         processed_item = {}
         for k, v in item.items():
             if isinstance(v, Decimal):
+                # Xử lý chuyển Decimal về float/int cho JSON response
                 processed_item[k] = float(v) if v % 1 != 0 else int(v)
             else:
                 processed_item[k] = v

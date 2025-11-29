@@ -7,9 +7,8 @@ import CreatePostModal from './components/CreatePost/CreatePostModal';
 import SuccessToast from './components/SuccessToast';
 import ConfirmDialog from './components/ConfirmDialog';
 import AuthPage from "./pages/AuthPage";
-import LandingPage from "./pages/LandingPage";
+import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
-import PostListPage from "./pages/PostListPage";
 
 // Global functions
 window.showSuccessToast = null;
@@ -50,7 +49,6 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/posts" element={<PostListPage />} />
           </Routes>
           <CreatePostModal />
           {toast && (

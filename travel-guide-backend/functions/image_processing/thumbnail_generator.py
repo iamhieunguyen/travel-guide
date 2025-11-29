@@ -15,7 +15,7 @@ s3_client = boto3.client('s3')
 sqs_client = boto3.client('sqs')
 
 BUCKET_NAME = os.environ.get('BUCKET_NAME', '')
-DETECT_LABELS_QUEUE_URL = os.environ.get('DETECT_LABELS_QUEUE_URL', '')
+NOTIFY_WORKER_QUEUE_URL = os.environ.get('NOTIFY_WORKER_QUEUE_URL', '')
 
 THUMBNAIL_CONFIGS = [
     {
@@ -48,13 +48,16 @@ def extract_filename_parts(s3_key):
 
 
 def forward_to_next_queue(bucket, key, article_id):
-    """Forward image to Detect Labels queue"""
-    if not DETECT_LABELS_QUEUE_URL:
-        print("Detect Labels queue URL not configured")
+    """Forward image to Notify-Worker queue (final pipeline step).
+    
+    After thumbnail generation, forward to notification worker for email notification.
+    """
+    if not NOTIFY_WORKER_QUEUE_URL:
+        print("Notify-Worker queue URL not configured")
         return False
     
     try:
-        # Create S3 event message similar to S3 notification
+        # Create S3 event message
         s3_event = {
             'Records': [{
                 's3': {
@@ -64,19 +67,20 @@ def forward_to_next_queue(bucket, key, article_id):
             }]
         }
         
-        # Send to next queue
+        # Send to Notify-Worker queue
         sqs_client.send_message(
-            QueueUrl=DETECT_LABELS_QUEUE_URL,
+            QueueUrl=NOTIFY_WORKER_QUEUE_URL,
             MessageBody=json.dumps(s3_event),
             MessageAttributes={
                 'articleId': {'StringValue': article_id, 'DataType': 'String'},
-                'thumbnails': {'StringValue': 'generated', 'DataType': 'String'}
+                'thumbnails': {'StringValue': 'generated', 'DataType': 'String'},
+                'source': {'StringValue': 'thumbnail-generator', 'DataType': 'String'}
             }
         )
-        print(f"✓ Forwarded to Detect Labels queue: {key}")
+        print(f"✓ Forwarded to Notify-Worker queue: {key}")
         return True
     except Exception as e:
-        print(f"Failed to forward to next queue: {e}")
+        print(f"Failed to forward to Notify-Worker queue: {e}")
         return False
 
 

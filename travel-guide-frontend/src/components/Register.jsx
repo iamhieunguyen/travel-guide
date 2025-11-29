@@ -124,10 +124,10 @@ export default function Register({ embed = false, onSwitchToLogin}) {
         {step === "form" && (
           <form
             onSubmit={handleRegister}
-            className="space-y-5 w-full text-[#5c704d]"
+            className="space-y-5 w-full text-[#0891b2]"
           >
-            <h2 className="text-2xl font-semibold text-[#7a8c5d] text-center mb-2">
-              Register
+            <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">
+              Đăng ký
             </h2>
 
             {error && (
@@ -142,18 +142,19 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder=" "
-                className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2
-                  text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+                autoComplete="off"
+                className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2
+                  text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
                 required
               />
               <label
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
                   transition-all duration-200 ease-in-out
                   peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Username
+                Tên đăng nhập
               </label>
             </div>
 
@@ -164,16 +165,17 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder=" "
-                className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2
-                  text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+                autoComplete="off"
+                className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2
+                  text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
                 required
               />
               <label
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
                   transition-all duration-200 ease-in-out
                   peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
                 Email
               </label>
@@ -186,18 +188,19 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder=" "
-                className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2
-                  text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+                autoComplete="new-password"
+                className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2
+                  text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
                 required
               />
               <label
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
                   transition-all duration-200 ease-in-out
                   peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Password
+                Mật khẩu
               </label>
             </div>
 
@@ -208,18 +211,19 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder=" "
-                className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2
-                  text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+                autoComplete="new-password"
+                className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2
+                  text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
                 required
               />
               <label
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
                   transition-all duration-200 ease-in-out
                   peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+                  peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+                  peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Confirm Password
+                Xác nhận mật khẩu
               </label>
             </div>
 
@@ -227,10 +231,10 @@ export default function Register({ embed = false, onSwitchToLogin}) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#9caf84] hover:bg-[#86a06e] text-white font-medium py-3 rounded-2xl
-                transition-all duration-300 shadow-md hover:shadow-lg mt-6"
+              className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
+                transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-6"
             >
-              {loading ? "Processing..." : "Register"}
+              {loading ? "Đang xử lý..." : "Đăng ký"}
             </button>
           </form>
         )}
@@ -239,13 +243,13 @@ export default function Register({ embed = false, onSwitchToLogin}) {
         {step === "otp" && (
           <form
             onSubmit={handleConfirm}
-            className="space-y-5 w-full text-center text-[#5c704d]"
+            className="space-y-5 w-full text-center text-[#0891b2]"
           >
-            <h2 className="text-2xl font-semibold text-[#7a8c5d] text-center mb-2">
-              OTP Verification
+            <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">
+              Xác thực OTP
             </h2>
             <p className="text-gray-600 text-sm">
-              Enter the OTP sent to <b>{email}</b>
+              Nhập mã OTP đã gửi đến <b>{email}</b>
             </p>
 
             {error && (
@@ -267,8 +271,8 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                   onChange={(e) => handleOtpChange(e.target.value, i)}
                   maxLength="1"
                   ref={(el) => (otpRefs.current[i] = el)}
-                  className="w-12 h-12 text-center border border-[#9caf84] rounded-xl text-lg font-bold 
-                    text-[#5c704d] focus:ring-2 focus:ring-[#9caf84]/40 focus:border-[#9caf84] outline-none"
+                  className="w-12 h-12 text-center border border-[#06b6d4] rounded-xl text-lg font-bold 
+                    text-[#0891b2] focus:ring-2 focus:ring-[#06b6d4]/40 focus:border-[#06b6d4] outline-none"
                 />
               ))}
             </div>
@@ -276,10 +280,10 @@ export default function Register({ embed = false, onSwitchToLogin}) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#9caf84] hover:bg-[#86a06e] text-white font-medium py-3 rounded-2xl
-                transition-all duration-300 shadow-md hover:shadow-lg mt-4"
+              className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
+                transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-4"
             >
-              {loading ? "Verifying..." : "Verify"}
+              {loading ? "Đang xác thực..." : "Xác thực"}
             </button>
 
             <div className="flex justify-between text-sm mt-4">
@@ -288,7 +292,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 type="button"
                 className="text-gray-500 hover:text-gray-800"
               >
-                ← Change Email
+                ← Đổi Email
               </button>
 
               <button
@@ -297,10 +301,10 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 disabled={cooldown > 0}
                 className={`font-medium ${cooldown > 0
                     ? "text-gray-400 cursor-not-allowed"
-                    : "text-[#9caf84] hover:text-[#86a06e]"
+                    : "text-[#06b6d4] hover:text-[#0891b2]"
                   }`}
               >
-                {cooldown > 0 ? `Resend (${cooldown}s)` : "Resend Code"}
+                {cooldown > 0 ? `Gửi lại (${cooldown}s)` : "Gửi lại mã"}
               </button>
             </div>
           </form>

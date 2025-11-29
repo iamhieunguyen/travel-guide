@@ -9,89 +9,159 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
+
+def _get_current_user_id(event):
+    """
+    Lấy userId giống các file khác:
+    - Ưu tiên header X-User-Id (dùng cho local / test)
+    - Nếu qua Cognito: lấy sub từ requestContext.authorizer.claims
+    """
+    headers = event.get("headers") or {}
+    x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
+    if x_user_id:
+        return x_user_id
+
+    rc = event.get("requestContext") or {}
+    auth = rc.get("authorizer") or {}
+    claims = auth.get("claims") or {}
+    sub = claims.get("sub")
+    if sub:
+        return sub
+
+    return None
+
+
+def _convert_decimal(obj):
+    """
+    Chuyển Decimal sang kiểu bình thường cho FE.
+    """
+    if isinstance(obj, list):
+        return [_convert_decimal(x) for x in obj]
+    if isinstance(obj, dict):
+        out = {}
+        for k, v in obj.items():
+            if isinstance(v, Decimal):
+                out[k] = float(v)
+            elif isinstance(v, (dict, list)):
+                out[k] = _convert_decimal(v)
+            else:
+                out[k] = v
+        return out
+    return obj
+
 
 def lambda_handler(event, context):
-    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    method = (
+        event.get("httpMethod")
+        or event.get("requestContext", {}).get("http", {}).get("method")
+    )
     if method == "OPTIONS":
         return options()
 
+    if method != "GET":
+        return error(405, "Method not allowed")
+
     try:
-        # Đây là một ví dụ đơn giản về tìm kiếm toàn văn bản
-        # Bạn có thể cải tiến để tìm kiếm theo bbox, tags, v.v.
         params = event.get("queryStringParameters") or {}
-        q = params.get("q", "")
-        bbox = params.get("bbox") # Ví dụ: "minLng,minLat,maxLng,maxLat"
-        tags = params.get("tags", "")
+        q = (params.get("q") or "").strip()
+        bbox = params.get("bbox")  # hiện tại chưa dùng, có thể mở rộng sau
+        tags = (params.get("tags") or "").strip()
         scope = params.get("scope", "public")
         limit = int(params.get("limit", 10))
         next_token = params.get("nextToken")
 
-        # Điều kiện query
-        filter_expression = "contains(#title, :q) OR contains(#content, :q)"
-        expression_attribute_names = {"#title": "title", "#content": "content"}
-        expression_attribute_values = {":q": q}
+        user_id = _get_current_user_id(event)
 
+        # ------------------------------
+        # 1) Chuẩn bị phần KEY query
+        # ------------------------------
+        expression_attribute_names = {}
+        expression_attribute_values = {}
+
+        if scope == "mine" and user_id:
+            # Tìm trong bài của chính user (public + private)
+            index_name = "gsi_owner_createdAt"
+            key_condition = "ownerId = :owner_id"
+            expression_attribute_values[":owner_id"] = user_id
+        else:
+            # Mặc định: chỉ tìm trong bài public
+            index_name = "gsi_visibility_createdAt"
+            key_condition = "visibility = :visibility"
+            expression_attribute_values[":visibility"] = "public"
+
+        # ------------------------------
+        # 2) Xây FilterExpression (q, tags, bbox...)
+        # ------------------------------
+        filter_parts = []
+
+        # Tìm theo text: title / content
+        if q:
+            expression_attribute_names["#title"] = "title"
+            expression_attribute_names["#content"] = "content"
+            expression_attribute_names["#locationName"] = "locationName"
+
+            expression_attribute_values[":q"] = q
+
+            filter_parts.append(
+                "("
+                "contains(#title, :q) OR "
+                "contains(#content, :q) OR "
+                "contains(#locationName, :q)"
+                ")"
+            )
+
+        # Tìm theo tags (tags là một list trong DynamoDB)
         if tags:
-            tag_list = tags.split(',')
-            filter_expression += " AND ("
-            for i, tag in enumerate(tag_list):
-                tag_key = f":tag{i}"
-                filter_expression += f"contains(#tags, {tag_key})"
-                if i < len(tag_list) - 1:
-                    filter_expression += " OR "
-                expression_attribute_names[f"#tag{i}"] = "tags"
-                expression_attribute_values[tag_key] = tag.strip()
-            filter_expression += ")"
+            tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+            if tag_list:
+                expression_attribute_names["#tags"] = "tags"
+                tag_conditions = []
+                for i, tag in enumerate(tag_list):
+                    tag_key = f":tag{i}"
+                    tag_conditions.append(f"contains(#tags, {tag_key})")
+                    expression_attribute_values[tag_key] = tag
+                # (tagA OR tagB OR tagC)
+                filter_parts.append("(" + " OR ".join(tag_conditions) + ")")
 
+        # TODO: nếu sau này dùng bbox (lat/lng) thì thêm vào filter_parts tại đây
+
+        filter_expression = None
+        if filter_parts:
+            filter_expression = " AND ".join(filter_parts)
+
+        # ------------------------------
+        # 3) Gọi DynamoDB query
+        # ------------------------------
         query_params = {
-            'IndexName': 'gsi_visibility_createdAt', # Dùng GSI để query nhanh
-            'KeyConditionExpression': 'visibility = :visibility',
-            'FilterExpression': filter_expression,
-            'ExpressionAttributeNames': expression_attribute_names,
-            'ExpressionAttributeValues': expression_attribute_values,
-            'ScanIndexForward': False, # Mới nhất trước
-            'Limit': limit
+            "IndexName": index_name,
+            "KeyConditionExpression": key_condition,
+            "ExpressionAttributeValues": expression_attribute_values,
+            "ScanIndexForward": False,  # mới nhất trước
+            "Limit": limit,
         }
 
-        if scope != "public":
-            # Nếu không phải public, có thể cần logic khác hoặc query riêng theo ownerId
-            pass
-
+        if expression_attribute_names:
+            query_params["ExpressionAttributeNames"] = expression_attribute_names
+        if filter_expression:
+            query_params["FilterExpression"] = filter_expression
         if next_token:
-            query_params['ExclusiveStartKey'] = json.loads(next_token)
+            # nextToken từ FE là chuỗi JSON của LastEvaluatedKey
+            query_params["ExclusiveStartKey"] = json.loads(next_token)
 
-        response = table.query(**query_params)
+        resp = table.query(**query_params)
 
-        items = response['Items']
-        next_key = response.get('LastEvaluatedKey')
+        items = resp.get("Items", [])
+        last_key = resp.get("LastEvaluatedKey")
 
-        # Chuyển Decimal sang float cho frontend
-        processed_items = []
-        for item in items:
-            processed_item = dict(item)
-            if 'lat' in processed_item:
-                processed_item['lat'] = float(processed_item['lat'])
-            if 'lng' in processed_item:
-                processed_item['lng'] = float(processed_item['lng'])
-            processed_items.append(processed_item)
+        processed_items = [_convert_decimal(it) for it in items]
 
-        result = {
-            'items': processed_items
-        }
-        if next_key:
-            result['nextToken'] = json.dumps(next_key)
+        result = {"items": processed_items}
+        if last_key:
+            result["nextToken"] = json.dumps(last_key)
 
-        return _response(200, result)
+        return ok(200, result)
 
     except Exception as e:
-        print(f"Error in search_articles: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        print("Error in search_articles:", e)
+        # dùng error() để format giống các API khác
+        return error(500, f"internal error: {e}")

@@ -24,7 +24,7 @@ MIN_CONFIDENCE = float(os.environ.get('MIN_CONFIDENCE', '75.0'))
 MAX_LABELS = int(os.environ.get('MAX_LABELS', '5'))
 CONFIG_BUCKET = os.environ.get('CONFIG_BUCKET', '')
 CONFIG_KEY = os.environ.get('CONFIG_KEY', 'config/label_priority_config.json')
-CONTENT_MODERATION_QUEUE_URL = os.environ.get('CONTENT_MODERATION_QUEUE_URL', '')
+THUMBNAIL_QUEUE_URL = os.environ.get('THUMBNAIL_QUEUE_URL', '')
 
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
 
@@ -186,6 +186,45 @@ def filter_and_prioritize_labels(labels_data):
 def detect_labels_in_image(bucket, key):
     """Use Rekognition to detect labels with custom prioritization"""
     try:
+        # Skip files that are definitely not images or are WebP thumbnails
+        if key.endswith(('.webp', '.gif', '.bmp', '.svg')):
+            print(f"⚠️ Skipping unsupported format: {key}")
+            return []
+        
+        # Get file extension for validation
+        file_ext = key.lower().split('.')[-1]
+        if file_ext not in ['jpg', 'jpeg', 'png']:
+            print(f"⚠️ Unsupported file extension: .{file_ext}")
+            return []
+        
+        # Download the image from S3 to validate
+        try:
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+            image_bytes = response['Body'].read()
+            print(f"✓ Downloaded image: {len(image_bytes)} bytes")
+        except Exception as e:
+            print(f"⚠️ Failed to download image from S3: {e}")
+            return []
+        
+        # Basic validation that it's a real image
+        if len(image_bytes) < 100:
+            print(f"⚠️ Image too small: {len(image_bytes)} bytes")
+            return []
+        
+        # Validate JPEG/PNG headers
+        is_valid = False
+        if image_bytes[:3] == b'\xff\xd8\xff':  # JPEG
+            print("✓ Valid JPEG header")
+            is_valid = True
+        elif image_bytes[:8] == b'\x89PNG\r\n\x1a\n':  # PNG
+            print("✓ Valid PNG header")
+            is_valid = True
+        else:
+            print(f"⚠️ Invalid image header: {image_bytes[:8].hex()}")
+            return []
+        
+        # Now use S3Object reference for Rekognition (which handles large files better)
+        print(f"Calling Rekognition.detect_labels for {key}...")
         response = rekognition.detect_labels(
             Image={'S3Object': {'Bucket': bucket, 'Name': key}},
             MaxLabels=20,  # Get more labels initially, then filter
@@ -214,8 +253,17 @@ def detect_labels_in_image(bucket, key):
         
         return filtered_labels
         
+    except rekognition.exceptions.InvalidImageFormatException as e:
+        print(f"⚠️ Rekognition rejected image format: {e}")
+        print(f"Key: {key}")
+        return []
+    except rekognition.exceptions.ImageTooLargeException as e:
+        print(f"⚠️ Image too large for Rekognition: {e}")
+        return []
     except Exception as e:
         print(f"Rekognition error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -269,13 +317,16 @@ def update_article_with_tags(article_id, labels_data):
 
 
 def forward_to_next_queue(bucket, key, article_id):
-    """Forward image to Content Moderation queue"""
-    if not CONTENT_MODERATION_QUEUE_URL:
-        print("Content Moderation queue URL not configured")
+    """Forward image to Thumbnail Generator queue (new flow).
+    
+    After label detection, forward to thumbnail generation.
+    """
+    if not THUMBNAIL_QUEUE_URL:
+        print("Thumbnail queue URL not configured")
         return False
     
     try:
-        # Create S3 event message similar to S3 notification
+        # Create S3 event message
         s3_event = {
             'Records': [{
                 's3': {
@@ -285,19 +336,20 @@ def forward_to_next_queue(bucket, key, article_id):
             }]
         }
         
-        # Send to next queue
+        # Send to Thumbnail Generator queue
         sqs_client.send_message(
-            QueueUrl=CONTENT_MODERATION_QUEUE_URL,
+            QueueUrl=THUMBNAIL_QUEUE_URL,
             MessageBody=json.dumps(s3_event),
             MessageAttributes={
                 'articleId': {'StringValue': article_id, 'DataType': 'String'},
-                'labels': {'StringValue': 'detected', 'DataType': 'String'}
+                'labels': {'StringValue': 'detected', 'DataType': 'String'},
+                'source': {'StringValue': 'detect-labels', 'DataType': 'String'}
             }
         )
-        print(f"✓ Forwarded to Content Moderation queue: {key}")
+        print(f"✓ Forwarded to Thumbnail Generator queue: {key}")
         return True
     except Exception as e:
-        print(f"Failed to forward to next queue: {e}")
+        print(f"Failed to forward to Thumbnail Generator queue: {e}")
         return False
 
 

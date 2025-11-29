@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
 import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import ChristmasEffects from '../components/ChristmasEffects';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -90,6 +91,8 @@ export default function HomePage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [scope, setScope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
+  const [isSearching, setIsSearching] = useState(false);
 
   // Fetch location name
   const fetchLocationName = async (lat, lng) => {
@@ -105,16 +108,30 @@ export default function HomePage() {
     }
   };
 
-  const loadPosts = useCallback(async (token = null) => {
+  const loadPosts = useCallback(async (token = null, query = '') => {
     try {
       if (!token) setLoading(true);
       else setLoadingMore(true);
 
-      const response = await api.listArticles({
-        scope: scope,
-        limit: 10,
-        nextToken: token
-      });
+      let response;
+      if (query && query.trim()) {
+        // Nếu có search query, dùng searchArticles
+        response = await api.searchArticles({
+          q: query.trim(),
+          scope: scope,
+          limit: 10,
+          nextToken: token
+        });
+        setIsSearching(true);
+      } else {
+        // Nếu không có query, dùng listArticles bình thường
+        response = await api.listArticles({
+          scope: scope,
+          limit: 10,
+          nextToken: token
+        });
+        setIsSearching(false);
+      }
 
       const postsWithLocation = await Promise.all(
         response.items.map(async (post) => {
@@ -126,10 +143,27 @@ export default function HomePage() {
         })
       );
 
+      // Nếu đang search, lọc thêm theo location name
+      let filteredPosts = postsWithLocation;
+      if (query && query.trim()) {
+        const searchTerm = query.trim().toLowerCase();
+        filteredPosts = postsWithLocation.filter(post => {
+          const location = (post.location?.name || post.location || '').toLowerCase();
+          const locationName = (post.locationName || '').toLowerCase();
+          const title = (post.title || '').toLowerCase();
+          const content = (post.content || '').toLowerCase();
+          
+          return location.includes(searchTerm) || 
+                 locationName.includes(searchTerm) ||
+                 title.includes(searchTerm) ||
+                 content.includes(searchTerm);
+        });
+      }
+
       if (token) {
-        setPosts(prev => [...prev, ...postsWithLocation]);
+        setPosts(prev => [...prev, ...filteredPosts]);
       } else {
-        setPosts(postsWithLocation);
+        setPosts(filteredPosts);
       }
       setNextToken(response.nextToken);
     } catch (error) {
@@ -139,6 +173,12 @@ export default function HomePage() {
       setLoadingMore(false);
     }
   }, [scope]);
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter' || e.type === 'click') {
+      loadPosts(null, searchQuery);
+    }
+  };
 
   useEffect(() => {
     if (!authChecked) return;
@@ -200,6 +240,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#2d2d2d]">
+      {/* Christmas Effects Overlay */}
+      <ChristmasEffects />
+      
       <div className="flex p-3 h-screen overflow-hidden">
         {/* Left Sidebar - Icon only with hover expand - Fixed to left edge */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -294,9 +337,15 @@ export default function HomePage() {
                       <input
                         type="text"
                         placeholder="Search"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyPress={handleSearch}
                         className="w-full px-5 py-3 pr-14 rounded-full border border-gray-300 focus:outline-none focus:border-[#0891b2] text-base"
                       />
-                      <button className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition">
+                      <button 
+                        onClick={handleSearch}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                      >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <circle cx="11" cy="11" r="8"/>
                           <path d="M21 21l-4.35-4.35"/>

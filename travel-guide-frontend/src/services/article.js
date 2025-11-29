@@ -134,10 +134,7 @@ export function createArticle(body) {
 }
 export function getArticle(articleId, { presign = false } = {}) {
   const qs = presign ? "?presign=1" : "";
-<<<<<<< HEAD
-=======
   // Lưu ý: Backend đã được sửa để trả về imageUrls và imageUrls[0] là imageUrl
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
   return http("GET", `/articles/${encodeURIComponent(articleId)}${qs}`, null, { useCache: true });
 }
 export function updateArticle(articleId, patchBody) {
@@ -158,12 +155,7 @@ export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
 
 export function searchArticles({ bbox, q = "", tags = "", scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
-<<<<<<< HEAD
-  // FIX: Only set bbox if it has a value
-  if (bbox && bbox !== 'undefined') params.set("bbox", bbox);
-=======
   params.set("bbox", bbox);
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
   params.set("scope", scope);
   if (q) params.set("q", q);
   if (tags) params.set("tags", tags);
@@ -221,17 +213,6 @@ export async function createArticleWithMultipleFiles(files, articleMetadata) {
 // ===== Convenience: tạo + upload ảnh (Giữ lại để tương thích ngược) =====
 // Chức năng này chỉ hỗ trợ một file duy nhất
 export async function createArticleWithUpload({
-<<<<<<< HEAD
-  file, title, content, visibility = "public", lat, lng, tags = [],
-}) {
-  if (!file) throw new Error("file is required");
-  const contentType = file.type || "application/octet-stream";
-
-  const { uploadUrl, key } = await getUploadUrl({ filename: file.name || "image.png", contentType });
-  await uploadToS3(uploadUrl, file, contentType);
-
-  return createArticle({ title, content, visibility, lat, lng, tags, imageKey: key });
-=======
   file, title, content, visibility = "public", lat, lng, tags = [], locationName
 }) {
   if (!file) throw new Error("file is required");
@@ -239,15 +220,11 @@ export async function createArticleWithUpload({
   // Dùng hàm mới để xử lý một file
   const articleMetadata = { title, content, visibility, lat, lng, tags, locationName };
   return createArticleWithMultipleFiles([file], articleMetadata);
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
 }
 
 // ===== Lấy URL hiển thị ảnh cho 1 bài viết (Giữ nguyên) =====
 export async function getDisplayImageUrl(article) {
-<<<<<<< HEAD
-=======
   // Lấy ảnh cover
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
   const { imageKey } = article || {};
   if (!imageKey) return "";
 
@@ -255,10 +232,7 @@ export async function getDisplayImageUrl(article) {
   const cfUrl = buildImageUrlFromKey(imageKey);
   if (cfUrl) return cfUrl;
 
-<<<<<<< HEAD
-=======
   // Lấy presigned URL (lưu ý: backend trả về imageUrl = imageUrls[0] cho tương thích)
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
   const fresh = await getArticle(article.articleId, { presign: true });
   return fresh?.imageUrl || "";
 }
@@ -283,12 +257,8 @@ const articleService = {
   deleteArticle,
   listArticles,
   searchArticles,
-<<<<<<< HEAD
-  createArticleWithUpload,
-=======
   createArticleWithUpload, // Giữ để tương thích
   createArticleWithMultipleFiles, // Hàm mới
->>>>>>> 01db558b27044b9093d52f3f4c7b08a989632cf6
   buildImageUrlFromKey,
   getDisplayImageUrl,
   getMultipleArticles,

@@ -38,7 +38,6 @@ const translations = {
     notifications: 'Thông báo',
     map: 'Bản đồ',
     appearance: 'Giao diện',
-    security: 'Bảo mật',
     
     // Account Section
     accountInfo: 'Thông tin tài khoản',
@@ -128,7 +127,6 @@ const translations = {
     notifications: 'Notifications',
     map: 'Map',
     appearance: 'Appearance',
-    security: 'Security',
     
     // Account Section
     accountInfo: 'Account Information',

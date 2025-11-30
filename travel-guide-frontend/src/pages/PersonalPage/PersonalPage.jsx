@@ -20,7 +20,7 @@ import './PersonalPage.css';
 
 export default function PersonalPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout, authChecked } = useAuth(); // Thêm authChecked
+  const { user, isAuthenticated, authChecked } = useAuth(); // Thêm authChecked
   const { openModal, refreshKey } = useCreatePostModal();
 
   const [memories, setMemories] = useState([]);

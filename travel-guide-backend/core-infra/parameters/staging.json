@@ -1,4 +1,4 @@
 {
   "Environment": "staging",
-  "CorsOrigin": "https://your-staging-domain.com"
+  "CorsOrigin": "*"
 }

@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import boto3
 from utils.cors import _response, options_response
 

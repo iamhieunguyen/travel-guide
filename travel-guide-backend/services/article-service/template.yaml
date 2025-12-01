@@ -1,26 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide Article Service - CRUD operations, search, uploads
-
 Parameters:
   CoreStackName:
     Type: String
     Description: Name of the core infrastructure stack
-
   Environment:
     Type: String
     Default: staging
     AllowedValues: [staging, prod]
     Description: Environment name
-
   CorsOrigin:
     Type: String
     Default: "*"
     Description: CORS origin for API Gateway
-
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
-
 Resources:
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -31,7 +26,6 @@ Resources:
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
-
   ##############################
   # LAMBDA FUNCTIONS
   ##############################
@@ -87,7 +81,6 @@ Resources:
             Path: /articles
             Method: POST
             RestApiId: !Ref ArticleApi
-
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -139,7 +132,6 @@ Resources:
             Path: /articles/{articleId}
             Method: GET
             RestApiId: !Ref ArticleApi
-
   UpdateArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -191,7 +183,6 @@ Resources:
             Path: /articles/{articleId}
             Method: PATCH
             RestApiId: !Ref ArticleApi
-
   DeleteArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -243,7 +234,6 @@ Resources:
             Path: /articles/{articleId}
             Method: DELETE
             RestApiId: !Ref ArticleApi
-
   ListArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -290,7 +280,6 @@ Resources:
             Path: /articles
             Method: GET
             RestApiId: !Ref ArticleApi
-
   SearchArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -337,7 +326,6 @@ Resources:
             Path: /search
             Method: GET
             RestApiId: !Ref ArticleApi
-
   GetUploadUrlFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -373,7 +361,6 @@ Resources:
             Path: /upload-url
             Method: POST
             RestApiId: !Ref ArticleApi
-
   ##############################
   # API GATEWAY
   ##############################
@@ -396,7 +383,6 @@ Resources:
               Principal: "*"
               Action: execute-api:Invoke
               Resource: execute-api:/*
-
 Outputs:
   ArticleApiUrl:
     Value: !Sub "https://${ArticleApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

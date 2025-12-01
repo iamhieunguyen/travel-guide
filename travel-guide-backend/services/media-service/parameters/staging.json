@@ -1,5 +1,4 @@
 {
   "CoreStackName": "travel-guide-core-staging",
-  "Environment": "staging",
-  "CorsOrigin": "*"
+  "Environment": "staging"
 }

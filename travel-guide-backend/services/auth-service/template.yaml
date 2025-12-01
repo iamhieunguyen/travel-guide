@@ -1,26 +1,21 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide Auth Service - User authentication and registration
-
 Parameters:
   CoreStackName:
     Type: String
     Description: Name of the core infrastructure stack
-
   Environment:
     Type: String
     Default: staging
     AllowedValues: [staging, prod]
     Description: Environment name
-
   CorsOrigin:
     Type: String
     Default: "*"
     Description: CORS origin for API Gateway
-
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
-
 Resources:
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
@@ -31,7 +26,6 @@ Resources:
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
-
   ##############################
   # LAMBDA FUNCTIONS
   ##############################
@@ -75,7 +69,6 @@ Resources:
             Path: /auth/register
             Method: POST
             RestApiId: !Ref AuthApi
-
   ConfirmUserFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -116,7 +109,6 @@ Resources:
             Path: /auth/confirm
             Method: POST
             RestApiId: !Ref AuthApi
-
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -157,7 +149,6 @@ Resources:
             Path: /auth/login
             Method: POST
             RestApiId: !Ref AuthApi
-
   ##############################
   # API GATEWAY
   ##############################
@@ -172,7 +163,6 @@ Resources:
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
         AllowOrigin: !Ref CorsOrigin
         MaxAge: "'7200'"
-
 Outputs:
   AuthApiUrl:
     Value: !Sub "https://${AuthApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

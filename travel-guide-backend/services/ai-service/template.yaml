@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide AI Service - Image analysis with Rekognition
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, prod]
+    Description: Environment name
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub ai-service-common-${Environment}
+      Description: Shared dependencies for AI service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+  DetectLabelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: detect_labels.lambda_handler
+      Runtime: python3.11
+      Timeout: 90
+      MemorySize: 1024
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          MIN_CONFIDENCE: "75.0"
+          MAX_LABELS: "5"
+          CONTENT_MODERATION_QUEUE_URL: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ContentModerationQueueUrl'
+          CONFIG_BUCKET: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          CONFIG_KEY: "config/label_priority_config.json"
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DetectLabelsQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectLabels
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ContentModerationQueue.Arn
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        DetectLabelsSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DetectLabelsQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+  ContentModerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: content_moderation.lambda_handler
+      Runtime: python3.11
+      Timeout: 90
+      MemorySize: 1024
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          MODERATION_CONFIDENCE: "75.0"
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ContentModerationQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectModerationLabels
+              Resource: '*'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ContentModerationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ContentModerationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+  ##############################
+  # SQS QUEUES
+  ##############################
+  DetectLabelsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'travel-guide-${Environment}-detect-labels-queue'
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+  ContentModerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'travel-guide-${Environment}-content-moderation-queue'
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+  ImageProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'travel-guide-${Environment}-image-processing-dlq'
+      MessageRetentionPeriod: 1209600
+      VisibilityTimeout: 300
+  ##############################
+  # QUEUE POLICIES
+  ##############################
+  DetectLabelsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DetectLabelsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt DetectLabelsQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !ImportValue 
+                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketArn'
+  ContentModerationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ContentModerationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ContentModerationQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !ImportValue 
+                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketArn'
+Outputs:
+  AIServiceOutputs:
+    Value: "AI Service deployed successfully"

@@ -1,52 +1,97 @@
 #!/bin/bash
-set -e  # Exit on any error
+set -e
 
-# Configuration
+# Trap errors to prevent window from closing immediately
+cleanup() {
+  local exit_code=$?
+  if [ $exit_code -ne 0 ]; then
+    echo ""
+    echo "========================================"
+    echo "🚨 AUTH SERVICE DEPLOYMENT FAILED"
+    echo "========================================"
+    echo "Error code: $exit_code"
+    echo "Command that failed: ${BASH_COMMAND}"
+    echo ""
+    echo "🔍 DEBUGGING TIPS:"
+    echo "1. Check if core stack deployed successfully"
+    echo "2. Validate your template.yaml file for syntax errors"
+    echo "3. Check if all required dependencies are installed"
+    echo "4. Look for error details in the output above"
+    echo ""
+    read -p "Press Enter to exit..."
+  fi
+}
+trap cleanup ERR EXIT
+
 ENV=${1:-staging}
+REGION=${2:-us-east-1}
+PROFILE=${3:-default}
 CORE_STACK_NAME="travel-guide-core-$ENV"
-AUTH_STACK_NAME="travel-guide-auth-service-$ENV"
-REGION=${AWS_REGION:-us-east-1}
-PROFILE=${AWS_PROFILE:-default}
 
-echo "🚀 Deploying Auth Service to $ENV environment"
-echo "   Core Stack: $CORE_STACK_NAME"
-echo "   Target Stack: $AUTH_STACK_NAME"
-echo "   Region: $REGION"
-echo "   Profile: $PROFILE"
-echo ""
+STACK_NAME="travel-guide-auth-service-$ENV"
+TEMPLATE_FILE="services/auth-service/template.yaml"
+PARAMS_FILE="services/auth-service/parameters/$ENV.json"
 
-# Step 1: Package the application
-echo "📦 Packaging auth service..."
+# Create parameters file if it doesn't exist
+if [ ! -f "$PARAMS_FILE" ]; then
+    echo "⚙️  Creating parameters file for Auth Service..."
+    mkdir -p services/auth-service/parameters
+    cat > $PARAMS_FILE <<EOF
+{
+  "CoreStackName": "$CORE_STACK_NAME",
+  "Environment": "$ENV",
+  "CorsOrigin": "*"
+}
+EOF
+    echo "✅  Parameters file created at $PARAMS_FILE"
+fi
+
+echo "📦  Preparing to deploy Auth Service stack: $STACK_NAME"
+
+# Copy shared layer to build directory for packaging
+echo "🔧  Copying shared layer dependencies..."
+mkdir -p .aws-sam/build/shared
+cp -r shared/layers/common .aws-sam/build/shared/ 2>/dev/null || echo "⚠️  Shared layer directory not found, continuing..."
+
+# Package Lambda functions and layers
+echo "📦  Packaging Lambda functions and layers..."
+
+# Check if sam is installed
+if ! command -v sam &> /dev/null; then
+    echo "❌ AWS SAM CLI is not installed. Please install it first."
+    echo "Refer to: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html"
+    exit 1
+fi
+
 sam package \
-  --template-file services/auth-service/template.yaml \
-  --output-template-file .aws-sam/build/auth-service-packaged.yaml \
-  --s3-bucket travel-guide-deployment-$ENV-$(aws sts get-caller-identity --query 'Account' --output text) \
-  --s3-prefix auth-service \
-  --region $REGION \
-  --profile $PROFILE
+    --template-file $TEMPLATE_FILE \
+    --output-template-file .aws-sam/build/auth-service-packaged.yaml \
+    --s3-bucket travel-guide-deployment-$ENV-$(aws sts get-caller-identity --query 'Account' --output text --profile $PROFILE) \
+    --region $REGION \
+    --profile $PROFILE
 
-# Step 2: Deploy the stack
-echo "🚀 Deploying auth service stack..."
-sam deploy \
-  --template-file .aws-sam/build/auth-service-packaged.yaml \
-  --stack-name $AUTH_STACK_NAME \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --parameter-overrides \
-    CoreStackName=$CORE_STACK_NAME \
-    Environment=$ENV \
-    CorsOrigin=$(cat core-infra/parameters/$ENV.json | jq -r '.CorsOrigin') \
-  --region $REGION \
-  --profile $PROFILE \
-  --no-fail-on-empty-changeset
+# Validate template
+echo "✅  Validating CloudFormation template..."
+aws cloudformation validate-template \
+    --template-body file://.aws-sam/build/auth-service-packaged.yaml \
+    --region $REGION \
+    --profile $PROFILE &>/dev/null || (echo "❌ Template validation failed"; exit 1)
 
-# Step 3: Get API URL from outputs
+echo "✅  Template validated successfully"
+
+# Deploy stack using inline parameters
+echo "🚀  Deploying Auth Service stack..."
+aws cloudformation deploy \
+    --stack-name $STACK_NAME \
+    --template-file .aws-sam/build/auth-service-packaged.yaml \
+    --parameter-overrides \
+        CoreStackName=$CORE_STACK_NAME \
+        Environment=$ENV \
+        CorsOrigin="*" \
+    --capabilities CAPABILITY_NAMED_IAM \
+    --region $REGION \
+    --profile $PROFILE \
+    --no-fail-on-empty-changeset
+
+echo "✅  Auth Service stack deployed successfully"
 echo ""
-echo "✅ Auth Service deployed successfully!"
-echo ""
-echo "🔗 API Endpoint:"
-aws cloudformation describe-stacks \
-  --stack-name $AUTH_STACK_NAME \
-  --query 'Stacks[0].Outputs[?OutputKey==`AuthApiUrl`].OutputValue' \
-  --output text \
-  --region $REGION \
-  --profile $PROFILE

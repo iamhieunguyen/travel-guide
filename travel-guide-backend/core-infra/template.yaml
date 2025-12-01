@@ -1,22 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide Core Infrastructure - S3 Buckets, DynamoDB Tables, Cognito
-
 Parameters:
   Environment:
     Type: String
     Default: staging
     AllowedValues: [staging, prod]
     Description: Environment name
-
   CorsOrigin:
     Type: String
     Default: "*"
     Description: CORS origin for API Gateway
-
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
-
 Resources:
   ##############################
   # S3 BUCKETS
@@ -29,16 +25,21 @@ Resources:
         Status: Enabled
       CorsConfiguration:
         CorsRules:
-          - AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"]
+          - AllowedMethods: 
+              - "GET"
+              - "PUT"
+              - "POST"
+              - "DELETE"
+              - "HEAD"
             AllowedOrigins: 
               - !Ref CorsOrigin
-            AllowedHeaders: ["*"]
+            AllowedHeaders: 
+              - "*"
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -48,7 +49,6 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
-
   ##############################
   # DYNAMODB TABLES
   ##############################
@@ -98,7 +98,21 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-
+  UserFavoritesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub user-favorites-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: articleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: articleId
+          KeyType: RANGE
   ##############################
   # COGNITO USER POOL
   ##############################
@@ -122,7 +136,6 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
-
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -132,7 +145,6 @@ Resources:
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
       PreventUserExistenceErrors: ENABLED
-
   ##############################
   # CLOUDFRONT
   ##############################
@@ -141,7 +153,6 @@ Resources:
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: !Sub "OAI for Travel Guide ${Environment}"
-
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -155,7 +166,6 @@ Resources:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
             Resource: !Sub "${StaticSiteBucket.Arn}/*"
-
   ArticleImagesBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -169,7 +179,6 @@ Resources:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
             Resource: !Sub "${ArticleImagesBucket.Arn}/*"
-
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -188,8 +197,12 @@ Resources:
         DefaultCacheBehavior:
           TargetOriginId: S3OriginStatic
           ViewerProtocolPolicy: redirect-to-https
-          AllowedMethods: [GET, HEAD]
-          CachedMethods: [GET, HEAD]
+          AllowedMethods: 
+            - "GET"
+            - "HEAD"
+          CachedMethods: 
+            - "GET"
+            - "HEAD"
           ForwardedValues:
             QueryString: false
             Cookies:
@@ -199,8 +212,12 @@ Resources:
           - PathPattern: "articles/*"
             TargetOriginId: S3OriginImages
             ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            CachedMethods: [GET, HEAD]
+            AllowedMethods: 
+              - "GET"
+              - "HEAD"
+            CachedMethods: 
+              - "GET"
+              - "HEAD"
             ForwardedValues:
               QueryString: false
               Cookies:
@@ -209,8 +226,12 @@ Resources:
           - PathPattern: "thumbnails/*"
             TargetOriginId: S3OriginImages
             ViewerProtocolPolicy: redirect-to-https
-            AllowedMethods: [GET, HEAD]
-            CachedMethods: [GET, HEAD]
+            AllowedMethods: 
+              - "GET"
+              - "HEAD"
+            CachedMethods: 
+              - "GET"
+              - "HEAD"
             ForwardedValues:
               QueryString: false
               Cookies:
@@ -222,36 +243,42 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2021
-
 Outputs:
-  # Article Service cần những outputs này
+  # Article Service needs these outputs
   ArticlesTableArn:
     Value: !GetAtt ArticlesTable.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ArticlesTableArn"
-  
   ArticlesTableName:
     Value: !Ref ArticlesTable
     Export:
       Name: !Sub "${AWS::StackName}-ArticlesTableName"
-  
   ArticleImagesBucketName:
     Value: !Ref ArticleImagesBucket
     Export:
       Name: !Sub "${AWS::StackName}-ArticleImagesBucketName"
-  
-  # Auth Service cần những outputs này
+  ArticleImagesBucketArn:
+    Value: !GetAtt ArticleImagesBucket.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ArticleImagesBucketArn"
+  UserFavoritesTableName:
+    Value: !Ref UserFavoritesTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserFavoritesTableName"
+  # Auth Service needs these outputs
   UserPoolId:
     Value: !Ref UserPool
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolId"
-  
   UserPoolClientId:
     Value: !Ref UserPoolClient
     Export:
       Name: !Sub "${AWS::StackName}-UserPoolClientId"
-  
   CloudFrontDomain:
     Value: !GetAtt CloudFrontDistribution.DomainName
     Export:
       Name: !Sub "${AWS::StackName}-CloudFrontDomain"
+  ImageProcessingDLQUrl:
+    Value: !Ref ImageProcessingDLQ
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageProcessingDLQUrl"

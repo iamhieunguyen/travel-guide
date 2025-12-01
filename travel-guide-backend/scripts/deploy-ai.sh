@@ -7,7 +7,7 @@ cleanup() {
   if [ $exit_code -ne 0 ]; then
     echo ""
     echo "========================================"
-    echo "🚨 MEDIA SERVICE DEPLOYMENT FAILED"
+    echo "🚨 AI SERVICE DEPLOYMENT FAILED"
     echo "========================================"
     echo "Error code: $exit_code"
     echo "Command that failed: ${BASH_COMMAND}"
@@ -28,14 +28,14 @@ REGION=${2:-us-east-1}
 PROFILE=${3:-default}
 CORE_STACK_NAME="travel-guide-core-$ENV"
 
-STACK_NAME="travel-guide-media-service-$ENV"
-TEMPLATE_FILE="services/media-service/template.yaml"
-PARAMS_FILE="services/media-service/parameters/$ENV.json"
+STACK_NAME="travel-guide-ai-service-$ENV"
+TEMPLATE_FILE="services/ai-service/template.yaml"
+PARAMS_FILE="services/ai-service/parameters/$ENV.json"
 
 # Create parameters file if it doesn't exist
 if [ ! -f "$PARAMS_FILE" ]; then
-    echo "⚙️  Creating parameters file for Media Service..."
-    mkdir -p services/media-service/parameters
+    echo "⚙️  Creating parameters file for AI Service..."
+    mkdir -p services/ai-service/parameters
     cat > $PARAMS_FILE <<EOF
 {
   "CoreStackName": "$CORE_STACK_NAME",
@@ -45,7 +45,12 @@ EOF
     echo "✅  Parameters file created at $PARAMS_FILE"
 fi
 
-echo "📦  Preparing to deploy Media Service stack: $STACK_NAME"
+echo "📦  Preparing to deploy AI Service stack: $STACK_NAME"
+
+# Copy shared layer to build directory for packaging
+echo "🔧  Copying shared layer dependencies..."
+mkdir -p .aws-sam/build/shared
+cp -r shared/layers/common .aws-sam/build/shared/ 2>/dev/null || echo "⚠️  Shared layer directory not found, continuing..."
 
 # Package Lambda functions and layers
 echo "📦  Packaging Lambda functions and layers..."
@@ -57,10 +62,9 @@ if ! command -v sam &> /dev/null; then
     exit 1
 fi
 
-# Package the template
 sam package \
     --template-file $TEMPLATE_FILE \
-    --output-template-file .aws-sam/build/media-service-packaged.yaml \
+    --output-template-file .aws-sam/build/ai-service-packaged.yaml \
     --s3-bucket travel-guide-deployment-$ENV-$(aws sts get-caller-identity --query 'Account' --output text --profile $PROFILE) \
     --region $REGION \
     --profile $PROFILE
@@ -68,22 +72,22 @@ sam package \
 # Validate template
 echo "✅  Validating CloudFormation template..."
 aws cloudformation validate-template \
-    --template-body file://.aws-sam/build/media-service-packaged.yaml \
+    --template-body file://.aws-sam/build/ai-service-packaged.yaml \
     --region $REGION \
     --profile $PROFILE &>/dev/null || (echo "❌ Template validation failed"; exit 1)
 
 echo "✅  Template validated successfully"
 
 # Deploy stack
-echo "🚀  Deploying Media Service stack..."
+echo "🚀  Deploying AI Service stack..."
 aws cloudformation deploy \
     --stack-name $STACK_NAME \
-    --template-file .aws-sam/build/media-service-packaged.yaml \
+    --template-file .aws-sam/build/ai-service-packaged.yaml \
     --parameter-overrides file://$PARAMS_FILE \
     --capabilities CAPABILITY_NAMED_IAM \
     --region $REGION \
     --profile $PROFILE \
     --no-fail-on-empty-changeset
 
-echo "✅  Media Service stack deployed successfully"
+echo "✅  AI Service stack deployed successfully"
 echo ""

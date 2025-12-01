@@ -2,242 +2,180 @@ import os
 import json
 import uuid
 import base64
-import boto3
 from datetime import datetime, timezone
 from decimal import Decimal
-import requests
-from utils.cors import _response, options_response
-from utils.jwt_validator import get_user_id_from_event
-from utils.geo_utils import geohash_encode, convert_decimals
-from PIL import Image, ImageOps
-import io
+import boto3
+from utils.cors import options, ok, error
 
-# Environment variables
-TABLE_NAME = os.environ["TABLE_NAME"]
-BUCKET_NAME = os.environ["BUCKET_NAME"]
-USER_POOL_ID = os.environ["USER_POOL_ID"]
-CLIENT_ID = os.environ["CLIENT_ID"]
-AWS_REGION = os.environ["AWS_REGION"]
-ENVIRONMENT = os.environ["ENVIRONMENT"]
-MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
-
-# Initialize resources
-dynamodb = boto3.resource("dynamodb")
+# Clients
 s3 = boto3.client("s3")
+dynamodb = boto3.resource("dynamodb")
+
+print(f"Running in {os.environ.get('ENVIRONMENT', 'unknown')} environment")
+
+# Hằng số
+MAX_IMAGES = 4 # Giới hạn số lượng ảnh tối đa
+TABLE_NAME = os.environ["TABLE_NAME"]
+FAVORITES_TABLE_NAME = os.environ["FAVORITES_TABLE_NAME"]
+BUCKET_NAME = os.environ["BUCKET_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
+
 def _thumb_from_image_key(image_key: str) -> str:
-    """Generate thumbnail key from image key"""
+    """Tạo thumbnailKey từ imageKey."""
     base = os.path.basename(image_key)
     stem = os.path.splitext(base)[0]
     return f"thumbnails/{stem}_256.webp"
 
-def _optimize_image(image_data, mime_type, max_size=(1920, 1080), quality=85):
-    """Optimize image: resize if too large and compress"""
-    try:
-        image = Image.open(io.BytesIO(image_data))
-        
-        # Convert mode if needed
-        if image.mode in ('RGBA', 'LA', 'P'):
-            background = Image.new('RGB', image.size, (255, 255, 255))
-            if image.mode == 'P':
-                image = image.convert('RGBA')
-            if image.mode == 'RGBA':
-                background.paste(image, mask=image.split()[-1])
-            image = background
-        
-        # Resize if too large
-        if image.width > max_size[0] or image.height > max_size[1]:
-            image.thumbnail(max_size, Image.Resampling.LANCZOS)
-        
-        # Save optimized image
-        buffer = io.BytesIO()
-        
-        # Determine save format based on mime type
-        save_format = "JPEG"
-        if mime_type == "image/png":
-            save_format = "PNG"
-        elif mime_type == "image/webp":
-            save_format = "WEBP"
-        
-        # Save with appropriate settings
-        if save_format == "JPEG":
-            image.save(buffer, format=save_format, optimize=True, quality=quality)
-        else:
-            image.save(buffer, format=save_format, optimize=True)
-        
-        buffer.seek(0)
-        return buffer.getvalue()
-    except Exception as e:
-        print(f"Error optimizing image: {e}")
-        raise
-
-def _process_direct_image_upload(data, article_id):
-    """Process direct image upload when image_data_url or image_base64 is provided"""
-    image_key = None
-    optimized_data = None
-    
-    # Mode B: gửi base64/data URL trực tiếp (frontend có thể gửi khi upload trực tiếp)
-    image_data_url = data.get("image_data_url")
-    image_b64 = data.get("image_base64")
-    
-    if image_data_url:
-        # Process data URL format: data:image/png;base64,iVBORw0KG...
-        if "," not in image_data_url:
-            return None, _response(400, {"error": "Invalid image_data_url format"})
-        
-        header, b64 = image_data_url.split(",", 1)
-        mime = header.split(";")[0].split(":", 1)[1]  # e.g. image/png
-        
-        # Validate mime type
-        allowed_mimes = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
-        if mime not in allowed_mimes:
-            return None, _response(400, {"error": f"Unsupported image format: {mime}"})
-        
-        # Determine extension
-        ext_map = {
-            "image/png": "png",
-            "image/jpeg": "jpg",
-            "image/jpg": "jpg", 
-            "image/webp": "webp"
-        }
-        ext = ext_map[mime]
-        
-        try:
-            raw = base64.b64decode(b64)
-            if len(raw) > MAX_IMAGE_SIZE:
-                return None, _response(400, {"error": f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB"})
-            
-            optimized_data = _optimize_image(raw, mime)
-            image_key = f"articles/{article_id}.{ext}"
-            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=optimized_data, ContentType=mime, ACL="private")
-        except Exception as e:
-            return None, _response(400, {"error": f"Failed to process image: {str(e)}"})
-    
-    elif image_b64:
-        image_ext = (data.get("image_extension") or "").lower().strip()
-        if image_ext not in ("png", "jpg", "jpeg", "webp"):
-            return None, _response(400, {"error": "image_extension must be png|jpg|jpeg|webp"})
-        
-        mime_map = {
-            "png": "image/png",
-            "jpg": "image/jpeg", 
-            "jpeg": "image/jpeg",
-            "webp": "image/webp"
-        }
-        mime = mime_map[image_ext]
-        
-        try:
-            raw = base64.b64decode(image_b64)
-            if len(raw) > MAX_IMAGE_SIZE:
-                return None, _response(400, {"error": f"Image too large. Maximum size is {MAX_IMAGE_SIZE // (1024*1024)}MB"})
-            
-            optimized_data = _optimize_image(raw, mime)
-            image_key = f"articles/{article_id}.{image_ext}"
-            s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=optimized_data, ContentType=mime, ACL="private")
-        except Exception as e:
-            return None, _response(400, {"error": f"Failed to process base64 image: {str(e)}"})
-    
-    return image_key, None
 
 def lambda_handler(event, context):
-    # Xử lý OPTIONS request
-    http_method = event.get("httpMethod", event.get("requestContext", {}).get("http", {}).get("method", ""))
-    if http_method == "OPTIONS":
-        return options_response(os.environ.get("CORS_ORIGIN"))
-    
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
+    if method == "OPTIONS":
+        return options()
+
     try:
-        # Parse request body
+        # LẤY SUB TỪ COGNITO AUTHORIZER
+        rc = event.get("requestContext", {}) or {}
+        auth = rc.get("authorizer") or {}
+        claims = auth.get("claims") or {}
+
+        owner_id = claims.get("sub")
+        if not owner_id:
+            return error(401, "Unauthorized: Missing sub in token")
+
+        # Lấy username hiển thị từ token
+        display_name = (
+            claims.get("cognito:username")
+            or claims.get("preferred_username")
+            or claims.get("email")
+            or ""
+        ).strip()
+
+        # Parse body
         body_str = event.get("body") or ""
         if event.get("isBase64Encoded"):
             body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
         data = json.loads(body_str or "{}")
-        
-        # -------- required fields --------
+
+        # Validate required fields
         title = (data.get("title") or "").strip()
         content = (data.get("content") or "").strip()
-        if not title:
-            return _response(400, {"error": "title is required"}, os.environ.get("CORS_ORIGIN"))
-        if not content:
-            return _response(400, {"error": "content is required"}, os.environ.get("CORS_ORIGIN"))
-        
-        # visibility & owner
+        if not title or not content:
+            return error(400, "title and content are required")
+
+        # Validate geo
+        try:
+            lat_f = float(data["lat"])
+            lng_f = float(data["lng"])
+            if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
+                raise ValueError("Invalid coordinates")
+        except (KeyError, ValueError, TypeError):
+            return error(400, "valid lat/lng required")
+
+        # Visibility
         visibility = (data.get("visibility") or "public").lower()
         if visibility not in ("public", "private"):
-            return _response(400, {"error": "visibility must be public|private"}, os.environ.get("CORS_ORIGIN"))
-        
-        owner_id = get_user_id_from_event(event, USER_POOL_ID, CLIENT_ID, AWS_REGION)
-        if not owner_id:
-            return _response(401, {"error": "Authentication required"}, os.environ.get("CORS_ORIGIN"))
-        
-        # -------- geo: lat/lng bắt buộc --------
-        try:
-            lat_f = float(data.get("lat"))
-            lng_f = float(data.get("lng"))
-        except (TypeError, ValueError):
-            return _response(400, {"error": "lat/lng is required and must be valid numbers"}, os.environ.get("CORS_ORIGIN"))
-        
-        if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
-            return _response(400, {"error": "lat/lng out of valid range"}, os.environ.get("CORS_ORIGIN"))
-        
-        # Tạo geohash
-        geohash = geohash_encode(lat_f, lng_f, precision=9)
-        gh5 = geohash[:5]
-        
-        # -------- tags (optional) --------
+            return error(400, "visibility must be public or private")
+
+        # Tags
         tags = data.get("tags") or []
         if not isinstance(tags, list):
-            return _response(400, {"error": "tags must be an array of strings"}, os.environ.get("CORS_ORIGIN"))
-        
+            return error(400, "tags must be an array")
         tags = list({str(t).strip() for t in tags if str(t).strip()})
-        
-        # -------- image handling --------
+
+        # Location name (không bắt buộc)
+        location_name = (data.get("locationName") or "").strip()
+
+        # Article ID & time
         article_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
-        image_key = None
         
-        # Mode A: đã upload trước (presigned) - tên field phù hợp với frontend
-        if data.get("imageKey"):
-            image_key = data["imageKey"].strip()
+
+        # Logic Xử lý và Validate Multiple Images
+
+        raw_image_keys = data.get("imageKeys") or []
+        
+        # Xử lý trường hợp FE cũ chỉ gửi imageKey (string)
+        if not raw_image_keys and data.get("imageKey"):
+            raw_image_keys = [data["imageKey"]]
+            
+        # Validate kiểu dữ liệu
+        if not isinstance(raw_image_keys, list):
+            return error(400, "imageKeys must be an array")
+        
+        # Giới hạn số lượng ảnh
+        if len(raw_image_keys) > MAX_IMAGES:
+            return error(400, f"Maximum {MAX_IMAGES} images allowed per article")
+
+        # Validate từng key có tồn tại trong S3
+        valid_image_keys = []
+        for key in raw_image_keys:
+            key_str = str(key).strip()
+            if not key_str:
+                continue
+                
             try:
-                s3.head_object(Bucket=BUCKET_NAME, Key=image_key)
+                # Kiểm tra sự tồn tại trong S3 (head_object)
+                s3.head_object(Bucket=BUCKET_NAME, Key=key_str)
+                valid_image_keys.append(key_str)
+            except s3.exceptions.ClientError as e:
+                # Chỉ coi là lỗi 404 là lỗi không tìm thấy object
+                if e.response['Error']['Code'] == '404':
+                    return error(400, f"imageKey not found in S3: {key_str}")
+                # Xử lý các lỗi S3 khác
+                return error(400, f"S3 error for key {key_str}: {str(e)}")
             except Exception as e:
-                print(f"Image not found in S3: {image_key}, error: {str(e)}")
-                return _response(400, {"error": f"imageKey not found in S3: {image_key}"}, os.environ.get("CORS_ORIGIN"))
+                return error(400, f"S3 error for key {key_str}: {str(e)}")
         
-        # Mode B: upload trực tiếp qua base64/data URL
-        if not image_key and (data.get("image_data_url") or data.get("image_base64")):
-            image_key, error_resp = _process_direct_image_upload(data, article_id)
-            if error_resp:
-                return error_resp
+        # Xác định ảnh cover và thumbnail từ ảnh đầu tiên
+        cover_image_key = None
+        thumbnail_key = None
         
-        # -------- put item --------
+        if valid_image_keys:
+            cover_image_key = valid_image_keys[0] # Ảnh cover là ảnh đầu tiên
+            thumbnail_key = _thumb_from_image_key(cover_image_key) # Tạo thumbnailKey từ ảnh cover
+
+
+        # Build item
         item = {
             "articleId": article_id,
+            "ownerId": owner_id,  # sub từ Cognito để check quyền
             "title": title,
             "content": content,
             "createdAt": created_at,
             "visibility": visibility,
-            "lat": Decimal(str(lat_f)),
+            # Chuyển float sang Decimal cho DynamoDB
+            "lat": Decimal(str(lat_f)), 
             "lng": Decimal(str(lng_f)),
-            "geohash": geohash,
-            "gh5": gh5,
+            "geohash": f"{lat_f:.6f},{lng_f:.6f}",
+            "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
-            "ownerId": owner_id
         }
-        
-        if image_key:
-            item["imageKey"] = image_key
-            item["thumbnailKey"] = _thumb_from_image_key(image_key)
-        
+
+        # Thêm các fields liên quan đến ảnh vào item DynamoDB
+        if valid_image_keys:
+            item["imageKeys"] = valid_image_keys # Mảng tất cả các key ảnh
+            item["imageKey"] = cover_image_key    # Ảnh cover (ảnh đầu tiên)
+            item["thumbnailKey"] = thumbnail_key  # Thumbnail từ ảnh cover
+
+        if location_name:
+            item["locationName"] = location_name
+
+        if display_name:
+            item["username"] = display_name
+
+        # Lưu vào DynamoDB
         table.put_item(Item=item)
-        
-        # Chuẩn bị response - chuyển Decimal sang float
-        resp = convert_decimals(item)
-        return _response(201, resp, os.environ.get("CORS_ORIGIN"))
-    
-    except json.JSONDecodeError:
-        return _response(400, {"error": "Invalid JSON in request body"}, os.environ.get("CORS_ORIGIN"))
+
+        # Chuẩn bị response (chuyển Decimal → float)
+        resp = {}
+        for k, v in item.items():
+            resp[k] = float(v) if isinstance(v, Decimal) else v
+
+        print(f"Article created: {article_id} by user {owner_id}")
+        return ok(201, resp)
+
     except Exception as e:
-        print(f"Error in create_article: {e}")
-        return _response(500, {"error": f"Internal server error"}, os.environ.get("CORS_ORIGIN"))
+        print(f"Create error: {e}")
+        # Trả về lỗi 500 nếu là lỗi server không lường trước
+        return error(500, "Internal server error")

@@ -12,12 +12,6 @@ cleanup() {
     echo "Error code: $exit_code"
     echo "Command that failed: ${BASH_COMMAND}"
     echo ""
-    echo "💡 SOLUTIONS:"
-    echo "1. Check template.yaml for syntax errors (use a YAML validator)"
-    echo "2. Verify your AWS credentials are valid"
-    echo "3. Check if your AWS account has sufficient permissions"
-    echo "4. Ensure your AWS region is correct"
-    echo ""
     read -p "Press Enter to exit..."
   fi
 }
@@ -54,15 +48,17 @@ fi
 
 echo "✅  Template validated successfully"
 
-# Convert JSON parameters to Key=Value format
+# Convert JSON parameters to AWS CLI format
 if command -v python &> /dev/null; then
-    echo "🔄  Converting parameters to Key=Value format using Python..."
-    params_override=$(python -c "import json, sys; data=json.load(sys.stdin); print(' '.join([f'{k}={v}' for k,v in data.items()]))" < $PARAMS_FILE)
+    echo "🔄  Converting parameters to AWS CLI format using Python..."
+    params_override=$(python -c "import json, sys; data=json.load(sys.stdin); print(' '.join([f'ParameterKey={k},ParameterValue={v}' for k,v in data.items()]))" < $PARAMS_FILE)
 else
     echo "⚠️  Python not found. Using basic parameter conversion..."
     # Simple conversion for basic JSON
     params_override=$(cat $PARAMS_FILE | tr -d ' \n{}"')
     params_override=$(echo $params_override | sed 's/:/=/g' | sed 's/,/ /g')
+    # Convert to AWS CLI format
+    params_override=$(echo $params_override | awk -F' ' '{for(i=1;i<=NF;i++) {split($i,a,"="); printf "ParameterKey=%s,ParameterValue=%s ", a[1], a[2]}}')
 fi
 
 # Check if parameters conversion was successful
@@ -89,7 +85,7 @@ else
     DEPLOY_COMMAND="update-stack"
 fi
 
-# Deploy stack - THIS IS THE KEY FIX
+# Deploy stack
 if [[ "$DEPLOY_COMMAND" == "create-stack" ]]; then
     aws cloudformation create-stack \
         --stack-name travel-guide-core-$ENV \

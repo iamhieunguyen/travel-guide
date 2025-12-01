@@ -14,6 +14,15 @@ cleanup() {
     echo "Exit code : $exit_code"
     echo "Last cmd  : ${BASH_COMMAND}"
     echo ""
+    echo " 💡  Gợi ý:"
+    echo "  - Kiểm tra template và parameters của auth-service"
+    echo "  - Kiểm tra AWS credentials (aws sts get-caller-identity)"
+    echo "  - Xem log CloudFormation:"
+    echo "    aws cloudformation describe-stack-events \\"
+    echo "      --stack-name travel-guide-auth-$ENV \\"
+    echo "      --region $REGION \\"
+    echo "      --profile $PROFILE | head -n 40"
+    echo ""
     read -p "Press Enter to exit..."
   fi
 }

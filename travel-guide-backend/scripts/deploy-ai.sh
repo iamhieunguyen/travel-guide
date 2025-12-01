@@ -1,93 +1,93 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Trap errors to prevent window from closing immediately
+################################
+# Travel Guide - Deploy AI     #
+################################
+
 cleanup() {
   local exit_code=$?
-  if [ $exit_code -ne 0 ]; then
+  if [[ $exit_code -ne 0 ]]; then
     echo ""
     echo "========================================"
-    echo "🚨 AI SERVICE DEPLOYMENT FAILED"
+    echo "🚨 DEPLOY AI SERVICE FAILED"
     echo "========================================"
-    echo "Error code: $exit_code"
-    echo "Command that failed: ${BASH_COMMAND}"
+    echo "Exit code : $exit_code"
+    echo "Last cmd  : ${BASH_COMMAND}"
     echo ""
-    echo "🔍 DEBUGGING TIPS:"
-    echo "1. Check if core stack deployed successfully"
-    echo "2. Validate your template.yaml file for syntax errors"
-    echo "3. Check if all required dependencies are installed"
-    echo "4. Look for error details in the output above"
-    echo ""
-    read -p "Press Enter to exit..."
   fi
 }
-trap cleanup ERR EXIT
+trap cleanup EXIT
 
-ENV=${1:-staging}
-REGION=${2:-us-east-1}
-PROFILE=${3:-default}
-CORE_STACK_NAME="travel-guide-core-$ENV"
+log()  { echo -e "[$(date '+%H:%M:%S')] $*"; }
+fail() { echo -e "❌ $*" >&2; exit 1; }
 
-STACK_NAME="travel-guide-ai-service-$ENV"
-TEMPLATE_FILE="services/ai-service/template.yaml"
-PARAMS_FILE="services/ai-service/parameters/$ENV.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Create parameters file if it doesn't exist
-if [ ! -f "$PARAMS_FILE" ]; then
-    echo "⚙️  Creating parameters file for AI Service..."
-    mkdir -p services/ai-service/parameters
-    cat > $PARAMS_FILE <<EOF
-{
-  "CoreStackName": "$CORE_STACK_NAME",
-  "Environment": "$ENV"
-}
-EOF
-    echo "✅  Parameters file created at $PARAMS_FILE"
-fi
+ENV="${1:-${ENV:-staging}}"
+REGION="${AWS_REGION:-ap-southeast-1}"
+PROFILE="${AWS_PROFILE:-default}"
 
-echo "📦  Preparing to deploy AI Service stack: $STACK_NAME"
+SERVICE_NAME="ai"
+STACK_NAME="travel-guide-${SERVICE_NAME}-${ENV}"
+SERVICE_DIR="$ROOT_DIR/services/${SERVICE_NAME}-service"
+TEMPLATE_FILE="$SERVICE_DIR/template.yaml"
+PARAM_FILE="$SERVICE_DIR/parameters/${ENV}.json"
 
-# Copy shared layer to build directory for packaging
-echo "🔧  Copying shared layer dependencies..."
-mkdir -p .aws-sam/build/shared
-cp -r shared/layers/common .aws-sam/build/shared/ 2>/dev/null || echo "⚠️  Shared layer directory not found, continuing..."
-
-# Package Lambda functions and layers
-echo "📦  Packaging Lambda functions and layers..."
-
-# Check if sam is installed
-if ! command -v sam &> /dev/null; then
-    echo "❌ AWS SAM CLI is not installed. Please install it first."
-    echo "Refer to: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html"
-    exit 1
-fi
-
-sam package \
-    --template-file $TEMPLATE_FILE \
-    --output-template-file .aws-sam/build/ai-service-packaged.yaml \
-    --s3-bucket travel-guide-deployment-$ENV-$(aws sts get-caller-identity --query 'Account' --output text --profile $PROFILE) \
-    --region $REGION \
-    --profile $PROFILE
-
-# Validate template
-echo "✅  Validating CloudFormation template..."
-aws cloudformation validate-template \
-    --template-body file://.aws-sam/build/ai-service-packaged.yaml \
-    --region $REGION \
-    --profile $PROFILE &>/dev/null || (echo "❌ Template validation failed"; exit 1)
-
-echo "✅  Template validated successfully"
-
-# Deploy stack
-echo "🚀  Deploying AI Service stack..."
-aws cloudformation deploy \
-    --stack-name $STACK_NAME \
-    --template-file .aws-sam/build/ai-service-packaged.yaml \
-    --parameter-overrides file://$PARAMS_FILE \
-    --capabilities CAPABILITY_NAMED_IAM \
-    --region $REGION \
-    --profile $PROFILE \
-    --no-fail-on-empty-changeset
-
-echo "✅  AI Service stack deployed successfully"
+log "🚢 Deploy AI SERVICE"
+log "  ENV     : $ENV"
+log "  REGION  : $REGION"
+log "  PROFILE : $PROFILE"
+log "  STACK   : $STACK_NAME"
+log "  DIR     : $SERVICE_DIR"
+log "  TEMPLATE: $TEMPLATE_FILE"
+log "  PARAMS  : $PARAM_FILE"
 echo ""
+
+command -v aws >/dev/null 2>&1 || fail "Không tìm thấy 'aws' CLI"
+command -v sam >/dev/null 2>&1 || fail "Không tìm thấy 'sam' CLI"
+
+[[ -d "$SERVICE_DIR"    ]] || fail "Không tìm thấy service dir: $SERVICE_DIR"
+[[ -f "$TEMPLATE_FILE"  ]] || fail "Không tìm thấy template: $TEMPLATE_FILE"
+[[ -f "$PARAM_FILE"     ]] || fail "Không tìm thấy params: $PARAM_FILE"
+
+params_from_json() {
+  local param_file="$1"
+  if command -v jq >/dev/null 2>&1; then
+    jq -r 'to_entries | map("\(.key)=\(.value|tostring)") | .[]' "$param_file"
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 - <<PY
+import json
+from pathlib import Path
+data = json.loads(Path("$param_file").read_text(encoding="utf-8"))
+print("\\n".join(f"{k}={v}" for k, v in data.items()))
+PY
+  else
+    fail "Cần có 'jq' hoặc 'python3' để convert parameters."
+  fi
+}
+
+log "🔧 sam build (ai-service)..."
+pushd "$SERVICE_DIR" >/dev/null
+sam build
+popd >/dev/null
+echo ""
+
+log "🔄 Convert parameters..."
+PARAM_OVERRIDES="$(params_from_json "$PARAM_FILE")"
+echo "$PARAM_OVERRIDES" | sed 's/^/    - /'
+echo ""
+
+log "🚢 sam deploy (ai-service)..."
+sam deploy \
+  --stack-name "$STACK_NAME" \
+  --template-file "$TEMPLATE_FILE" \
+  --region "$REGION" \
+  --profile "$PROFILE" \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --no-confirm-changeset \
+  --no-fail-on-empty-changeset \
+  --parameter-overrides $PARAM_OVERRIDES
+
+log "✅ AI SERVICE deploy thành công"

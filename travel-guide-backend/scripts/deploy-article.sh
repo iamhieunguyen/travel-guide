@@ -1,90 +1,91 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Trap errors to prevent window from closing immediately
+###################################
+# Travel Guide - Deploy Article   #
+###################################
+
 cleanup() {
   local exit_code=$?
-  if [ $exit_code -ne 0 ]; then
+  if [[ $exit_code -ne 0 ]]; then
     echo ""
     echo "========================================"
-    echo "🚨 ARTICLE SERVICE DEPLOYMENT FAILED"
+    echo " 🚨  DEPLOY ARTICLE SERVICE FAILED"
     echo "========================================"
-    echo "Error code: $exit_code"
-    echo "Command that failed: ${BASH_COMMAND}"
-    echo ""
-    echo "🔍 DEBUGGING TIPS:"
-    echo "1. Check if core stack deployed successfully"
-    echo "2. Validate your template.yaml file for syntax errors"
-    echo "3. Check if all required dependencies are installed"
-    echo "4. Look for error details in the output above"
+    echo "Exit code : $exit_code"
+    echo "Last cmd  : ${BASH_COMMAND}"
     echo ""
     read -p "Press Enter to exit..."
   fi
 }
 trap cleanup ERR EXIT
 
-ENV=${1:-staging}
-REGION=${2:-us-east-1}
-PROFILE=${3:-default}
-CORE_STACK_NAME="travel-guide-core-$ENV"
+log()  { echo -e "[$(date '+%H:%M:%S')] $*"; }
+fail() { echo -e " ❌  $*" >&2; exit 1; }
 
-STACK_NAME="travel-guide-article-service-$ENV"
-TEMPLATE_FILE="services/article-service/template.yaml"
-PARAMS_FILE="services/article-service/parameters/$ENV.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Create parameters file if it doesn't exist
-if [ ! -f "$PARAMS_FILE" ]; then
-    echo "⚙️  Creating parameters file for Article Service..."
-    mkdir -p services/article-service/parameters
-    cat > $PARAMS_FILE <<EOF
+ENV="${1:-staging}"
+REGION="${2:-us-east-1}"
+PROFILE="${3:-default}"
+CORE_STACK_NAME="${4:-travel-guide-core-$ENV}"
+
+SERVICE_NAME="article-service"
+STACK_NAME="travel-guide-$SERVICE_NAME-$ENV"
+SERVICE_DIR="$ROOT_DIR/services/$SERVICE_NAME"
+TEMPLATE_FILE="$SERVICE_DIR/template.yaml"
+PARAM_FILE="$SERVICE_DIR/parameters/$ENV.json"
+
+log " 🚢  Deploy ARTICLE SERVICE"
+log "  ENV     : $ENV"
+log "  REGION  : $REGION"
+log "  PROFILE : $PROFILE"
+log "  STACK   : $STACK_NAME"
+log "  CORE STACK : $CORE_STACK_NAME"
+log "  DIR     : $SERVICE_DIR"
+log "  TEMPLATE: $TEMPLATE_FILE"
+log "  PARAMS  : $PARAM_FILE"
+echo ""
+
+command -v aws >/dev/null 2>&1 || fail "AWS CLI not found. Please install it."
+command -v sam >/dev/null 2>&1 || fail "SAM CLI not found. Please install it."
+[[ -d "$SERVICE_DIR"    ]] || fail "Service directory not found: $SERVICE_DIR"
+[[ -f "$TEMPLATE_FILE"  ]] || fail "Template file not found: $TEMPLATE_FILE"
+[[ -f "$PARAM_FILE"     ]] || fail "Parameters file not found: $PARAM_FILE"
+
+# Create parameters directory if it doesn't exist
+mkdir -p "$SERVICE_DIR/parameters"
+
+# Create default parameters file if it doesn't exist
+if [[ ! -f "$PARAM_FILE" ]]; then
+  log " ⚙️   Creating default parameters file..."
+  cat > "$PARAM_FILE" <<EOF
 {
   "CoreStackName": "$CORE_STACK_NAME",
   "Environment": "$ENV",
   "CorsOrigin": "*"
 }
 EOF
-    echo "✅  Parameters file created at $PARAMS_FILE"
 fi
 
-echo "📦  Preparing to deploy Article Service stack: $STACK_NAME"
+log " 🔧  sam build (article-service)..."
+pushd "$SERVICE_DIR" >/dev/null
+sam build --use-container
+popd >/dev/null
 
-# Package Lambda functions and layers
-echo "📦  Packaging Lambda functions and layers..."
+echo ""
+log " 🚢  sam deploy (article-service)..."
+sam deploy \
+  --stack-name "$STACK_NAME" \
+  --template-file "$SERVICE_DIR/.aws-sam/build/template.yaml" \
+  --region "$REGION" \
+  --profile "$PROFILE" \
+  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
+  --no-confirm-changeset \
+  --no-fail-on-empty-changeset \
+  --parameter-overrides "CoreStackName=$CORE_STACK_NAME" "Environment=$ENV" "CorsOrigin=*" \
+  --tags Environment=$ENV Service=article
 
-# Check if sam is installed
-if ! command -v sam &> /dev/null; then
-    echo "❌ AWS SAM CLI is not installed. Please install it first."
-    echo "Refer to: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html"
-    exit 1
-fi
-
-# Package the template
-sam package \
-    --template-file $TEMPLATE_FILE \
-    --output-template-file .aws-sam/build/article-service-packaged.yaml \
-    --s3-bucket travel-guide-deployment-$ENV-$(aws sts get-caller-identity --query 'Account' --output text --profile $PROFILE) \
-    --region $REGION \
-    --profile $PROFILE
-
-# Validate template
-echo "✅  Validating CloudFormation template..."
-aws cloudformation validate-template \
-    --template-body file://.aws-sam/build/article-service-packaged.yaml \
-    --region $REGION \
-    --profile $PROFILE &>/dev/null || (echo "❌ Template validation failed"; exit 1)
-
-echo "✅  Template validated successfully"
-
-# Deploy stack
-echo "🚀  Deploying Article Service stack..."
-aws cloudformation deploy \
-    --stack-name $STACK_NAME \
-    --template-file .aws-sam/build/article-service-packaged.yaml \
-    --parameter-overrides file://$PARAMS_FILE \
-    --capabilities CAPABILITY_NAMED_IAM \
-    --region $REGION \
-    --profile $PROFILE \
-    --no-fail-on-empty-changeset
-
-echo "✅  Article Service stack deployed successfully"
+log " ✅  ARTICLE SERVICE deployed successfully"
 echo ""

@@ -22,10 +22,11 @@ Resources:
     Properties:
       LayerName: !Sub article-service-common-${Environment}
       Description: Shared dependencies for article service
-      ContentUri: ../../shared/layers/common/
+      ContentUri: layer/
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
+  
   ##############################
   # LAMBDA FUNCTIONS
   ##############################
@@ -66,14 +67,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         CreateArticleApi:
           Type: Api
@@ -81,6 +74,7 @@ Resources:
             Path: /articles
             Method: POST
             RestApiId: !Ref ArticleApi
+  
   GetArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -117,14 +111,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         GetArticleApi:
           Type: Api
@@ -132,6 +118,7 @@ Resources:
             Path: /articles/{articleId}
             Method: GET
             RestApiId: !Ref ArticleApi
+  
   UpdateArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -168,14 +155,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         UpdateArticleApi:
           Type: Api
@@ -183,6 +162,7 @@ Resources:
             Path: /articles/{articleId}
             Method: PATCH
             RestApiId: !Ref ArticleApi
+  
   DeleteArticleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -203,6 +183,8 @@ Resources:
             'Fn::Sub': '${CoreStackName}-UserPoolId'
           CLIENT_ID: !ImportValue 
             'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          CLOUDFRONT_DOMAIN: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-CloudFrontDomain'
           ENVIRONMENT: !Ref Environment
           CORS_ORIGIN: !Ref CorsOrigin
       Policies:
@@ -219,14 +201,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         DeleteArticleApi:
           Type: Api
@@ -234,6 +208,7 @@ Resources:
             Path: /articles/{articleId}
             Method: DELETE
             RestApiId: !Ref ArticleApi
+  
   ListArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -265,14 +240,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         ListArticlesApi:
           Type: Api
@@ -280,6 +247,7 @@ Resources:
             Path: /articles
             Method: GET
             RestApiId: !Ref ArticleApi
+  
   SearchArticlesFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -311,14 +279,6 @@ Resources:
                 - cognito-idp:GetUser
                 - cognito-idp:AdminGetUser
               Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         SearchArticlesApi:
           Type: Api
@@ -326,6 +286,7 @@ Resources:
             Path: /search
             Method: GET
             RestApiId: !Ref ArticleApi
+  
   GetUploadUrlFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -340,20 +301,14 @@ Resources:
         Variables:
           BUCKET_NAME: !ImportValue 
             'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          CLOUDFRONT_DOMAIN: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-CloudFrontDomain'
           ENVIRONMENT: !Ref Environment
           CORS_ORIGIN: !Ref CorsOrigin
       Policies:
         - S3WritePolicy:
             BucketName: !ImportValue 
               'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-        - Version: '2012-10-17'
-          Statement:
-            - Effect: Allow
-              Action:
-                - logs:CreateLogGroup
-                - logs:CreateLogStream
-                - logs:PutLogEvents
-              Resource: "*"
       Events:
         GetUploadUrlApi:
           Type: Api
@@ -361,6 +316,7 @@ Resources:
             Path: /upload-url
             Method: POST
             RestApiId: !Ref ArticleApi
+  
   ##############################
   # API GATEWAY
   ##############################
@@ -383,6 +339,7 @@ Resources:
               Principal: "*"
               Action: execute-api:Invoke
               Resource: execute-api:/*
+
 Outputs:
   ArticleApiUrl:
     Value: !Sub "https://${ArticleApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

@@ -40,6 +40,7 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+  
   StaticSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -49,6 +50,7 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+  
   ##############################
   # DYNAMODB TABLES
   ##############################
@@ -98,6 +100,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
+  
   UserFavoritesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -113,6 +116,7 @@ Resources:
           KeyType: HASH
         - AttributeName: articleId
           KeyType: RANGE
+  
   ##############################
   # COGNITO USER POOL
   ##############################
@@ -136,6 +140,7 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
+  
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -145,6 +150,7 @@ Resources:
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
       PreventUserExistenceErrors: ENABLED
+  
   ##############################
   # CLOUDFRONT
   ##############################
@@ -153,6 +159,7 @@ Resources:
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: !Sub "OAI for Travel Guide ${Environment}"
+  
   StaticSiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -166,6 +173,7 @@ Resources:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
             Resource: !Sub "${StaticSiteBucket.Arn}/*"
+  
   ArticleImagesBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -179,6 +187,7 @@ Resources:
               AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
             Action: "s3:GetObject"
             Resource: !Sub "${ArticleImagesBucket.Arn}/*"
+  
   CloudFrontDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -243,6 +252,17 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2021
+          
+  ##############################
+  # SQS QUEUE FOR IMAGE PROCESSING
+  ##############################
+  ImageProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-image-processing-dlq
+      MessageRetentionPeriod: 1209600
+      VisibilityTimeout: 300
+
 Outputs:
   # Article Service needs these outputs
   ArticlesTableArn:
@@ -261,6 +281,10 @@ Outputs:
     Value: !GetAtt ArticleImagesBucket.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ArticleImagesBucketArn"
+  StaticSiteBucketName:
+    Value: !Ref StaticSiteBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-StaticSiteBucketName"
   UserFavoritesTableName:
     Value: !Ref UserFavoritesTable
     Export:
@@ -278,6 +302,7 @@ Outputs:
     Value: !GetAtt CloudFrontDistribution.DomainName
     Export:
       Name: !Sub "${AWS::StackName}-CloudFrontDomain"
+  # Media and AI Service needs these outputs
   ImageProcessingDLQUrl:
     Value: !Ref ImageProcessingDLQ
     Export:

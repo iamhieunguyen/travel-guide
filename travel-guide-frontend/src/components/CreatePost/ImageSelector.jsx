@@ -134,7 +134,7 @@ export default function ImageSelector({ onNext }) {
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50 p-4">
-      <div className="bg-[#f5f3f0] shadow-2xl w-full max-w-[1000px] flex flex-col relative animate-fadeIn" style={{
+      <div className="bg-[#f5f3f0] shadow-2xl w-full max-w-[1100px] flex flex-col relative animate-fadeIn" style={{
         borderRadius: "24px",
         overflow: "visible"
       }}>
@@ -149,19 +149,19 @@ export default function ImageSelector({ onNext }) {
           </button>
         </div>
 
-        <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-8 pb-8 overflow-hidden" style={{ minHeight: "560px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
+        <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-6 pb-4 overflow-hidden" style={{ minHeight: "700px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
           {images.length === 0 ? (
             <>
               <div className="flex flex-col items-center justify-center w-full h-full group px-4">
                 <div 
                   onClick={triggerFileSelect}
-                  className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-pink-400 group-hover:border-pink-500 transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-pink-200/50 relative max-w-[700px] w-full cursor-pointer" 
+                  className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-[#92ADA4]/40 group-hover:border-[#92ADA4] transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-[#92ADA4]/20 relative max-w-[700px] w-full cursor-pointer" 
                   style={{ zIndex: 30 }}
                 >
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-500 rounded-full blur-2xl opacity-40 animate-pulse"></div>
-                    <div className="relative bg-gradient-to-br from-pink-100 to-purple-100 p-6 rounded-full">
-                      <ImageIcon className="w-20 h-20 text-pink-600" strokeWidth={1.5} />
+                    <div className="absolute inset-0 bg-[#92ADA4] rounded-full blur-2xl opacity-40 animate-pulse"></div>
+                    <div className="relative bg-[#92ADA4]/20 p-6 rounded-full">
+                      <ImageIcon className="w-20 h-20 text-[#92ADA4]" strokeWidth={1.5} />
                     </div>
                   </div>
                   
@@ -174,7 +174,7 @@ export default function ImageSelector({ onNext }) {
                     </p>
                   </div>
                   
-                  <button className="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600">
+                  <button className="bg-[#92ADA4] hover:bg-[#7d9a91] text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
                     Chọn từ máy tính
                   </button>
                 </div>
@@ -191,17 +191,17 @@ export default function ImageSelector({ onNext }) {
             </>
           ) : (
             <div
-              className="relative bg-black rounded-2xl overflow-hidden flex items-center justify-center transition-all duration-300 shadow-2xl"
+              className="relative bg-black rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl animate-fadeIn"
               style={{
-                width: "620px",
-                height: "620px",
+                width: "900px",
+                height: "650px",
               }}
             >
               <div
                 className="relative w-full h-full flex items-center justify-center"
               >
                 <div
-                  className="relative"
+                  className="relative transition-all duration-300 ease-out"
                   style={{
                     width: aspect === "4:5" ? "496px" : "100%",
                     paddingTop: aspect === "original" ? "100%" : getAspectStyle(),
@@ -210,7 +210,7 @@ export default function ImageSelector({ onNext }) {
                   <img
                     src={images[currentIndex]}
                     alt={`Ảnh ${currentIndex + 1}`}
-                    className="absolute top-0 left-0 w-full h-full object-cover transition-all duration-300"
+                    className="absolute top-0 left-0 w-full h-full object-cover transition-all duration-300 ease-out"
                     style={{
                       transform: `scale(${zoom / 100})`,
                     }}
@@ -221,22 +221,22 @@ export default function ImageSelector({ onNext }) {
               <div className="absolute bottom-6 left-6" ref={aspectMenuRef}>
                 <button
                   onClick={() => setShowAspectMenu((p) => !p)}
-                  className="bg-gradient-to-r from-pink-500/90 to-purple-500/90 hover:from-pink-600 hover:to-purple-600 text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
+                  className="bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
                 >
                   <Crop size={18} />
                   <span className="text-sm font-medium">Tỉ lệ</span>
                 </button>
 
                 {showAspectMenu && (
-                  <div className="mt-3 flex flex-col bg-white/95 rounded-2xl p-3 space-y-2 w-32 backdrop-blur-sm shadow-xl border border-pink-100">
+                  <div className="mt-3 flex flex-col bg-white/95 rounded-2xl p-3 space-y-2 w-32 backdrop-blur-sm shadow-xl border border-[#92ADA4]/20">
                     {aspectRatios.map((r) => (
                       <button
                         key={r.value}
                         onClick={() => setAspect(r.value)}
                         className={`flex items-center justify-between w-full px-3 py-2 rounded-xl transition-all duration-200 ${
                           aspect === r.value
-                            ? "bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-md"
-                            : "hover:bg-pink-50 text-gray-700"
+                            ? "bg-[#92ADA4] text-white shadow-md"
+                            : "hover:bg-[#92ADA4]/10 text-gray-700"
                         }`}
                       >
                         <span className="font-medium">{r.label}</span>
@@ -256,7 +256,7 @@ export default function ImageSelector({ onNext }) {
               <div className="absolute bottom-6 right-6 flex items-center space-x-3 bg-white/95 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg">
                 <button
                   onClick={() => setZoom((prev) => Math.max(50, prev - 10))}
-                  className="text-pink-500 hover:text-pink-600 p-1 rounded-full hover:bg-pink-50 transition"
+                  className="text-[#92ADA4] hover:text-[#7d9a91] p-1 rounded-full hover:bg-[#92ADA4]/10 transition"
                 >
                   <Minus size={18} />
                 </button>
@@ -265,7 +265,7 @@ export default function ImageSelector({ onNext }) {
                 </span>
                 <button
                   onClick={() => setZoom((prev) => Math.min(200, prev + 10))}
-                  className="text-pink-500 hover:text-pink-600 p-1 rounded-full hover:bg-pink-50 transition"
+                  className="text-[#92ADA4] hover:text-[#7d9a91] p-1 rounded-full hover:bg-[#92ADA4]/10 transition"
                 >
                   <Plus size={18} />
                 </button>
@@ -275,13 +275,13 @@ export default function ImageSelector({ onNext }) {
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-pink-500 p-3 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-[#92ADA4] p-3 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
                   >
                     <ChevronLeft size={22} />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-pink-500 p-3 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white text-[#92ADA4] p-3 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110"
                   >
                     <ChevronRight size={22} />
                   </button>
@@ -307,7 +307,7 @@ export default function ImageSelector({ onNext }) {
         </div>
 
         {images.length > 0 && (
-          <div className="flex justify-between items-center py-5 px-8 bg-gradient-to-b from-purple-50/20 to-[#f5f3f0] backdrop-blur-sm rounded-b-3xl">
+          <div className="flex justify-between items-center py-3 px-8 bg-gradient-to-b from-purple-50/20 to-[#f5f3f0] backdrop-blur-sm rounded-b-3xl">
             <button
               onClick={handleBack}
               className="px-7 py-2.5 bg-white text-gray-700 rounded-full hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold text-sm border border-gray-200 hover:scale-105"
@@ -316,7 +316,7 @@ export default function ImageSelector({ onNext }) {
             </button>
             <button
               onClick={handleNext}
-              className="px-10 py-2.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white rounded-full hover:shadow-2xl transition-all duration-300 hover:scale-110 font-bold text-sm shadow-xl hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600"
+              className="px-10 py-2.5 bg-[#92ADA4] hover:bg-[#7d9a91] text-white rounded-full hover:shadow-2xl transition-all duration-300 hover:scale-110 font-bold text-sm shadow-xl"
             >
               Tiếp tục →
             </button>

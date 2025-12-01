@@ -130,7 +130,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
   return (
     <div className="flex flex-col h-full">
       {/* Search bar */}
-      <div className="p-4 bg-white border-b relative z-50">
+      <div className="p-4 bg-white border-b relative" style={{ zIndex: 10000 }}>
         <div className="relative">
           <input
             type="text"
@@ -142,7 +142,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
             }}
             onFocus={() => setShowLocationSuggestions(true)}
             placeholder="Tìm kiếm vị trí..."
-            className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none"
           />
           <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -150,16 +150,17 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
         </div>
 
         {/* Location Suggestions */}
-        {showLocationSuggestions && locationSearch && (
+        {showLocationSuggestions && locationSearch && locationSearch.length >= 2 && (
           <>
             <div 
-              className="fixed inset-0 z-[9997]" 
+              className="fixed inset-0" 
+              style={{ zIndex: 9999 }}
               onClick={() => setShowLocationSuggestions(false)}
             />
-            <div className="absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-[9998] max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 rounded-lg shadow-2xl max-h-60 overflow-y-auto" style={{ zIndex: 10001 }}>
               {isLoadingLocations ? (
                 <div className="px-4 py-3 text-sm text-gray-500 flex items-center space-x-2">
-                  <svg className="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-4 w-4 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
@@ -235,8 +236,8 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
           disabled={!position}
           className={`px-8 py-2 rounded-lg text-white font-medium transition ${
             !position
-              ? "bg-indigo-300 cursor-not-allowed"
-              : "bg-indigo-600 hover:bg-indigo-700"
+              ? "bg-gray-300 cursor-not-allowed"
+              : "bg-[#92ADA4] hover:bg-[#7d9a91]"
           }`}
         >
           Xác nhận

@@ -11,8 +11,8 @@ import {
   LayoutGrid,
   Map
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useCreatePostModal } from '../../contexts/CreatePostModalContext';
+import { useAuth } from '../../hook/useAuth';
+import { useCreatePostModal } from '../../context/CreatePostModalContext';
 import api from '../../services/article';
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker';
 import MapView from '../../components/map/MapView';

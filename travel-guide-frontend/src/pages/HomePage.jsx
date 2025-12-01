@@ -116,12 +116,25 @@ export default function HomePage() {
       if (!token) setLoading(true);
       else setLoadingMore(true);
 
-      // Luôn dùng listArticles, không dùng searchArticles để tránh case-sensitive issue
-      const response = await api.listArticles({
-        scope: scope,
-        limit: 50, // Load nhiều hơn để có đủ kết quả sau khi filter
-        nextToken: token
-      });
+      let response;
+      if (query && query.trim()) {
+        // Nếu có search query, dùng searchArticles
+        response = await api.searchArticles({
+          q: query.trim(),
+          scope: scope,
+          limit: 10,
+          nextToken: token
+        });
+        setIsSearching(true);
+      } else {
+        // Nếu không có query, dùng listArticles bình thường
+        response = await api.listArticles({
+          scope: scope,
+          limit: 10,
+          nextToken: token
+        });
+        setIsSearching(false);
+      }
 
       const postsWithLocation = await Promise.all(
         response.items.map(async (post) => {
@@ -133,30 +146,10 @@ export default function HomePage() {
         })
       );
 
-      // Filter ở FE với case-insensitive search
-      let filteredPosts = postsWithLocation;
-      if (query && query.trim()) {
-        const searchTerm = query.trim().toLowerCase();
-        filteredPosts = postsWithLocation.filter(post => {
-          const location = (post.location?.name || post.location || '').toLowerCase();
-          const locationName = (post.locationName || '').toLowerCase();
-          const title = (post.title || '').toLowerCase();
-          const content = (post.content || '').toLowerCase();
-          
-          return location.includes(searchTerm) || 
-                 locationName.includes(searchTerm) ||
-                 title.includes(searchTerm) ||
-                 content.includes(searchTerm);
-        });
-        setIsSearching(true);
-      } else {
-        setIsSearching(false);
-      }
-
       if (token) {
-        setPosts(prev => [...prev, ...filteredPosts]);
+        setPosts(prev => [...prev, ...postsWithLocation]);
       } else {
-        setPosts(filteredPosts);
+        setPosts(postsWithLocation);
       }
       setNextToken(response.nextToken);
     } catch (error) {

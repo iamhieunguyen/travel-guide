@@ -70,7 +70,7 @@ PY
 
 log "🔧 sam build (ai-service)..."
 pushd "$SERVICE_DIR" >/dev/null
-sam build
+sam build --use-container
 popd >/dev/null
 echo ""
 

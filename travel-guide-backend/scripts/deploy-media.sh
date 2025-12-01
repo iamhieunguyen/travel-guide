@@ -70,7 +70,7 @@ PY
 
 log "🔧 sam build (media-service)..."
 pushd "$SERVICE_DIR" >/dev/null
-sam build
+sam build --use-container
 popd >/dev/null
 echo ""
 

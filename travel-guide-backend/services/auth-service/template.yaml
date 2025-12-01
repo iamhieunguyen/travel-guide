@@ -158,11 +158,11 @@ Resources:
       StageName: !Ref Environment
       Name: !Sub TravelGuide-AuthAPI-${Environment}
       EndpointConfiguration: REGIONAL
-      Cors:
-        AllowMethods: "'POST,OPTIONS'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
-        AllowOrigin: !Ref CorsOrigin
-        MaxAge: "'7200'"
+      # Cors:
+      #   AllowMethods: "'POST,OPTIONS'"
+      #   AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+      #   AllowOrigin: !Ref CorsOrigin
+      #   MaxAge: "'7200'"
 Outputs:
   AuthApiUrl:
     Value: !Sub "https://${AuthApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"

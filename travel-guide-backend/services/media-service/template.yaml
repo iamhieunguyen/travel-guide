@@ -108,7 +108,9 @@ Resources:
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        deadLetterTargetArn:
+          Fn::ImportValue:
+            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
         maxReceiveCount: 3
 
   ImageAnalyzerQueue:
@@ -119,29 +121,9 @@ Resources:
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
-        maxReceiveCount: 3
-
-  DetectLabelsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-detect-labels-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
-        maxReceiveCount: 3
-
-  ContentModerationQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-content-moderation-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        deadLetterTargetArn:
+          Fn::ImportValue:
+            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
         maxReceiveCount: 3
 
   ThumbnailQueue:
@@ -152,15 +134,10 @@ Resources:
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        deadLetterTargetArn:
+          Fn::ImportValue:
+            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
         maxReceiveCount: 3
-
-  ImageProcessingDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-image-processing-dlq"
-      MessageRetentionPeriod: 1209600
-      VisibilityTimeout: 300
 
   ##############################
   # QUEUE POLICIES (ALLOW S3 TO SEND)
@@ -181,7 +158,9 @@ Resources:
             Resource: !GetAtt ImageValidatorQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+                aws:SourceArn:
+                  Fn::ImportValue:
+                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"
 
   ImageAnalyzerQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -199,43 +178,9 @@ Resources:
             Resource: !GetAtt ImageAnalyzerQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
-
-  DetectLabelsQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref DetectLabelsQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt DetectLabelsQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
-
-  ContentModerationQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref ContentModerationQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt ContentModerationQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+                aws:SourceArn:
+                  Fn::ImportValue:
+                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"
 
   ThumbnailQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -253,4 +198,6 @@ Resources:
             Resource: !GetAtt ThumbnailQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+                aws:SourceArn:
+                  Fn::ImportValue:
+                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"

@@ -60,7 +60,9 @@ Resources:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           MIN_CONFIDENCE: "75.0"
           MAX_LABELS: "5"
-          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
+          CONTENT_MODERATION_QUEUE_URL:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ContentModerationQueueUrl"
           CONFIG_BUCKET:
             Fn::ImportValue:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
@@ -75,8 +77,16 @@ Resources:
             TableName:
               Fn::ImportValue:
                 Fn::Sub: "${CoreStackName}-ArticlesTableName"
-        - SQSPollerPolicy:
-            QueueName: !GetAtt DetectLabelsQueue.QueueName
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-DetectLabelsQueueArn"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -86,7 +96,9 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt ContentModerationQueue.Arn
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ContentModerationQueueArn"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -99,7 +111,9 @@ Resources:
         DetectLabelsSQSEvent:
           Type: SQS
           Properties:
-            Queue: !GetAtt DetectLabelsQueue.Arn
+            Queue:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-DetectLabelsQueueArn"
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
@@ -136,8 +150,16 @@ Resources:
             TableName:
               Fn::ImportValue:
                 Fn::Sub: "${CoreStackName}-ArticlesTableName"
-        - SQSPollerPolicy:
-            QueueName: !GetAtt ContentModerationQueue.QueueName
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ContentModerationQueueArn"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -156,90 +178,18 @@ Resources:
         ContentModerationSQSEvent:
           Type: SQS
           Properties:
-            Queue: !GetAtt ContentModerationQueue.Arn
+            Queue:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ContentModerationQueueArn"
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
 
   ##############################
-  # SQS QUEUES
+  # SQS QUEUES - IMPORTED FROM CORE STACK
+  # Tất cả queues đã được tạo ở core-infra
+  # Queue Policies cũng đã được định nghĩa ở core-infra
   ##############################
-  DetectLabelsQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "travel-guide-${Environment}-detect-labels-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
-        maxReceiveCount: 3
-
-  ContentModerationQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "travel-guide-${Environment}-content-moderation-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
-        maxReceiveCount: 3
-
-  ImageProcessingDLQ:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-image-processing-dlq"
-      MessageRetentionPeriod: 1209600
-      VisibilityTimeout: 300
-
-
-  ##############################
-  # QUEUE POLICIES (ALLOW S3 TO SEND)
-  ##############################
-  DetectLabelsQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref DetectLabelsQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt DetectLabelsQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub
-                  - "arn:aws:s3:::${BucketName}"
-                  - BucketName:
-                      Fn::ImportValue:
-                        Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
-
-  ContentModerationQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref ContentModerationQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt ContentModerationQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn: !Sub
-                  - "arn:aws:s3:::${BucketName}"
-                  - BucketName:
-                      Fn::ImportValue:
-                        Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
 
 Outputs:
   AIServiceOutputs:

@@ -254,7 +254,7 @@ Resources:
           MinimumProtocolVersion: TLSv1.2_2021
           
   ##############################
-  # SQS QUEUE FOR IMAGE PROCESSING
+  # SQS QUEUES FOR IMAGE PROCESSING
   ##############################
   ImageProcessingDLQ:
     Type: AWS::SQS::Queue
@@ -262,6 +262,93 @@ Resources:
       QueueName: !Sub travel-guide-${Environment}-image-processing-dlq
       MessageRetentionPeriod: 1209600
       VisibilityTimeout: 300
+
+  DetectLabelsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-detect-labels-queue
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ContentModerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-content-moderation-queue
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ImageProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-image-processing-queue
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ##############################
+  # SQS QUEUE POLICIES
+  ##############################
+  DetectLabelsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DetectLabelsQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt DetectLabelsQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ContentModerationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ContentModerationQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ContentModerationQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ImageProcessingQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageProcessingQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageProcessingQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
 
 Outputs:
   # Article Service needs these outputs
@@ -307,3 +394,31 @@ Outputs:
     Value: !Ref ImageProcessingDLQ
     Export:
       Name: !Sub "${AWS::StackName}-ImageProcessingDLQUrl"
+  ImageProcessingDLQArn:
+    Value: !GetAtt ImageProcessingDLQ.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageProcessingDLQArn"
+  DetectLabelsQueueUrl:
+    Value: !Ref DetectLabelsQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-DetectLabelsQueueUrl"
+  DetectLabelsQueueArn:
+    Value: !GetAtt DetectLabelsQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-DetectLabelsQueueArn"
+  ContentModerationQueueUrl:
+    Value: !Ref ContentModerationQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-ContentModerationQueueUrl"
+  ContentModerationQueueArn:
+    Value: !GetAtt ContentModerationQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ContentModerationQueueArn"
+  ImageProcessingQueueUrl:
+    Value: !Ref ImageProcessingQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageProcessingQueueUrl"
+  ImageProcessingQueueArn:
+    Value: !GetAtt ImageProcessingQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageProcessingQueueArn"

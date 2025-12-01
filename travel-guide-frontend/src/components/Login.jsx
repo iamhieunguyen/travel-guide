@@ -39,7 +39,8 @@ export default function Login({ embed = false }) {
       if (remember) localStorage.setItem("remember_username", username);
       else localStorage.removeItem("remember_username");
 
-      navigate("/home");
+      // Reload trang để đảm bảo AuthContext load user trước
+      window.location.href = "/home";
     } catch (err) {
       setError(err.message || "Tên đăng nhập hoặc mật khẩu không đúng");
     }
@@ -47,8 +48,8 @@ export default function Login({ embed = false }) {
 
   if (embed) {
     return (
-      <form onSubmit={handleSubmit} className="space-y-6 w-full text-[#5c704d]">
-        <h2 className="text-2xl font-semibold text-[#7a8c5d] text-center mb-2">Login</h2>
+      <form onSubmit={handleSubmit} className="space-y-6 w-full text-[#0891b2]">
+        <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">Đăng nhập</h2>
 
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
@@ -63,18 +64,18 @@ export default function Login({ embed = false }) {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder=" "
-            className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2 
-              text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+            className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2 
+              text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
             required
           />
           <label
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
               transition-all duration-200 ease-in-out
               peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-              peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-              peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+              peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+              peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
           >
-            Username
+            Tên đăng nhập
           </label>
         </div>
 
@@ -85,49 +86,49 @@ export default function Login({ embed = false }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder=" "
-            className="peer w-full border border-[#9caf84] rounded-2xl px-4 pt-6 pb-2 
-              text-[#5c704d] bg-transparent outline-none focus:ring-2 focus:ring-[#9caf84]/40 transition-all"
+            className="peer w-full border border-[#06b6d4] rounded-2xl px-4 pt-6 pb-2 
+              text-[#0891b2] bg-transparent outline-none focus:ring-2 focus:ring-[#06b6d4]/40 transition-all"
             required
           />
           <label
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#9caf84] text-base bg-white px-1
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-[#06b6d4] text-base bg-white px-1
               transition-all duration-200 ease-in-out
               peer-placeholder-shown:top-1/2 peer-placeholder-shown:text-base peer-placeholder-shown:-translate-y-1/2
-              peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#5c704d]
-              peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#5c704d]"
+              peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
+              peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
           >
-            Password
+            Mật khẩu
           </label>
         </div>
 
         {/* Remember + Forgot password */}
         <div className="flex items-center justify-between text-sm mt-4">
-          <label className="flex items-center gap-2 cursor-pointer select-none text-[#5c704d]">
+          <label className="flex items-center gap-2 cursor-pointer select-none text-[#0891b2]">
             <input
               type="checkbox"
               checked={remember}
               onChange={() => setRemember(!remember)}
-              className="h-5 w-5 text-[#9caf84] border-[#9caf84] rounded-2xl focus:ring-2 focus:ring-[#9caf84]/40"
+              className="h-5 w-5 text-[#06b6d4] border-[#06b6d4] rounded-2xl focus:ring-2 focus:ring-[#06b6d4]/40"
             />
-            Remember me
+            Ghi nhớ đăng nhập
           </label>
 
           <button
             type="button"
             onClick={() => navigate("/forgot-password")}
-            className="text-[#9caf84] hover:underline"
+            className="text-[#06b6d4] hover:underline"
           >
-            Forgot password?
+            Quên mật khẩu?
           </button>
         </div>
 
         {/* Submit button */}
         <button
           type="submit"
-          className="w-full bg-[#9caf84] hover:bg-[#86a06e] text-white font-medium py-3 rounded-2xl
-            transition-all duration-300 shadow-md hover:shadow-lg mt-6"
+          className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
+            transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-6"
         >
-          Login
+          Đăng nhập
         </button>
       </form>
     );

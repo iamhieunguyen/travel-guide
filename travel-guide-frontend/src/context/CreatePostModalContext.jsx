@@ -1,7 +1,7 @@
 // context/CreatePostModalContext.jsx
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { useAuth } from "./AuthContext";
-import api from "../services/article";
+import api, { createArticleWithMultipleUploads } from "../services/article";
 
 const CreatePostModalContext = createContext();
 
@@ -12,6 +12,8 @@ export function CreatePostModalProvider({ children }) {
   const [aspect, setAspect] = useState("1:1");
   const [editMode, setEditMode] = useState(false);
   const [editPostData, setEditPostData] = useState(null);
+  const [caption, setCaption] = useState("");
+  const [privacy, setPrivacy] = useState("public");
   const { getIdToken, refreshAuth } = useAuth();
 
   const openModal = useCallback(() => {
@@ -49,6 +51,8 @@ export function CreatePostModalProvider({ children }) {
     setIsOpen(false);
     setEditMode(false);
     setEditPostData(null);
+    setCaption("");
+    setPrivacy("public");
   }, []);
 
   // Data URL -> File (có guard)
@@ -67,8 +71,7 @@ export function CreatePostModalProvider({ children }) {
     return new File([u8arr], filename, { type: mime });
   }, []);
 
-  // Nếu FE truyền full URL (CloudFront/S3), tách ra imageKey (path sau domain)
-  const normalizeImageKeyFromUrl = (maybeUrl) => {
+  const handleShare = useCallback(async (postData) => {
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -81,6 +84,7 @@ export function CreatePostModalProvider({ children }) {
         if (!refreshed) {
           throw new Error('Vui lòng đăng nhập lại');
         }
+      }
 
       console.log('✅ Token OK');
       
@@ -94,6 +98,7 @@ export function CreatePostModalProvider({ children }) {
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
+          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
         };
         
         const result = await api.updateArticle(editPostData.articleId, updateData);
@@ -103,31 +108,43 @@ export function CreatePostModalProvider({ children }) {
       
       // Nếu đang tạo mới
       console.log('🖼️ Image type:', typeof postData.image);
-      console.log('🖼️ Image value:', postData.image);
+      console.log('🖼️ Image value:', Array.isArray(postData.image) ? `Array of ${postData.image.length} images` : postData.image);
       
-      // Check if image is array (from ImageSelector)
-      const imageToUpload = Array.isArray(postData.image) ? postData.image[0] : postData.image;
-      console.log('🖼️ Image to upload:', imageToUpload?.substring(0, 100));
+      // Xử lý mảng ảnh
+      const imagesToUpload = Array.isArray(postData.image) ? postData.image : [postData.image];
+      console.log(`🖼️ Total images to upload: ${imagesToUpload.length}`);
 
-      if (imageToUpload && typeof imageToUpload === 'string' && imageToUpload.startsWith('data:image/')) {
-        console.log('📸 Uploading new image...');
-        const file = dataURLToFile(imageToUpload, 'post-image.jpg');
-        console.log('📦 File created:', file.size, 'bytes');
+      // Validate tất cả ảnh là data URL
+      const allValid = imagesToUpload.every(img => 
+        img && typeof img === 'string' && img.startsWith('data:image/')
+      );
+
+      if (allValid && imagesToUpload.length > 0) {
+        console.log(`📸 Uploading ${imagesToUpload.length} image(s)...`);
         
-        const result = await api.createArticleWithUpload({
-          file: file,
+        // Chuyển tất cả data URLs thành Files
+        const files = imagesToUpload.map((img, index) => 
+          dataURLToFile(img, `post-image-${index}.jpg`)
+        );
+        
+        console.log(`📦 Created ${files.length} file(s), total size: ${files.reduce((sum, f) => sum + f.size, 0)} bytes`);
+        
+        // Upload nhiều ảnh
+        const result = await createArticleWithMultipleUploads({
+          files: files,
           title: postData.caption,
           content: postData.caption,
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
+          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
           tags: []
         });
         console.log('✅ Upload success:', result);
         return result;
       } else {
-        console.error('❌ Image is not a data URL!');
-        console.error('Image value:', imageToUpload);
+        console.error('❌ Images are not valid data URLs!');
+        console.error('Images:', imagesToUpload);
         throw new Error('Vui lòng chọn lại ảnh. Image format không hợp lệ.');
       }
     } catch (error) {
@@ -156,7 +173,11 @@ export function CreatePostModalProvider({ children }) {
         setAspect,
         handleShare,
         editMode,
-        editPostData
+        editPostData,
+        caption,
+        setCaption,
+        privacy,
+        setPrivacy
       }}
     >
       {children}

@@ -1,202 +1,178 @@
-import os, json, uuid, base64
-import boto3
+import os
+import json
+import uuid
+import base64
 from datetime import datetime, timezone
 from decimal import Decimal
-import requests
-from jose import jwt
-from cors import ok, error, options
+import boto3
+from cors import options, ok, error # Giả định các hàm này đã được định nghĩa trong file cors.py
 
+# Clients
 s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 
+# Hằng số
+MAX_IMAGES = 4 # Giới hạn số lượng ảnh tối đa
 TABLE_NAME = os.environ["TABLE_NAME"]
 BUCKET_NAME = os.environ["BUCKET_NAME"]
-USER_POOL_ID = os.environ["USER_POOL_ID"]
-CLIENT_ID = os.environ["CLIENT_ID"]
-AWS_REGION = os.environ["AWS_REGION"]
-
 table = dynamodb.Table(TABLE_NAME)
 
-def _cors_headers():
-    return {
-        "Content-Type": "application/json",
-        # audit: có thể thay * bằng domain FE của bạn
-        "Access-Control-Allow-Origin": os.getenv("CORS_ORIGIN", "https://d1k0khib98591u.cloudfront.net"),
-        "Access-Control-Allow-Headers": "Content-Type,Authorization,X-User-Id",
-        "Access-Control-Allow-Methods": "OPTIONS,GET,POST,PATCH,DELETE",
-    }
-
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": _cors_headers(),
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
-def _get_user_id_from_jwt(token):
-    """Lấy username từ JWT token (cách frontend đang dùng)"""
-    try:
-        keys_url = f'https://cognito-idp.{AWS_REGION}.amazonaws.com/{USER_POOL_ID}/.well-known/jwks.json'
-        response = requests.get(keys_url)
-        keys = response.json()['keys']
-
-        headers = jwt.get_unverified_headers(token)
-        kid = headers['kid']
-
-        key = None
-        for k in keys:
-            if k['kid'] == kid:
-                key = k
-                break
-
-        if not key:
-            return None
-
-        user_info = jwt.decode(
-            token,
-            key,
-            algorithms=['RS256'],
-            audience=CLIENT_ID,
-            options={"verify_exp": True, "verify_aud": True}
-        )
-
-        return user_info.get('cognito:username') or user_info.get('username')
-    except Exception as e:
-        print(f"JWT verification error: {e}")
-        return None
-
-def _get_user_id(event):
-    """Hỗ trợ cả X-User-Id header và JWT token"""
-    headers = event.get("headers") or {}
-
-    # 1. Thử X-User-Id header
-    x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
-    if x_user_id:
-        return x_user_id
-
-    # 2. Thử Authorization header (JWT)
-    auth_header = headers.get("Authorization") or headers.get("authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.replace("Bearer ", "")
-        return _get_user_id_from_jwt(token)
-
-    return None
 
 def _thumb_from_image_key(image_key: str) -> str:
+    """Tạo thumbnailKey từ imageKey."""
     base = os.path.basename(image_key)
     stem = os.path.splitext(base)[0]
     return f"thumbnails/{stem}_256.webp"
 
+
 def lambda_handler(event, context):
-    method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
+    method = event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method")
     if method == "OPTIONS":
         return options()
-    try:         
+
+    try:
+        # LẤY SUB TỪ COGNITO AUTHORIZER
+        rc = event.get("requestContext", {}) or {}
+        auth = rc.get("authorizer") or {}
+        claims = auth.get("claims") or {}
+
+        owner_id = claims.get("sub")
+        if not owner_id:
+            return error(401, "Unauthorized: Missing sub in token")
+
+        # Lấy username hiển thị từ token
+        display_name = (
+            claims.get("cognito:username")
+            or claims.get("preferred_username")
+            or claims.get("email")
+            or ""
+        ).strip()
+
+        # Parse body
         body_str = event.get("body") or ""
         if event.get("isBase64Encoded"):
             body_str = base64.b64decode(body_str).decode("utf-8", errors="ignore")
         data = json.loads(body_str or "{}")
 
-        # -------- required fields --------
+        # Validate required fields
         title = (data.get("title") or "").strip()
         content = (data.get("content") or "").strip()
-        if not title:
-            return _response(400, {"error": "title is required"})
-        if not content:
-            return _response(400, {"error": "content is required"})
+        if not title or not content:
+            return error(400, "title and content are required")
 
-        # visibility & owner
+        # Validate geo
+        try:
+            lat_f = float(data["lat"])
+            lng_f = float(data["lng"])
+            if not (-90 <= lat_f <= 90 and -180 <= lng_f <= 180):
+                raise ValueError("Invalid coordinates")
+        except (KeyError, ValueError, TypeError):
+            return error(400, "valid lat/lng required")
+
+        # Visibility
         visibility = (data.get("visibility") or "public").lower()
         if visibility not in ("public", "private"):
-            return _response(400, {"error": "visibility must be public|private"})
+            return error(400, "visibility must be public or private")
 
-        owner_id = _get_user_id(event)
-        if not owner_id:
-            return _response(401, {"error": "X-User-Id or Authorization header is required"})
-
-        # -------- geo: lat/lng bắt buộc --------
-        try:
-            lat_f = float(data.get("lat"))
-            lng_f = float(data.get("lng"))
-        except Exception:
-            return _response(400, {"error": "lat/lng is required and must be numbers"})
-        if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lng_f <= 180.0):
-            return _response(400, {"error": "lat/lng out of range"})
-
-        # Sử dụng geohash_encode nếu bạn có, nếu không thì tạo thủ công
-        # geohash = geohash_encode(lat_f, lng_f, precision=9)
-        # gh5 = geohash[:5]
-        # Dành cho ví dụ, ta dùng lat/lng làm partition key đơn giản
-        geohash = f"{lat_f:.6f},{lng_f:.6f}"
-        gh5 = geohash[:13] # Ví dụ, không chính xác như geohash thật
-
-        # -------- tags (optional) --------
+        # Tags
         tags = data.get("tags") or []
         if not isinstance(tags, list):
-            return _response(400, {"error": "tags must be an array of strings"})
+            return error(400, "tags must be an array")
         tags = list({str(t).strip() for t in tags if str(t).strip()})
 
-        # -------- image handling --------
+        # Location name (không bắt buộc)
+        location_name = (data.get("locationName") or "").strip()
+
+        # Article ID & time
         article_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
-        image_key = None
+        
 
-        # Mode A: đã upload trước (presigned) - tên field phù hợp với frontend
-        if data.get("imageKey"):
-            image_key = data["imageKey"].strip()
+        # Logic Xử lý và Validate Multiple Images
+
+        raw_image_keys = data.get("imageKeys") or []
+        
+        # Xử lý trường hợp FE cũ chỉ gửi imageKey (string)
+        if not raw_image_keys and data.get("imageKey"):
+            raw_image_keys = [data["imageKey"]]
+            
+        # Validate kiểu dữ liệu
+        if not isinstance(raw_image_keys, list):
+            return error(400, "imageKeys must be an array")
+        
+        # Giới hạn số lượng ảnh
+        if len(raw_image_keys) > MAX_IMAGES:
+            return error(400, f"Maximum {MAX_IMAGES} images allowed per article")
+
+        # Validate từng key có tồn tại trong S3
+        valid_image_keys = []
+        for key in raw_image_keys:
+            key_str = str(key).strip()
+            if not key_str:
+                continue
+                
             try:
-                s3.head_object(Bucket=BUCKET_NAME, Key=image_key)
-            except Exception:
-                return _response(400, {"error": f"imageKey not found in S3: {image_key}"})
+                # Kiểm tra sự tồn tại trong S3 (head_object)
+                s3.head_object(Bucket=BUCKET_NAME, Key=key_str)
+                valid_image_keys.append(key_str)
+            except s3.exceptions.ClientError as e:
+                # Chỉ coi là lỗi 404 là lỗi không tìm thấy object
+                if e.response['Error']['Code'] == '404':
+                    return error(400, f"imageKey not found in S3: {key_str}")
+                # Xử lý các lỗi S3 khác
+                return error(400, f"S3 error for key {key_str}: {str(e)}")
+            except Exception as e:
+                return error(400, f"S3 error for key {key_str}: {str(e)}")
+        
+        # Xác định ảnh cover và thumbnail từ ảnh đầu tiên
+        cover_image_key = None
+        thumbnail_key = None
+        
+        if valid_image_keys:
+            cover_image_key = valid_image_keys[0] # Ảnh cover là ảnh đầu tiên
+            thumbnail_key = _thumb_from_image_key(cover_image_key) # Tạo thumbnailKey từ ảnh cover
 
-        # Mode B: gửi base64/data URL trực tiếp (frontend có thể gửi khi upload trực tiếp)
-        elif data.get("image_data_url") or data.get("image_base64"):
-            image_data_url = data.get("image_data_url")
-            image_b64 = data.get("image_base64")
-            if image_data_url:
-                header, b64 = image_data_url.split(",", 1)
-                mime = header.split(";")[0].split(":", 1)[1]  # e.g. image/png
-                ext = {"image/png":"png","image/jpeg":"jpg","image/jpg":"jpg","image/webp":"webp"}.get(mime, "bin")
-                raw = base64.b64decode(b64)
-                image_key = f"articles/{article_id}.{ext}"
-                s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=raw, ContentType=mime, ACL="private")
-            else:
-                image_ext = (data.get("image_extension") or "").lower().strip()
-                if image_ext not in ("png","jpg","jpeg","webp"):
-                    return _response(400, {"error": "image_extension must be png|jpg|jpeg|webp"})
-                raw = base64.b64decode(image_b64)
-                mime = {"png":"image/png","jpg":"image/jpeg","jpeg":"image/jpeg","webp":"image/webp"}[image_ext]
-                image_key = f"articles/{article_id}.{image_ext}"
-                s3.put_object(Bucket=BUCKET_NAME, Key=image_key, Body=raw, ContentType=mime, ACL="private")
 
-        # -------- put item --------
+        # Build item
         item = {
             "articleId": article_id,
+            "ownerId": owner_id,  # sub từ Cognito để check quyền
             "title": title,
             "content": content,
             "createdAt": created_at,
             "visibility": visibility,
-            "lat": Decimal(str(lat_f)),
+            # Chuyển float sang Decimal cho DynamoDB
+            "lat": Decimal(str(lat_f)), 
             "lng": Decimal(str(lng_f)),
-            "geohash": geohash,
-            "gh5": gh5,
+            "geohash": f"{lat_f:.6f},{lng_f:.6f}",
+            "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
         }
-        if image_key:
-            item["imageKey"] = image_key
-            item["thumbnailKey"] = _thumb_from_image_key(image_key)
-        if owner_id:
-            item["ownerId"] = owner_id
 
+        # Thêm các fields liên quan đến ảnh vào item DynamoDB
+        if valid_image_keys:
+            item["imageKeys"] = valid_image_keys # Mảng tất cả các key ảnh
+            item["imageKey"] = cover_image_key    # Ảnh cover (ảnh đầu tiên)
+            item["thumbnailKey"] = thumbnail_key  # Thumbnail từ ảnh cover
+
+        if location_name:
+            item["locationName"] = location_name
+
+        if display_name:
+            item["username"] = display_name
+
+        # Lưu vào DynamoDB
         table.put_item(Item=item)
 
-        # Trả về JSON: chuyển Decimal -> float
-        resp = dict(item)
-        resp["lat"] = float(resp["lat"])
-        resp["lng"] = float(resp["lng"])
+        # Chuẩn bị response (chuyển Decimal → float)
+        resp = {}
+        for k, v in item.items():
+            resp[k] = float(v) if isinstance(v, Decimal) else v
 
-        return _response(201, resp)
+        print(f"Article created: {article_id} by user {owner_id}")
+        return ok(201, resp)
 
     except Exception as e:
-        print(f"Error in create_article: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        print(f"Create error: {e}")
+        # Trả về lỗi 500 nếu là lỗi server không lường trước
+        return error(500, "Internal server error")

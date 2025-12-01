@@ -1,0 +1,2141 @@
+/* Import Font - Be Vietnam Pro: Font thiết kế riêng cho tiếng Việt */
+/* Thêm &subset=vietnamese để chỉ load ký tự tiếng Việt, tăng tốc độ */
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&subset=vietnamese&display=swap');
+
+/* --- RESET GLOBAL (chỉ áp dụng cho Landing Page) --- */
+body:has(#landing-page-wrapper),
+html:has(#landing-page-wrapper) {
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: hidden !important;
+}
+
+/* --- WRAPPER ĐỂ CÔ LẬP STYLE --- */
+#landing-page-wrapper {
+  --lp-primary: #0d9488; 
+  --lp-accent: #2dd4bf;
+  --lp-text: #0f172a;
+  --lp-text-light: #475569;
+  --lp-bg-light: #f8fafc;
+  
+  min-height: 100vh;
+  background: 
+    linear-gradient(135deg, #e0f2fe 0%, #bae6fd 30%, #7dd3fc 60%, #38bdf8 100%),
+    radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  background-attachment: fixed;
+  /* Font stack ưu tiên tiếng Việt */
+  font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif !important;
+  color: var(--lp-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  width: 100vw;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  left: 0;
+  right: 0;
+  overflow-x: hidden;
+}
+
+/* Đảm bảo các section con hiển thị đúng */
+#landing-page-wrapper > header,
+#landing-page-wrapper > section,
+#landing-page-wrapper > footer {
+  width: 100%;
+  position: relative;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Reset box-sizing và force font */
+#landing-page-wrapper,
+#landing-page-wrapper * {
+  box-sizing: border-box;
+  font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, sans-serif !important;
+}
+
+/* Đảm bảo text render mượt mà */
+#landing-page-wrapper {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- GENERAL STYLES --- */
+#landing-page-wrapper .lp-section-header {
+  text-align: center;
+  margin-bottom: 4rem; /* Tăng khoảng cách dưới header */
+  padding: 0 1rem;
+}
+#landing-page-wrapper .lp-section-header h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--lp-text);
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+#landing-page-wrapper .lp-section-header p {
+  font-size: 1.1rem;
+  color: var(--lp-text-light);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* --- MAP-LIKE BACKGROUND --- */
+#landing-page-wrapper .map-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Grid pattern (latitude/longitude lines) */
+#landing-page-wrapper .map-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(13, 148, 136, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13, 148, 136, 0.15) 1px, transparent 1px);
+  background-size: 80px 80px;
+  opacity: 0.4;
+  animation: gridMove 20s linear infinite;
+}
+
+/* Map pins (small dots) */
+#landing-page-wrapper .map-pin {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--lp-primary);
+  border-radius: 50%;
+  box-shadow: 
+    0 0 0 3px rgba(13, 148, 136, 0.2),
+    0 0 0 6px rgba(13, 148, 136, 0.1);
+  animation: pinPulse 3s ease-in-out infinite;
+}
+
+#landing-page-wrapper .map-pin-1 { top: 15%; left: 20%; animation-delay: 0s; }
+#landing-page-wrapper .map-pin-2 { top: 25%; left: 45%; animation-delay: 0.5s; }
+#landing-page-wrapper .map-pin-3 { top: 35%; left: 70%; animation-delay: 1s; }
+#landing-page-wrapper .map-pin-4 { top: 55%; left: 15%; animation-delay: 1.5s; }
+#landing-page-wrapper .map-pin-5 { top: 65%; left: 50%; animation-delay: 2s; }
+#landing-page-wrapper .map-pin-6 { top: 75%; left: 75%; animation-delay: 2.5s; }
+#landing-page-wrapper .map-pin-7 { top: 40%; left: 30%; animation-delay: 0.3s; }
+#landing-page-wrapper .map-pin-8 { top: 60%; left: 85%; animation-delay: 0.8s; }
+
+/* Route lines (connecting paths) */
+#landing-page-wrapper .map-routes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+}
+
+#landing-page-wrapper .route-line {
+  fill: none;
+  stroke: var(--lp-primary);
+  stroke-width: 2;
+  stroke-dasharray: 5, 5;
+  opacity: 0.4;
+  animation: routeDraw 8s ease-in-out infinite;
+}
+
+#landing-page-wrapper .route-1 {
+  stroke: rgba(13, 148, 136, 0.5);
+  animation-delay: 0s;
+}
+
+#landing-page-wrapper .route-2 {
+  stroke: rgba(45, 212, 191, 0.4);
+  animation-delay: 2s;
+}
+
+#landing-page-wrapper .route-3 {
+  stroke: rgba(59, 130, 246, 0.4);
+  animation-delay: 4s;
+}
+
+/* Location markers (larger pins with icons) */
+#landing-page-wrapper .map-marker {
+  position: absolute;
+  color: var(--lp-primary);
+  opacity: 0.6;
+  animation: markerFloat 6s ease-in-out infinite;
+  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+}
+
+#landing-page-wrapper .marker-1 { top: 20%; left: 25%; animation-delay: 0s; }
+#landing-page-wrapper .marker-2 { top: 45%; left: 60%; animation-delay: 1.5s; }
+#landing-page-wrapper .marker-3 { top: 70%; left: 35%; animation-delay: 3s; }
+#landing-page-wrapper .marker-4 { top: 30%; left: 80%; animation-delay: 4.5s; }
+
+/* Compass rose */
+#landing-page-wrapper .compass-rose {
+  position: absolute;
+  top: 10%;
+  right: 10%;
+  color: rgba(13, 148, 136, 0.3);
+  animation: compassRotate 20s linear infinite;
+  filter: drop-shadow(0 2px 8px rgba(13, 148, 136, 0.2));
+}
+
+/* Map texture (water/land effect) */
+#landing-page-wrapper .map-texture {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(13, 148, 136, 0.06) 0%, transparent 50%);
+  opacity: 0.6;
+  animation: texturePulse 15s ease-in-out infinite;
+}
+
+/* Additional map details for richness */
+#landing-page-wrapper .map-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px);
+  background-size: 40px 40px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+#landing-page-wrapper .map-background::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 15% 25%, rgba(13, 148, 136, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 85% 75%, rgba(45, 212, 191, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 35%);
+  opacity: 0.4;
+  pointer-events: none;
+  animation: mapGlow 20s ease-in-out infinite;
+}
+
+/* --- BACKGROUND BLOBS (for depth) --- */
+#landing-page-wrapper .lp-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: 0;
+  pointer-events: none;
+  will-change: transform;
+  opacity: 0.3;
+}
+#landing-page-wrapper .lp-blob-1 { 
+  top: 10vh; 
+  left: -10vw; 
+  width: 500px; 
+  height: 500px; 
+  background: rgba(16, 185, 129, 0.2); 
+  animation: blobFloat 25s ease-in-out infinite;
+}
+#landing-page-wrapper .lp-blob-2 { 
+  bottom: 10vh; 
+  right: -10vw; 
+  width: 600px; 
+  height: 600px; 
+  background: rgba(59, 130, 246, 0.15); 
+  animation: blobFloat 30s ease-in-out infinite 5s;
+}
+
+/* --- NAVIGATION --- */
+#landing-page-wrapper .lp-nav {
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  right: 0;
+  width: 100vw;
+  height: 70px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 2rem;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+#landing-page-wrapper .lp-brand {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 1.4rem; font-weight: 800;
+  color: var(--lp-primary); cursor: pointer;
+}
+#landing-page-wrapper .lp-brand span { display: inline-block; }
+#landing-page-wrapper .lp-nav-actions { display: flex; gap: 1rem; align-items: center; }
+
+/* --- BUTTONS --- */
+#landing-page-wrapper button.lp-btn {
+  all: unset;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 1.5rem; height: 40px;
+  border-radius: 99px !important;
+  font-weight: 600; font-size: 0.95rem;
+  cursor: pointer; transition: all 0.2s ease;
+  white-space: nowrap; 
+  font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  box-shadow: none; width: auto !important; aspect-ratio: auto !important;
+}
+#landing-page-wrapper .lp-btn-ghost { color: var(--lp-text-light); background: transparent; }
+#landing-page-wrapper .lp-btn-ghost:hover { color: var(--lp-primary); background: rgba(13, 148, 136, 0.1); }
+#landing-page-wrapper .lp-btn-primary { background: var(--lp-primary) !important; color: white !important; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3) !important; }
+#landing-page-wrapper .lp-btn-primary:hover { background: var(--lp-accent) !important; transform: translateY(-2px); }
+#landing-page-wrapper .lp-btn-outline { background: white !important; border: 1px solid #e2e8f0 !important; color: var(--lp-text) !important; }
+#landing-page-wrapper .lp-btn-outline:hover { border-color: var(--lp-primary) !important; color: var(--lp-primary) !important; }
+
+/* --- HERO SECTION - Thiết kế mới hoàn toàn --- */
+#landing-page-wrapper .lp-hero {
+  padding-top: 140px; 
+  padding-bottom: 6rem; 
+  padding-left: 2rem; 
+  padding-right: 2rem;
+  position: relative; 
+  z-index: 2;
+  margin: 0 !important;
+  width: 100%;
+  min-height: auto;
+}
+
+/* Main container - Split layout */
+#landing-page-wrapper .hero-main-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 4rem;
+  align-items: start;
+  position: relative;
+}
+
+/* Left side - Content */
+#landing-page-wrapper .hero-content-wrapper {
+  display: flex; 
+  flex-direction: column; 
+  gap: 2rem;
+  position: sticky;
+  top: 160px;
+  z-index: 3;
+}
+#landing-page-wrapper .lp-badge {
+  display: inline-flex; 
+  align-items: center; 
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem; 
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 50px;
+  border: 1px solid rgba(13, 148, 136, 0.2); 
+  font-size: 0.85rem; 
+  color: var(--lp-primary); 
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  transition: all 0.3s ease;
+  width: fit-content;
+}
+
+#landing-page-wrapper .lp-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.15);
+  border-color: var(--lp-primary);
+}
+
+#landing-page-wrapper .lp-title { 
+  font-size: 3.75rem; 
+  line-height: 1.15; 
+  font-weight: 800; 
+  margin: 0; 
+  letter-spacing: -0.04em;
+  color: var(--lp-text);
+  text-align: left;
+}
+
+#landing-page-wrapper .lp-highlight { 
+  background: linear-gradient(120deg, var(--lp-primary), var(--lp-accent), #3b82f6); 
+  background-clip: text;
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+  display: inline-block; 
+  position: relative;
+}
+
+#landing-page-wrapper .lp-desc { 
+  font-size: 1.1rem; 
+  color: var(--lp-text-light); 
+  margin: 0; 
+  line-height: 1.7;
+  text-align: left;
+}
+
+#landing-page-wrapper .lp-cta-group { 
+  display: flex; 
+  gap: 1rem; 
+  justify-content: flex-start; 
+  flex-wrap: wrap; 
+  margin: 0;
+}
+
+#landing-page-wrapper .lp-cta-btn { 
+  height: 50px !important; 
+  padding: 0 2rem !important; 
+  font-size: 1rem !important;
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+#landing-page-wrapper .lp-cta-btn:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 25px rgba(13, 148, 136, 0.3) !important;
+}
+
+/* --- HERO CARDS WRAPPER - Grid Layout mới --- */
+#landing-page-wrapper .hero-cards-wrapper {
+  position: relative; 
+  width: 100%; 
+  z-index: 2;
+}
+
+/* Cards Grid Container - Layout mới */
+#landing-page-wrapper .cards-grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+/* Decorative circles - Minimal cho map theme */
+#landing-page-wrapper .visual-circle {
+  position: absolute;
+  border-radius: 50%;
+  z-index: 0;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.2;
+}
+
+#landing-page-wrapper .circle-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, 
+    rgba(13, 148, 136, 0.15) 0%, 
+    transparent 70%);
+  top: 10%;
+  left: -5%;
+  animation: pulseCircle 20s ease-in-out infinite;
+}
+
+#landing-page-wrapper .circle-2 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, 
+    rgba(59, 130, 246, 0.12) 0%, 
+    transparent 70%);
+  bottom: 10%;
+  right: -5%;
+  animation: pulseCircle 25s ease-in-out infinite 5s;
+}
+
+/* Đảm bảo các decorative elements cũ không hiển thị */
+#landing-page-wrapper .visual-line,
+#landing-page-wrapper .floating-icon,
+#landing-page-wrapper .geo-shape,
+#landing-page-wrapper .wave-decoration,
+#landing-page-wrapper .dot-pattern {
+  display: none !important;
+}
+
+/* Info text - Layout mới */
+#landing-page-wrapper .visual-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  background: white;
+  border-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 
+    0 10px 30px -5px rgba(0,0,0,0.1),
+    0 0 0 1px rgba(13, 148, 136, 0.05);
+  color: var(--lp-text);
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+#landing-page-wrapper .visual-info:hover {
+  transform: translateX(-50%) translateY(-5px);
+  box-shadow: 
+    0 25px 50px -10px rgba(0,0,0,0.15),
+    0 0 0 2px rgba(13, 148, 136, 0.1),
+    0 0 40px rgba(13, 148, 136, 0.1);
+  border-color: var(--lp-primary);
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+}
+
+#landing-page-wrapper .visual-info p {
+  margin: 0;
+  color: var(--lp-text);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+#landing-page-wrapper .info-icon {
+  color: var(--lp-primary);
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.4s ease;
+  animation: compassPulse 3s ease-in-out infinite;
+}
+
+#landing-page-wrapper .visual-info:hover .info-icon {
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  color: white;
+  transform: scale(1.1) rotate(10deg);
+  animation: none;
+}
+
+@keyframes compassPulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1) rotate(5deg);
+    opacity: 0.8;
+  }
+}
+
+/* --- SCROLL ANIMATIONS --- */
+/* Fade in animation */
+.scroll-fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.scroll-fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Slide up animation với delay */
+.scroll-slide-up {
+  opacity: 0;
+  transform: translateY(50px) scale(0.95);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-slide-up.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* Fade in với delay cho visual-info */
+.scroll-fade-in-delay {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+  transition: opacity 1s ease-out 0.7s, 
+              transform 1s ease-out 0.7s;
+}
+
+.scroll-fade-in-delay.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+/* Card Base Style - Grid Layout mới */
+#landing-page-wrapper .lp-card {
+  background: white; 
+  padding: 0;
+  border-radius: 20px; 
+  box-shadow: 
+    0 10px 30px -5px rgba(0,0,0,0.1),
+    0 0 0 1px rgba(13, 148, 136, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Map pin effect - tạo cảm giác như pin trên bản đồ */
+#landing-page-wrapper .lp-card::before {
+  content: '';
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid var(--lp-primary);
+  opacity: 0;
+  transition: all 0.4s ease;
+  z-index: 1;
+  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+}
+
+/* Route line effect - đường kết nối từ card đến background */
+#landing-page-wrapper .lp-card::after {
+  content: '';
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(0);
+  width: 2px;
+  height: 0;
+  background: linear-gradient(180deg, var(--lp-primary), transparent);
+  opacity: 0;
+  transition: all 0.5s ease;
+  z-index: 0;
+  box-shadow: 0 0 10px rgba(13, 148, 136, 0.4);
+}
+
+/* HOVER EFFECT - Theme Bản Đồ: Zoom vào điểm trên bản đồ */
+#landing-page-wrapper .lp-card:hover {
+  transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
+  box-shadow: 
+    0 40px 80px rgba(13, 148, 136, 0.35),
+    0 0 0 3px rgba(13, 148, 136, 0.2),
+    0 0 60px rgba(13, 148, 136, 0.25),
+    0 0 100px rgba(59, 130, 246, 0.15);
+  border-color: var(--lp-primary);
+  z-index: 100 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+}
+
+/* Hiển thị pin marker khi hover */
+#landing-page-wrapper .lp-card:hover::before {
+  opacity: 1;
+  width: 16px;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 15px solid var(--lp-primary);
+  animation: pinBounce 0.6s ease-out;
+}
+
+/* Hiển thị route line khi hover */
+#landing-page-wrapper .lp-card:hover::after {
+  height: 40px;
+  opacity: 0.6;
+  transform: translateX(-50%) translateY(0);
+  animation: routePulse 2s ease-in-out infinite;
+}
+
+/* Ripple effect container - tạo bằng pseudo element */
+#landing-page-wrapper .lp-card {
+  position: relative;
+}
+
+/* Tạo ripple effect bằng pseudo element thay vì class riêng */
+#landing-page-wrapper .lp-card-img {
+  position: relative;
+}
+
+#landing-page-wrapper .lp-card-img::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.4), transparent);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+#landing-page-wrapper .lp-card:hover .lp-card-img::before {
+  animation: mapRipple 1.5s ease-out;
+}
+
+/* Hiệu ứng khác nhau cho từng card - mỗi card như một điểm trên bản đồ */
+#landing-page-wrapper .card-1:hover {
+  transform: translateY(-32px) scale(1.15) rotate(0deg) !important;
+  box-shadow: 
+    0 45px 90px rgba(13, 148, 136, 0.4),
+    0 0 0 4px rgba(13, 148, 136, 0.25),
+    0 0 70px rgba(13, 148, 136, 0.3),
+    0 0 120px rgba(59, 130, 246, 0.2);
+}
+
+#landing-page-wrapper .card-2:hover {
+  transform: translateY(-28px) scale(1.1) rotate(-2deg) !important;
+  box-shadow: 
+    0 40px 80px rgba(16, 185, 129, 0.35),
+    0 0 0 3px rgba(16, 185, 129, 0.2),
+    0 0 60px rgba(16, 185, 129, 0.25),
+    0 0 100px rgba(34, 197, 94, 0.15);
+}
+
+#landing-page-wrapper .card-2:hover::before {
+  border-bottom-color: #10b981;
+}
+
+#landing-page-wrapper .card-3:hover {
+  transform: translateY(-28px) scale(1.1) rotate(2deg) !important;
+  box-shadow: 
+    0 40px 80px rgba(59, 130, 246, 0.35),
+    0 0 0 3px rgba(59, 130, 246, 0.2),
+    0 0 60px rgba(59, 130, 246, 0.25),
+    0 0 100px rgba(96, 165, 250, 0.15);
+}
+
+#landing-page-wrapper .card-3:hover::before {
+  border-bottom-color: #3b82f6;
+}
+
+#landing-page-wrapper .card-4:hover {
+  transform: translateY(-26px) scale(1.08) rotate(-1deg) !important;
+  box-shadow: 
+    0 38px 75px rgba(245, 158, 11, 0.3),
+    0 0 0 3px rgba(245, 158, 11, 0.2),
+    0 0 55px rgba(245, 158, 11, 0.25),
+    0 0 90px rgba(251, 146, 60, 0.15);
+}
+
+#landing-page-wrapper .card-4:hover::before {
+  border-bottom-color: #f59e0b;
+}
+
+#landing-page-wrapper .card-5:hover {
+  transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
+  box-shadow: 
+    0 40px 80px rgba(13, 148, 136, 0.35),
+    0 0 0 3px rgba(13, 148, 136, 0.2),
+    0 0 60px rgba(13, 148, 136, 0.25),
+    0 0 100px rgba(59, 130, 246, 0.15);
+}
+
+#landing-page-wrapper .card-5:hover::before {
+  border-bottom-color: var(--lp-primary);
+}
+
+#landing-page-wrapper .card-6:hover {
+  transform: translateY(-24px) scale(1.06) rotate(1.5deg) !important;
+  box-shadow: 
+    0 35px 70px rgba(139, 92, 246, 0.3),
+    0 0 0 3px rgba(139, 92, 246, 0.2),
+    0 0 50px rgba(139, 92, 246, 0.25),
+    0 0 85px rgba(167, 139, 250, 0.15);
+}
+
+#landing-page-wrapper .card-6:hover::before {
+  border-bottom-color: #8b5cf6;
+}
+
+/* Card Content Container - Layout mới */
+#landing-page-wrapper .lp-card-content {
+  padding: 1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+/* Image with overlay - Thiết kế mới */
+#landing-page-wrapper .lp-card-img { 
+  position: relative;
+  width: 100%; 
+  height: 200px; 
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+#landing-page-wrapper .lp-card img { 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  display: block;
+  transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+  filter: brightness(1) saturate(1) contrast(1);
+}
+
+/* Hiệu ứng zoom như đang phóng to điểm trên bản đồ */
+#landing-page-wrapper .lp-card:hover img {
+  transform: scale(1.25) rotate(0deg);
+  filter: brightness(1.15) saturate(1.3) contrast(1.1);
+}
+
+#landing-page-wrapper .image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg, 
+    rgba(13, 148, 136, 0.05) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(0,0,0,0.2) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  border-radius: 12px;
+}
+
+#landing-page-wrapper .lp-card:hover .image-overlay {
+  opacity: 1;
+  background: linear-gradient(
+    180deg, 
+    rgba(13, 148, 136, 0.1) 0%,
+    transparent 30%,
+    transparent 70%,
+    rgba(0,0,0,0.25) 100%
+  );
+}
+
+/* Map highlight effect - như đang highlight điểm trên bản đồ */
+#landing-page-wrapper .lp-card-img::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 15px;
+  background: linear-gradient(
+    135deg,
+    rgba(13, 148, 136, 0.3),
+    rgba(59, 130, 246, 0.3),
+    rgba(13, 148, 136, 0.3)
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: -1;
+  filter: blur(8px);
+  animation: mapHighlight 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper .lp-card:hover .lp-card-img::after {
+  opacity: 0.6;
+}
+
+/* Card Meta - Layout mới hài hòa */
+#landing-page-wrapper .lp-card-meta { 
+  display: flex; 
+  align-items: flex-start; 
+  gap: 0.75rem; 
+  margin-bottom: 0.25rem;
+}
+
+#landing-page-wrapper .map-pin-icon {
+  color: var(--lp-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all 0.4s ease;
+}
+
+#landing-page-wrapper .location-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+#landing-page-wrapper .location-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--lp-text); 
+  line-height: 1.3;
+  transition: all 0.4s ease;
+}
+
+#landing-page-wrapper .lp-year { 
+  color: #64748b; 
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: all 0.4s ease;
+}
+
+/* Card Text - Thiết kế mới */
+#landing-page-wrapper .lp-card-text { 
+  font-size: 0.875rem; 
+  color: #64748b; 
+  line-height: 1.6;
+  margin: 0;
+  transition: all 0.4s ease;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Hover effects cho card content */
+#landing-page-wrapper .lp-card:hover .location-name {
+  color: var(--lp-primary);
+}
+
+#landing-page-wrapper .lp-card:hover .map-pin-icon {
+  animation: mapPinShake 0.6s ease-out;
+  color: var(--lp-primary);
+  transform: scale(1.1);
+}
+
+#landing-page-wrapper .lp-card:hover .lp-year {
+  color: var(--lp-accent);
+  font-weight: 600;
+}
+
+#landing-page-wrapper .lp-card:hover .lp-card-text {
+  color: var(--lp-text);
+}
+
+/* Cards trong grid - Không cần absolute positioning */
+#landing-page-wrapper .cards-grid-container .lp-card {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+#landing-page-wrapper .cards-grid-container .lp-card.scroll-slide-up.visible {
+  animation: cardFloat 6s ease-in-out infinite;
+}
+
+#landing-page-wrapper .card-1 { 
+  animation-delay: 0s;
+}
+
+#landing-page-wrapper .card-2 { 
+  animation-delay: 1s;
+}
+
+#landing-page-wrapper .card-3 { 
+  animation-delay: 2s;
+}
+
+#landing-page-wrapper .card-4 { 
+  animation-delay: 3s;
+}
+
+#landing-page-wrapper .card-5 { 
+  animation-delay: 4s;
+}
+
+#landing-page-wrapper .card-6 { 
+  animation-delay: 5s;
+}
+
+/* Hero Stats Inline - Tích hợp vào hero content */
+#landing-page-wrapper .hero-stats-inline {
+  display: flex;
+  gap: 2rem;
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  border: 2px solid rgba(13, 148, 136, 0.1);
+}
+
+#landing-page-wrapper .hero-stat-mini {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
+#landing-page-wrapper .mini-stat-icon {
+  color: var(--lp-primary);
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+#landing-page-wrapper .mini-stat-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+}
+
+#landing-page-wrapper .mini-stat-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 0.15rem;
+}
+
+/* --- STATS SECTION - Ẩn section cũ vì đã tích hợp vào hero --- */
+#landing-page-wrapper .lp-stats { 
+  display: none; /* Ẩn stats section cũ */
+}
+
+#landing-page-wrapper .lp-stats-container {
+  max-width: 900px; 
+  width: calc(100% - 2rem);
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: 
+    0 8px 25px -5px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(13, 148, 136, 0.06);
+  padding: 1.75rem 2rem; 
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  position: relative;
+}
+
+#landing-page-wrapper .lp-stat-item { 
+  text-align: center; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+#landing-page-wrapper .lp-stat-item:hover {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.05) 0%, rgba(45, 212, 191, 0.03) 100%);
+  transform: translateY(-3px);
+}
+
+#landing-page-wrapper .stat-icon {
+  color: var(--lp-primary);
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(45, 212, 191, 0.08));
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+#landing-page-wrapper .lp-stat-item:hover .stat-icon {
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  color: white;
+  transform: scale(1.1);
+}
+
+#landing-page-wrapper .stat-number { 
+  font-size: 2.25rem; 
+  font-weight: 800; 
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+  margin: 0.25rem 0;
+}
+
+#landing-page-wrapper .stat-label { 
+  font-size: 1rem; 
+  color: var(--lp-text); 
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
+}
+
+#landing-page-wrapper .stat-sub {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+#landing-page-wrapper .stat-divider { 
+  display: none; /* Ẩn divider trong grid layout */
+}
+
+/* --- WHY DIFFERENT SECTION --- */
+#landing-page-wrapper .lp-why-different {
+  padding: 6rem 2rem;
+  background: linear-gradient(135deg, rgba(240, 253, 250, 0.95) 0%, rgba(240, 249, 255, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  margin: 0 !important;
+}
+
+#landing-page-wrapper .comparison-grid {
+  max-width: 1100px;
+  width: calc(100% - 2rem);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+#landing-page-wrapper .comparison-item {
+  background: white;
+  border-radius: 24px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  position: relative;
+  transition: all 0.3s;
+}
+
+#landing-page-wrapper .old-way {
+  border: 2px solid #fca5a5;
+  opacity: 0.85;
+}
+
+#landing-page-wrapper .new-way {
+  border: 2px solid var(--lp-primary);
+  box-shadow: 0 15px 40px rgba(13, 148, 136, 0.15);
+}
+
+#landing-page-wrapper .new-way:hover {
+  transform: scale(1.05);
+  box-shadow: 0 20px 50px rgba(13, 148, 136, 0.25);
+}
+
+#landing-page-wrapper .comparison-label {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ef4444;
+  color: white;
+  padding: 0.4rem 1.2rem;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+#landing-page-wrapper .comparison-label.highlight {
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4);
+}
+
+#landing-page-wrapper .comparison-icon {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+#landing-page-wrapper .comparison-item h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: var(--lp-text);
+}
+
+#landing-page-wrapper .comparison-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+#landing-page-wrapper .comparison-list li {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  padding-left: 0.5rem;
+}
+
+#landing-page-wrapper .comparison-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lp-primary);
+}
+
+/* --- FEATURES SECTION --- */
+#landing-page-wrapper .lp-features { 
+  padding: 6rem 2rem; 
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  position: relative; 
+  z-index: 3; 
+  width: 100%;
+  margin: 0 !important;
+}
+#landing-page-wrapper .lp-grid { 
+  max-width: 1100px; 
+  width: calc(100% - 2rem);
+  margin: 0 auto; 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+  gap: 2.5rem; 
+}
+#landing-page-wrapper .lp-feature-item { padding: 2rem; border-radius: 20px; background: #f8fafc; transition: transform 0.3s; }
+#landing-page-wrapper .lp-feature-item:hover { background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,0.05); transform: translateY(-5px); }
+#landing-page-wrapper .lp-icon-box { width: 50px; height: 50px; background: #ccfbf1; color: var(--lp-primary); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+#landing-page-wrapper .lp-feature-item h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+#landing-page-wrapper .lp-feature-item p { color: var(--lp-text-light); font-size: 0.95rem; line-height: 1.6; }
+
+/* --- HOW IT WORKS (TIMELINE DESIGN - VERSION 2) --- */
+#landing-page-wrapper .lp-how-it-works { 
+  padding: 8rem 2rem;
+  background: linear-gradient(180deg, rgba(240, 249, 255, 0.95) 0%, rgba(255, 255, 255, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  position: relative; 
+  z-index: 3; 
+  width: 100%;
+  margin: 0 !important;
+}
+
+/* Timeline Container */
+#landing-page-wrapper .timeline-wrapper {
+  max-width: 1100px;
+  width: calc(100% - 2rem);
+  margin: 0 auto;
+  position: relative;
+  padding: 4rem 0;
+}
+
+/* Progress Track (Thanh tiến trình) */
+#landing-page-wrapper .progress-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  margin: 0 auto 6rem;
+}
+
+#landing-page-wrapper .track-line {
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 8px;
+  background: linear-gradient(90deg, var(--lp-primary), var(--lp-accent), var(--lp-primary));
+  border-radius: 99px;
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+}
+
+/* Chấm tròn trên track */
+#landing-page-wrapper .track-dot {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  background: white;
+  border: 4px solid var(--lp-primary);
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+  z-index: 2;
+  animation: dotPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper .dot-1 { left: 10%; animation-delay: 0s; }
+#landing-page-wrapper .dot-2 { left: 50%; transform: translate(-50%, -50%); animation-delay: 0.3s; }
+#landing-page-wrapper .dot-3 { right: 10%; animation-delay: 0.6s; }
+
+/* Timeline Steps Container */
+#landing-page-wrapper .timeline-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3rem; /* Khoảng cách lớn giữa các card */
+  position: relative;
+}
+
+/* Timeline Step */
+#landing-page-wrapper .timeline-step {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+/* Card nổi (floating) */
+#landing-page-wrapper .timeline-card {
+  background: white;
+  border-radius: 28px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  border: 2px solid rgba(13, 148, 136, 0.15);
+  text-align: center;
+  position: relative;
+  transition: all 0.4s ease;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* Step top (1, 3) */
+#landing-page-wrapper .step-top .timeline-card {
+  transform: translateY(-50px); /* Nổi lên phía trên */
+}
+
+/* Step bottom (2) */
+#landing-page-wrapper .step-bottom .timeline-card {
+  transform: translateY(30px); /* Đẩy xuống phía dưới */
+}
+
+#landing-page-wrapper .timeline-card:hover {
+  transform: translateY(-60px) scale(1.05); /* Nổi cao hơn khi hover */
+  box-shadow: 0 25px 60px rgba(13, 148, 136, 0.2);
+  border-color: var(--lp-primary);
+}
+
+#landing-page-wrapper .step-bottom .timeline-card:hover {
+  transform: translateY(20px) scale(1.05);
+}
+
+/* Số lớn ở góc card */
+#landing-page-wrapper .card-number {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 3.5rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  opacity: 0.2;
+  z-index: 0;
+  line-height: 1;
+}
+
+/* Icon */
+#landing-page-wrapper .card-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  background: linear-gradient(135deg, #e0f2fe, #ccfbf1);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lp-primary);
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  transition: all 0.3s;
+}
+
+#landing-page-wrapper .timeline-card:hover .card-icon {
+  transform: rotate(10deg) scale(1.1);
+  background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
+  color: white;
+}
+
+#landing-page-wrapper .timeline-step h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 1rem 0;
+  color: var(--lp-text);
+  position: relative;
+  z-index: 1;
+}
+
+#landing-page-wrapper .timeline-step p {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--lp-text-light);
+  margin: 0;
+}
+
+/* --- EXPLORE DESTINATIONS (Thay thế Trending) --- */
+#landing-page-wrapper .lp-explore { 
+  padding: 6rem 2rem; 
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  position: relative; 
+  z-index: 3; 
+  width: 100%;
+  margin: 0 !important;
+}
+
+#landing-page-wrapper .explore-grid {
+  max-width: 1200px; 
+  width: calc(100% - 2rem);
+  margin: 0 auto; 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+  gap: 2rem;
+}
+
+#landing-page-wrapper .explore-card {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  transition: all 0.4s ease;
+  cursor: pointer;
+  position: relative;
+}
+
+#landing-page-wrapper .explore-card:hover {
+  transform: translateY(-12px);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+  border-color: var(--lp-primary);
+}
+
+#landing-page-wrapper .explore-image {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+}
+
+#landing-page-wrapper .explore-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+#landing-page-wrapper .explore-card:hover .explore-image img {
+  transform: scale(1.1);
+}
+
+#landing-page-wrapper .explore-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.4) 100%);
+}
+
+#landing-page-wrapper .explore-content {
+  padding: 2rem 1.5rem;
+  position: relative;
+}
+
+#landing-page-wrapper .explore-icon {
+  position: absolute;
+  top: -30px;
+  right: 1.5rem;
+  width: 60px;
+  height: 60px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lp-primary);
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+  border: 4px solid white;
+}
+
+#landing-page-wrapper .explore-content h3 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  color: var(--lp-text);
+}
+
+#landing-page-wrapper .explore-desc {
+  font-size: 0.95rem;
+  color: var(--lp-text-light);
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+  min-height: 3rem;
+}
+
+#landing-page-wrapper .explore-stats {
+  display: flex;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+#landing-page-wrapper .stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--lp-text-light);
+}
+
+#landing-page-wrapper .stat-item strong {
+  color: var(--lp-primary);
+  font-weight: 700;
+}
+
+#landing-page-wrapper .lp-center-btn { 
+  text-align: center; 
+  margin-top: 3rem; 
+}
+
+/* --- COMMUNITY MAP SECTION --- */
+#landing-page-wrapper .lp-community-map {
+  padding: 6rem 2rem;
+  background: rgba(248, 250, 252, 0.95);
+  backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  margin: 0 !important;
+}
+
+#landing-page-wrapper .map-content-wrapper {
+  max-width: 1200px;
+  width: calc(100% - 2rem);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+#landing-page-wrapper .map-text {
+  display: flex;
+  flex-direction: column;
+}
+
+#landing-page-wrapper .map-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid var(--lp-primary);
+  border-radius: 99px;
+  color: var(--lp-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  width: fit-content;
+  margin-bottom: 1.5rem;
+}
+
+#landing-page-wrapper .map-text h2 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: var(--lp-text);
+  line-height: 1.2;
+}
+
+#landing-page-wrapper .map-text > p {
+  font-size: 1.1rem;
+  color: var(--lp-text-light);
+  line-height: 1.7;
+  margin-bottom: 2rem;
+}
+
+#landing-page-wrapper .map-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+#landing-page-wrapper .map-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 1rem;
+  color: var(--lp-text);
+}
+
+#landing-page-wrapper .map-feature-item svg {
+  color: var(--lp-primary);
+  flex-shrink: 0;
+}
+
+#landing-page-wrapper .map-visual {
+  position: relative;
+}
+
+#landing-page-wrapper .map-mockup {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  border: 8px solid white;
+}
+
+#landing-page-wrapper .map-mockup img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: brightness(0.9);
+}
+
+#landing-page-wrapper .map-pins {
+  position: absolute;
+  inset: 0;
+}
+
+#landing-page-wrapper .pin {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: var(--lp-primary);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.5);
+  animation: pinPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper .pin::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border: 2px solid var(--lp-primary);
+  border-radius: 50%;
+  opacity: 0;
+  animation: pingPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper .pin-1 { top: 25%; left: 20%; animation-delay: 0s; }
+#landing-page-wrapper .pin-2 { top: 40%; left: 65%; animation-delay: 0.4s; }
+#landing-page-wrapper .pin-3 { top: 60%; left: 35%; animation-delay: 0.8s; }
+#landing-page-wrapper .pin-4 { top: 70%; left: 75%; animation-delay: 1.2s; }
+#landing-page-wrapper .pin-5 { top: 30%; left: 80%; animation-delay: 1.6s; }
+
+/* --- FAQ --- */
+#landing-page-wrapper .lp-faq { 
+  padding: 6rem 2rem; 
+  background: rgba(248, 250, 252, 0.95);
+  backdrop-filter: blur(10px);
+  position: relative; 
+  z-index: 3; 
+  width: 100%;
+  margin: 0 !important;
+}
+#landing-page-wrapper .faq-container { 
+  max-width: 700px; 
+  width: calc(100% - 2rem);
+  margin: 0 auto; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1rem; 
+}
+#landing-page-wrapper .faq-item { background: white; border-radius: 16px; padding: 1.5rem; cursor: pointer; transition: all 0.3s; border: 1px solid #e2e8f0; }
+#landing-page-wrapper .faq-item:hover { border-color: var(--lp-primary); }
+#landing-page-wrapper .faq-question { display: flex; justify-content: space-between; align-items: center; }
+#landing-page-wrapper .faq-question h3 { font-size: 1.1rem; font-weight: 600; margin: 0; }
+#landing-page-wrapper .arrow { transition: transform 0.3s; color: var(--lp-text-light); }
+#landing-page-wrapper .arrow.rotate { transform: rotate(180deg); }
+#landing-page-wrapper .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+#landing-page-wrapper .faq-item.open .faq-answer { max-height: 150px; margin-top: 1rem; }
+#landing-page-wrapper .faq-answer p { color: var(--lp-text-light); line-height: 1.6; margin: 0; }
+
+/* --- FOOTER CTA --- */
+#landing-page-wrapper .lp-footer-cta { 
+  padding: 5rem 2rem; 
+  background: var(--lp-primary); 
+  text-align: center; 
+  color: white; 
+  position: relative; 
+  z-index: 3; 
+  width: 100%;
+  margin: 0 !important;
+}
+#landing-page-wrapper .lp-footer-cta h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
+#landing-page-wrapper .lp-footer-cta p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+#landing-page-wrapper .lp-cta-btn-large {
+  background: white !important; color: var(--lp-primary) !important;
+  height: 56px !important; padding: 0 2.5rem !important;
+  font-size: 1.1rem !important; border-radius: 99px !important;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+}
+#landing-page-wrapper .lp-cta-btn-large:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(0,0,0,0.2) !important; }
+
+/* --- FOOTER --- */
+#landing-page-wrapper .lp-footer { 
+  background: #0f172a; 
+  color: #e2e8f0; 
+  padding: 4rem 2rem 2rem; 
+  position: relative; 
+  z-index: 3;
+  margin: 0 !important; 
+  width: 100%;
+  max-width: 100%;
+  display: block !important;
+}
+#landing-page-wrapper .footer-content { 
+  max-width: 1100px; 
+  width: calc(100% - 2rem);
+  margin: 0 auto; 
+  display: flex; 
+  flex-wrap: wrap; 
+  justify-content: space-between; 
+  gap: 3rem; 
+}
+#landing-page-wrapper .footer-brand { max-width: 300px; }
+#landing-page-wrapper .brand-row { display: flex; align-items: center; gap: 0.5rem; font-size: 1.5rem; font-weight: 700; color: white; margin-bottom: 1rem; }
+#landing-page-wrapper .footer-brand p { color: #94a3b8; font-size: 0.9rem; }
+#landing-page-wrapper .footer-links { display: flex; gap: 4rem; flex-wrap: wrap; }
+#landing-page-wrapper .link-col { display: flex; flex-direction: column; gap: 0.8rem; }
+#landing-page-wrapper .link-col h4 { color: white; font-weight: 600; margin-bottom: 0.5rem; }
+#landing-page-wrapper .link-col a,
+#landing-page-wrapper .footer-link { 
+  color: #94a3b8; 
+  text-decoration: none; 
+  font-size: 0.95rem; 
+  transition: color 0.2s; 
+  cursor: pointer;
+}
+#landing-page-wrapper .link-col a:hover,
+#landing-page-wrapper .footer-link:hover { 
+  color: var(--lp-primary); 
+}
+
+/* --- ANIMATION --- */
+@keyframes float { 
+  0%, 100% { transform: translate(-50%, 0) rotate(0deg); } 
+  50% { transform: translate(-50%, -15px) rotate(0deg); } 
+}
+
+/* GENTLE FLOAT - Animation thống nhất cho tất cả cards */
+@keyframes gentleFloat {
+  0%, 100% { 
+    transform: translateY(0); 
+  }
+  50% { 
+    transform: translateY(-15px); 
+  }
+}
+
+@keyframes cardFloat {
+  0%, 100% { 
+    transform: translateY(0) scale(1); 
+  }
+  50% { 
+    transform: translateY(-8px) scale(1.02); 
+  }
+}
+
+/* Map-themed animations */
+@keyframes pinBounce {
+  0% {
+    transform: translateX(-50%) translateY(-10px) scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-50%) translateY(2px) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes routePulse {
+  0%, 100% {
+    opacity: 0.4;
+    height: 40px;
+  }
+  50% {
+    opacity: 0.7;
+    height: 45px;
+  }
+}
+
+@keyframes mapRipple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.8;
+  }
+  100% {
+    width: 300px;
+    height: 300px;
+    opacity: 0;
+  }
+}
+
+@keyframes mapHighlight {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mapPinShake {
+  0%, 100% {
+    transform: translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-3px) rotate(-5deg);
+  }
+  75% {
+    transform: translateX(3px) rotate(5deg);
+  }
+}
+
+/* Animation cho blob float */
+@keyframes blobFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -30px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+}
+
+/* Map background animations */
+@keyframes gridMove {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 80px 80px;
+  }
+}
+
+@keyframes pinPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+    box-shadow: 
+      0 0 0 3px rgba(13, 148, 136, 0.2),
+      0 0 0 6px rgba(13, 148, 136, 0.1);
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 1;
+    box-shadow: 
+      0 0 0 5px rgba(13, 148, 136, 0.3),
+      0 0 0 10px rgba(13, 148, 136, 0.15),
+      0 0 20px rgba(13, 148, 136, 0.2);
+  }
+}
+
+@keyframes routeDraw {
+  0% {
+    stroke-dashoffset: 100;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.3;
+  }
+}
+
+@keyframes markerFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-10px) scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes compassRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes texturePulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mapGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1) rotate(0deg);
+  }
+  33% {
+    opacity: 0.5;
+    transform: scale(1.1) rotate(2deg);
+  }
+  66% {
+    opacity: 0.4;
+    transform: scale(0.95) rotate(-2deg);
+  }
+}
+
+@keyframes lineSlide {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+@keyframes iconFloat {
+  0%, 100% { 
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.85;
+  }
+  50% { 
+    transform: translateY(-25px) rotate(10deg);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseCircle {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes patternMove {
+  0% {
+    background-position: 0 0, 25px 25px;
+  }
+  100% {
+    background-position: 50px 50px, 75px 75px;
+  }
+}
+
+@keyframes shapeRotate {
+  0% { transform: rotate(45deg); }
+  100% { transform: rotate(405deg); }
+}
+
+@keyframes shapePulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 0.15;
+  }
+  50% { 
+    transform: scale(1.3); 
+    opacity: 0.25;
+  }
+}
+
+@keyframes shapeFloat {
+  0%, 100% { 
+    transform: translateY(0);
+  }
+  50% { 
+    transform: translateY(-25px);
+  }
+}
+
+@keyframes waveMove {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-50px);
+  }
+}
+
+@keyframes arrowPulse {
+  0%, 100% { 
+    opacity: 0.5; 
+    transform: translateX(0);
+  }
+  50% { 
+    opacity: 0.8; 
+    transform: translateX(5px);
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    border-width: 4px;
+  }
+  50% {
+    box-shadow: 0 6px 25px rgba(13, 148, 136, 0.6), 0 0 0 8px rgba(13, 148, 136, 0.1);
+    border-width: 5px;
+  }
+}
+
+@keyframes pinPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+@keyframes pingPulse {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 1024px) {
+  #landing-page-wrapper .hero-main-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+  
+  #landing-page-wrapper .hero-content-wrapper {
+    position: relative;
+    top: 0;
+    text-align: center;
+  }
+  
+  #landing-page-wrapper .lp-title {
+    text-align: center;
+    font-size: 3rem;
+  }
+  
+  #landing-page-wrapper .lp-desc {
+    text-align: center;
+  }
+  
+  #landing-page-wrapper .lp-cta-group {
+    justify-content: center;
+  }
+  
+  #landing-page-wrapper .hero-stats-inline {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  #landing-page-wrapper .lp-title { 
+    font-size: 2.5rem; 
+  }
+  #landing-page-wrapper .desktop-br { 
+    display: none; 
+  }
+  
+  #landing-page-wrapper .hero-main-container {
+    padding: 0 1rem;
+    gap: 2rem;
+  }
+  
+  #landing-page-wrapper .cards-grid-container {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  
+  #landing-page-wrapper .lp-cta-group { 
+    flex-direction: column; 
+    width: 100%; 
+  }
+  #landing-page-wrapper .lp-cta-btn { 
+    width: 100% !important; 
+  }
+  
+  #landing-page-wrapper .hero-stats-inline {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  #landing-page-wrapper .hero-stat-mini {
+    justify-content: center;
+  }
+  
+  /* Hide decorative elements on mobile for cleaner look */
+  #landing-page-wrapper .floating-icon,
+  #landing-page-wrapper .dot-pattern,
+  #landing-page-wrapper .visual-line,
+  #landing-page-wrapper .geo-shape,
+  #landing-page-wrapper .wave-decoration {
+    display: none !important;
+  }
+  
+  /* Keep only subtle circles on mobile */
+  #landing-page-wrapper .circle-3,
+  #landing-page-wrapper .circle-4 {
+    display: none;
+  }
+  #landing-page-wrapper .lp-stats-container { flex-direction: column; gap: 1.5rem; }
+  #landing-page-wrapper .stat-divider { width: 50px; height: 1px; }
+  
+  /* Timeline: Chuyển layout dọc đơn giản trên mobile */
+  #landing-page-wrapper .progress-track,
+  #landing-page-wrapper .track-line,
+  #landing-page-wrapper .track-dot {
+    display: none; /* Ẩn thanh track trên mobile */
+  }
+  
+  #landing-page-wrapper .timeline-steps { 
+    grid-template-columns: 1fr; 
+    gap: 2rem;
+  }
+  
+  #landing-page-wrapper .step-top .timeline-card,
+  #landing-page-wrapper .step-bottom .timeline-card {
+    transform: none !important; /* Bỏ offset trên mobile */
+  }
+  
+  #landing-page-wrapper .timeline-card:hover {
+    transform: translateY(-8px) !important;
+  }
+  
+  /* Stats responsive */
+  #landing-page-wrapper .lp-stats-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 2rem 1.5rem;
+  }
+  #landing-page-wrapper .lp-stat-item {
+    padding: 1rem;
+  }
+  
+  /* Why Different responsive */
+  #landing-page-wrapper .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+  #landing-page-wrapper .comparison-arrow {
+    transform: rotate(90deg);
+  }
+  
+  /* Community Map responsive */
+  #landing-page-wrapper .map-content-wrapper {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  /* Explore section responsive */
+  #landing-page-wrapper .explore-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  #landing-page-wrapper .footer-content { flex-direction: column; gap: 2rem; }
+  #landing-page-wrapper .footer-links { gap: 2rem; }
+}

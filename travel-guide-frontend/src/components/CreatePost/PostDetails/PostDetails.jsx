@@ -3,43 +3,57 @@ import { useState, useEffect } from "react";
 import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 import { EMOJI_LIST } from "../../../assets/emojis";
 
-export default function PostDetails({ image = [], locationData, onBack, onAddLocation, onLocationSelect, onShare }) {
-  const { editMode, editPostData, closeModal } = useCreatePostModal();
-  const [caption, setCaption] = useState("");
+export default function PostDetails({ 
+  image = [], 
+  locationData, 
+  onBack, 
+  onAddLocation, 
+  onLocationSelect, 
+  onShare 
+}) {
+  // ✅ Lấy caption và privacy từ Context để giữ khi chuyển trang
+  const { editMode, editPostData, closeModal, handleShare, caption, setCaption, privacy, setPrivacy } = useCreatePostModal();
+  
   const [activeIndex, setActiveIndex] = useState(0);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [locationSearch, setLocationSearch] = useState(locationData?.locationName || "");
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
-  const [privacy, setPrivacy] = useState("public");
-
-  // Load dữ liệu khi ở chế độ edit
+  const [hasLoadedEditData, setHasLoadedEditData] = useState(false);
+  
+  // Debug locationData
   useEffect(() => {
-    if (editMode && editPostData) {
-      setCaption(editPostData.content || editPostData.title || "");
-      setPrivacy(editPostData.visibility || "public");
-      if (editPostData.location) {
-        const locationName = editPostData.location.name || editPostData.location;
-        setLocationSearch(locationName);
-        // Set location data nếu có
-        if (editPostData.lat && editPostData.lng) {
-          onLocationSelect({
-            locationName: locationName,
-            position: { 
-              lat: editPostData.lat, 
-              lng: editPostData.lng 
-            }
-          });
-        }
-      }
+    console.log('📍 LocationData changed:', locationData);
+  }, [locationData]);
+  
+  // Load dữ liệu khi ở chế độ edit - CHỈ caption và privacy
+  useEffect(() => {
+    if (editMode && editPostData && !hasLoadedEditData) {
+      setHasLoadedEditData(true);
+      console.log('📝 Loading edit data:', editPostData);
+      const initialCaption = editPostData.content || editPostData.title || "";
+      const initialPrivacy = editPostData.visibility || "public";
+      console.log('📝 Initial caption:', initialCaption);
+      console.log('📝 Initial privacy:', initialPrivacy);
+      
+      setCaption(initialCaption);
+      setPrivacy(initialPrivacy);
     }
-  }, [editMode, editPostData, onLocationSelect]);
+  }, [editMode, editPostData, hasLoadedEditData]);
+  
+  // Update locationSearch khi locationData thay đổi
+  useEffect(() => {
+    if (locationData?.locationName) {
+      setLocationSearch(locationData.locationName);
+    }
+  }, [locationData]);
 
   // Tìm kiếm vị trí
   useEffect(() => {
     if (!locationSearch || locationSearch.length < 2) {
       setLocationSuggestions([]);
+      setShowLocationSuggestions(false);
       return;
     }
 
@@ -60,9 +74,11 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
         }));
         
         setLocationSuggestions(suggestions);
+        setShowLocationSuggestions(true);
       } catch (error) {
         console.error("Error fetching locations:", error);
         setLocationSuggestions([]);
+        setShowLocationSuggestions(false);
       } finally {
         setIsLoadingLocations(false);
       }
@@ -86,16 +102,20 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
 
   const handleSharePost = async () => {
     try {
+      console.log('🔍 Current locationData:', locationData);
+      console.log('🔍 Current caption:', caption);
+      console.log('🔍 Current privacy:', privacy);
+      
       // Validate dữ liệu
-      if (!caption || !locationData) {
+      if (!caption?.trim() || !locationData) {
         alert('Vui lòng nhập caption và chọn vị trí');
         return;
       }
 
       // Chuẩn bị dữ liệu để gửi
       const postData = {
-        image: currentImage,
-        caption: caption,
+        image: image,
+        caption: caption.trim(),
         location: {
           name: locationData.locationName,
           lat: locationData.position.lat,
@@ -107,90 +127,125 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
       console.log('📤 Dữ liệu đăng bài:', postData);
       
       // Gọi hàm xử lý đăng bài từ context
-      let uploadSuccess = false;
-      try {
-        await onShare(postData);
-        console.log('✅ Upload completed successfully');
-        uploadSuccess = true;
-      } catch (uploadError) {
-        // Bỏ qua lỗi CORS vì backend đã nhận được request
-        console.warn('⚠️ Upload error (might be CORS):', uploadError.message);
-        // Vẫn coi như thành công nếu là CORS error
-        uploadSuccess = true;
+      await handleShare(postData);
+      
+      // Hiển thị toast
+      const message = editMode ? 'Cập nhật bài viết thành công!' : 'Đăng bài thành công!';
+      if (window.showSuccessToast) {
+        window.showSuccessToast(message);
       }
       
-      if (uploadSuccess) {
-        // Đóng modal trước
+      // Đóng modal sau 500ms
+      setTimeout(() => {
         closeModal();
         
         // Reset form
         setCaption('');
         setLocationSearch('');
+        setShowLocationSuggestions(false);
+        setHasLoadedEditData(false);
         
-        // Hiển thị thông báo sau khi đóng modal
-        setTimeout(() => {
-          alert(editMode ? '✅ Cập nhật bài viết thành công!' : '✅ Đăng bài thành công!');
-        }, 300);
-      }
+        // Reload trang nếu là edit mode
+        if (editMode) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }, 500);
       
     } catch (error) {
-      console.error('❌ Unexpected error:', error);
-      alert('Lỗi không mong muốn: ' + error.message);
+      console.error('❌ Lỗi khi đăng bài:', error);
+      alert('Lỗi: ' + (error.message || 'Không thể đăng bài. Vui lòng thử lại.'));
     }
   };
 
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4">
       {/* --- Ảnh preview (50%) --- */}
-      <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-gray-100 rounded-xl overflow-hidden border relative">
+      <div className="md:w-1/2 w-full flex flex-col justify-center items-center bg-black rounded-xl overflow-hidden relative">
+        {currentImage && (
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div
+              className="relative"
+              style={{
+                width: aspect === "4:5" ? "80%" : "100%",
+                paddingTop: aspect === "original" ? "100%" : getAspectStyle(),
+              }}
+            >
+              <img
+                src={currentImage}
+                alt="preview"
+                className="absolute top-0 left-0 w-full h-full object-cover transition-all"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Navigation buttons - chỉ hiện khi có nhiều ảnh */}
         {Array.isArray(image) && image.length > 1 && (
           <>
-            {/* Nút chuyển ảnh */}
             <button
               onClick={() =>
                 setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
               }
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
+              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
             >
-              ←
+              <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
             <button
               onClick={() =>
                 setActiveIndex((prev) => (prev === image.length - 1 ? 0 : prev + 1))
               }
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/70 hover:bg-white rounded-full p-2 shadow"
+              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
             >
-              →
+              <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
+            
+            {/* Counter badge */}
+            <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
+              {activeIndex + 1} / {image.length}
+            </div>
+            
+            {/* Indicators dots */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+              {image.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === activeIndex 
+                      ? "bg-white w-8" 
+                      : "bg-white/50 w-2 hover:bg-white/75"
+                  }`}
+                />
+              ))}
+            </div>
           </>
         )}
 
-        {/* Ảnh hiện tại */}
-        {currentImage && (
-          <div className="relative w-full" style={{ paddingTop: getAspectStyle() }}>
-            <img
-              src={currentImage}
-              alt="preview"
-              className="absolute top-0 left-0 w-full h-full object-cover rounded-xl transition-all"
-            />
-          </div>
-        )}
-
-        {/* Thumbnail preview */}
+        {/* Thumbnails - hiện ở dưới cùng khi có nhiều ảnh */}
         {Array.isArray(image) && image.length > 1 && (
-          <div className="flex space-x-2 mt-2 absolute bottom-2">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
             {image.map((src, idx) => (
-              <img
+              <button
                 key={idx}
-                src={src}
-                alt={`thumb-${idx}`}
                 onClick={() => setActiveIndex(idx)}
-                className={`w-12 h-12 rounded-md cursor-pointer border-2 transition ${
+                className={`relative rounded-lg overflow-hidden transition-all ${
                   idx === activeIndex
-                    ? "border-indigo-600"
-                    : "border-transparent hover:opacity-80"
+                    ? "ring-2 ring-white scale-110"
+                    : "opacity-60 hover:opacity-100"
                 }`}
-              />
+              >
+                <img
+                  src={src}
+                  alt={`thumb-${idx}`}
+                  className="w-14 h-14 object-cover"
+                />
+              </button>
             ))}
           </div>
         )}
@@ -205,11 +260,13 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
           </label>
           <textarea
             value={caption}
-            onChange={(e) => setCaption(e.target.value)}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setCaption(newValue);
+            }}
             placeholder="Viết caption của bạn..."
             className="w-full h-28 p-3 pb-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none"
           />
-          {/* Nút chọn emoji */}
           <button
             type="button"
             onClick={() => setShowEmojiPicker(!showEmojiPicker)}
@@ -221,18 +278,13 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
             </svg>
           </button>
           
-          {/* Emoji picker */}
           {showEmojiPicker && (
             <>
-              {/* Backdrop trong suốt */}
               <div 
                 className="fixed inset-0 z-[9998]" 
                 onClick={() => setShowEmojiPicker(false)}
               />
-              
-              {/* Picker - Khung nhỏ fixed đè lên map */}
               <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 bg-white rounded-xl shadow-2xl z-[9999] w-64 max-h-80 overflow-hidden border border-gray-200">
-                {/* Header - Thu gọn */}
                 <div className="px-2 py-1.5 border-b border-gray-200 flex items-center justify-between">
                   <span className="text-xs font-semibold text-gray-800">Emoji</span>
                   <button
@@ -244,8 +296,6 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
                     </svg>
                   </button>
                 </div>
-                
-                {/* Emoji grid */}
                 <div className="p-2 overflow-y-auto max-h-72">
                   <div className="grid grid-cols-8 gap-1">
                     {EMOJI_LIST.map((emoji, index) => (
@@ -285,12 +335,10 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
               placeholder="Nhập địa chỉ..."
               className="w-full p-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
             />
-            {/* Location Icon */}
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            {/* Map Icon Button */}
             <button
               type="button"
               onClick={onAddLocation}
@@ -302,8 +350,18 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
               </svg>
             </button>
           </div>
+          
+          {locationData && locationData.position && (
+            <div className="mt-2 flex items-center space-x-1.5 text-xs text-gray-600">
+              <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+              </svg>
+              <span>
+                📍 {locationData.position.lat.toFixed(6)}, {locationData.position.lng.toFixed(6)}
+              </span>
+            </div>
+          )}
 
-          {/* Location Suggestions */}
           {showLocationSuggestions && locationSearch && (
             <>
               <div 
@@ -326,7 +384,6 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
                       onClick={() => {
                         setLocationSearch(loc.name);
                         setShowLocationSuggestions(false);
-                        // Cập nhật locationData trong parent
                         onLocationSelect({
                           locationName: loc.name,
                           position: { lat: loc.lat, lng: loc.lng }
@@ -353,20 +410,22 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
           )}
         </div>
 
-        {/* Privacy Toggle - Black & White Style */}
+        {/* Privacy Toggle */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-2">
             Quyền riêng tư
           </label>
           <button
-            onClick={() => setPrivacy(privacy === "public" ? "private" : "public")}
+            onClick={() => {
+              const newPrivacy = privacy === "public" ? "private" : "public";
+              setPrivacy(newPrivacy);
+            }}
             className={`relative inline-flex items-center h-14 rounded-full w-64 transition-all duration-300 shadow-lg ${
               privacy === "public" 
                 ? "bg-gray-900" 
                 : "bg-white border-2 border-gray-900"
             }`}
           >
-            {/* Circle with icon */}
             <div 
               className={`absolute top-1 h-12 w-12 rounded-full shadow-md transition-all duration-300 ease-out flex items-center justify-center ${
                 privacy === "public" 
@@ -384,8 +443,6 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
                 </svg>
               )}
             </div>
-            
-            {/* Text */}
             <span className={`font-semibold text-base transition-all duration-300 ${
               privacy === "public" 
                 ? "ml-16 text-white" 
@@ -406,9 +463,9 @@ export default function PostDetails({ image = [], locationData, onBack, onAddLoc
           </button>
           <button
             onClick={handleSharePost}
-            disabled={!caption || !locationData}
+            disabled={!caption?.trim() || !locationData}
             className={`px-6 py-2 rounded-lg text-white font-medium transition ${
-              !caption || !locationData
+              !caption?.trim() || !locationData
                 ? "bg-indigo-300 cursor-not-allowed"
                 : "bg-indigo-600 hover:bg-indigo-700"
             }`}

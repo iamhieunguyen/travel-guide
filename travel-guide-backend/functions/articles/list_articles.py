@@ -9,30 +9,22 @@ dynamodb = boto3.resource("dynamodb")
 TABLE_NAME = os.environ["TABLE_NAME"]
 table = dynamodb.Table(TABLE_NAME)
 
-def _response(status, body_dict):
-    return {
-        "statusCode": status,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
-        "body": json.dumps(body_dict, ensure_ascii=False),
-    }
-
 def _get_user_id(event):
-    """Hàm hỗ trợ lấy user ID từ cả JWT và X-User-Id như trong create_article"""
     headers = event.get("headers") or {}
     x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
     if x_user_id:
         return x_user_id
 
-    auth_header = headers.get("Authorization") or headers.get("authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        # Bạn có thể thêm logic JWT ở đây nếu cần
-        # hoặc chỉ cần kiểm tra có token hay không
-        return "authenticated_user" # hoặc parse từ token
+    # Lấy giống create_article / favorite_article
+    rc = event.get("requestContext") or {}
+    auth = rc.get("authorizer") or {}
+    claims = auth.get("claims") or {}
+    sub = claims.get("sub")
+    if sub:
+        return sub
 
     return None
+
 
 def lambda_handler(event, context):
     method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
@@ -95,8 +87,8 @@ def lambda_handler(event, context):
         if next_key:
             result['nextToken'] = json.dumps(next_key)
 
-        return _response(200, result)
+        return ok(200, result)
 
     except Exception as e:
         print(f"Error in list_articles: {e}")
-        return _response(500, {"error": f"internal error: {e}"})
+        return error(500, f"internal error: {e}")

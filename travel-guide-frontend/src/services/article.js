@@ -1,6 +1,6 @@
 // services/article.js
 
-// ===== API base =====
+// ===== API base (Giữ nguyên) =====
 const API_BASE = (
   process.env.REACT_APP_API_BASE ||
   process.env.REACT_APP_API_GATEWAY_URL ||
@@ -11,8 +11,7 @@ if (!API_BASE) {
   console.warn("Missing REACT_APP_API_BASE/REACT_APP_API_GATEWAY_URL – API calls may hit FE origin.");
 }
 
-// ===== CF (ẢNH) – KHÔNG default =====
-// Nếu không set REACT_APP_CF_DOMAIN => CF_BASE = "" (FE sẽ dùng presigned URL)
+// ===== CF (ẢNH) – KHÔNG default (Giữ nguyên) =====
 const rawCF = (process.env.REACT_APP_CF_DOMAIN || "").trim();
 const CF_BASE = rawCF
   ? (/^https?:\/\//i.test(rawCF) ? rawCF : `https://${rawCF}`).replace(/\/+$/, "")
@@ -20,7 +19,7 @@ const CF_BASE = rawCF
 
 const X_USER_ID = process.env.REACT_APP_X_USER_ID || "";
 
-// ===== Simple cache =====
+// ===== Simple cache (Giữ nguyên) =====
 const requestCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 phút
 const getCacheKey = (method, path, body) => `${method}:${path}:${JSON.stringify(body || {})}`;
@@ -32,13 +31,12 @@ const getFromCache = (key) => {
 };
 const setToCache = (key, data) => requestCache.set(key, { data, timestamp: Date.now() });
 
-// ===== Fetch helper =====
+// ===== Fetch helper (Giữ nguyên) =====
 function authHeaders(hasBody = false) {
   const idToken = localStorage.getItem("idToken");
   const h = {};
   if (hasBody) h["Content-Type"] = "application/json"; // tránh preflight cho GET
   if (idToken) h.Authorization = `Bearer ${idToken}`;
-  if (X_USER_ID) h["X-User-Id"] = X_USER_ID;
   return h;
 }
 
@@ -85,31 +83,58 @@ async function http(method, path, body, { raw = false, useCache = false } = {}) 
   return data;
 }
 
-// ===== Ảnh =====
-// Nếu KHÔNG có CF_BASE => trả "", để FE fallback qua presigned URL
+// ------------------------------------------------------------------
+// ===== PHẦN UPLOAD S3 (Giữ nguyên logic S3 headers) =====
+// ------------------------------------------------------------------
+
+// Hàm tạo headers CHỈ chứa Content-Type cho S3 PUT
+function s3UploadHeaders(contentType) {
+    return { 
+        "Content-Type": contentType 
+    };
+}
+
+// ===== Ảnh (Giữ nguyên) =====
 export function buildImageUrlFromKey(imageKey) {
   if (!imageKey || !CF_BASE) return "";
   return `${CF_BASE}/${imageKey}`;
 }
 
-// ===== Upload presign =====
+// ===== Upload presign (Giữ nguyên) =====
 export async function getUploadUrl({ filename, contentType }) {
   return http("POST", "/upload-url", { filename, contentType });
 }
+
 export async function uploadToS3(url, file, contentType) {
-  const res = await fetch(url, { method: "PUT", headers: { "Content-Type": contentType }, body: file });
+    // SỬA ĐỔI QUAN TRỌNG: Sử dụng headers chỉ có Content-Type
+    const headers = s3UploadHeaders(contentType);
+    
+    // Thêm log để kiểm tra headers trước khi gửi
+    console.log(`🌐 PUT ${url}`);
+    console.log("📦 S3 PUT Headers:", headers);
+
+    // Dùng fetch thuần, chỉ truyền headers đã được làm sạch
+    const res = await fetch(url, { 
+        method: "PUT", 
+        headers: headers, // <-- CHỈ CÓ Content-Type
+        body: file 
+    });
+    
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`S3 upload failed: ${res.status} ${t}`);
+    // Thêm lỗi chi tiết để debug lỗi chữ ký S3
+    console.error("❌ S3 Response Body:", t);
+    throw new Error(`S3 upload failed: ${res.status} ${res.statusText}. Error body: ${t.substring(0, 500)}`);
   }
 }
 
-// ===== Articles CRUD =====
+// ===== Articles CRUD (Giữ nguyên) =====
 export function createArticle(body) {
   return http("POST", "/articles", body);
 }
 export function getArticle(articleId, { presign = false } = {}) {
   const qs = presign ? "?presign=1" : "";
+  // Lưu ý: Backend đã được sửa để trả về imageUrls và imageUrls[0] là imageUrl
   return http("GET", `/articles/${encodeURIComponent(articleId)}${qs}`, null, { useCache: true });
 }
 export function updateArticle(articleId, patchBody) {
@@ -127,6 +152,7 @@ export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
   if (nextToken) params.set("nextToken", nextToken);
   return http("GET", `/articles?${params.toString()}`, null, { useCache: true });
 }
+
 export function searchArticles({ bbox, q = "", tags = "", scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
   params.set("bbox", bbox);
@@ -138,21 +164,67 @@ export function searchArticles({ bbox, q = "", tags = "", scope = "public", limi
   return http("GET", `/search?${params.toString()}`, null, { useCache: true });
 }
 
-// ===== Convenience: tạo + upload ảnh =====
-export async function createArticleWithUpload({
-  file, title, content, visibility = "public", lat, lng, tags = [],
-}) {
-  if (!file) throw new Error("file is required");
-  const contentType = file.type || "application/octet-stream";
+// ------------------------------------------------------------------
+// 🚀 LOGIC MỚI: TẠO BÀI VIẾT VỚI NHIỀU ẢNH
+// ------------------------------------------------------------------
 
-  const { uploadUrl, key } = await getUploadUrl({ filename: file.name || "image.png", contentType });
-  await uploadToS3(uploadUrl, file, contentType);
+/**
+ * Xử lý upload hàng loạt và tạo bài viết với mảng imageKeys.
+ * @param {File[]} files - Mảng các file ảnh (File objects).
+ * @param {object} articleMetadata - Metadata của bài viết (title, content, lat, lng, etc.).
+ * @returns {Promise<object>} - Bài viết đã tạo.
+ */
+export async function createArticleWithMultipleFiles(files, articleMetadata) {
+  if (!files || files.length === 0) {
+    // Nếu không có file, tạo bài viết không ảnh
+    return createArticle(articleMetadata);
+  }
 
-  return createArticle({ title, content, visibility, lat, lng, tags, imageKey: key });
+  console.log(`📦 Bắt đầu upload ${files.length} files...`);
+
+  // Tạo một mảng các Promise cho toàn bộ quy trình upload
+  const uploadPromises = files.map(async (file, index) => {
+    const contentType = file.type || "application/octet-stream";
+    const filename = file.name || `image-${index}.png`;
+
+    // 1. Lấy URL upload presigned và key
+    const { uploadUrl, key } = await getUploadUrl({ filename, contentType });
+
+    // 2. Upload file lên S3
+    await uploadToS3(uploadUrl, file, contentType);
+
+    // 3. Trả về key để thu thập
+    return key;
+  });
+
+  // Chờ tất cả các uploads hoàn thành và thu thập keys
+  const imageKeys = await Promise.all(uploadPromises);
+
+  // 4. Gọi API tạo bài viết với mảng imageKeys
+  const body = {
+    ...articleMetadata,
+    imageKeys: imageKeys.filter(k => k), // Lọc bỏ keys rỗng nếu có
+  };
+
+  console.log(`✅ Upload hoàn tất. Gửi bài viết với ${body.imageKeys.length} keys.`);
+  return createArticle(body);
 }
 
-// ===== Lấy URL hiển thị ảnh cho 1 bài viết =====
+// ===== Convenience: tạo + upload ảnh (Giữ lại để tương thích ngược) =====
+// Chức năng này chỉ hỗ trợ một file duy nhất
+export async function createArticleWithUpload({
+  file, title, content, visibility = "public", lat, lng, tags = [], locationName
+}) {
+  if (!file) throw new Error("file is required");
+  
+  // Dùng hàm mới để xử lý một file
+  const articleMetadata = { title, content, visibility, lat, lng, tags, locationName };
+  return createArticleWithMultipleFiles([file], articleMetadata);
+}
+
+// ===== Lấy URL hiển thị ảnh cho 1 bài viết (Giữ nguyên) =====
 export async function getDisplayImageUrl(article) {
+  // Lấy ảnh cover
   const { imageKey } = article || {};
   if (!imageKey) return "";
 
@@ -160,17 +232,18 @@ export async function getDisplayImageUrl(article) {
   const cfUrl = buildImageUrlFromKey(imageKey);
   if (cfUrl) return cfUrl;
 
+  // Lấy presigned URL (lưu ý: backend trả về imageUrl = imageUrls[0] cho tương thích)
   const fresh = await getArticle(article.articleId, { presign: true });
   return fresh?.imageUrl || "";
 }
 
-// ===== Batch =====
+// ===== Batch (Giữ nguyên) =====
 export async function getMultipleArticles(articleIds) {
   const promises = articleIds.map((id) => getArticle(id));
   return Promise.all(promises);
 }
 
-// ===== Utils =====
+// ===== Utils (Giữ nguyên) =====
 export function clearCache() {
   requestCache.clear();
 }
@@ -184,7 +257,8 @@ const articleService = {
   deleteArticle,
   listArticles,
   searchArticles,
-  createArticleWithUpload,
+  createArticleWithUpload, // Giữ để tương thích
+  createArticleWithMultipleFiles, // Hàm mới
   buildImageUrlFromKey,
   getDisplayImageUrl,
   getMultipleArticles,
@@ -192,3 +266,32 @@ const articleService = {
 };
 
 export default articleService;
+
+export async function createArticleWithMultipleUploads({
+  files, title, content, visibility = "public", lat, lng, tags = [], locationName
+}) {
+  if (!files || files.length === 0) throw new Error("files array is required");
+  
+  const imageKeys = [];
+  
+  for (const file of files) {
+    const contentType = file.type || "application/octet-stream";
+    const { uploadUrl, key } = await getUploadUrl({ 
+      filename: file.name || "image.png", 
+      contentType 
+    });
+    await uploadToS3(uploadUrl, file, contentType);
+    imageKeys.push(key);
+  }
+  
+  return createArticle({ 
+    title, 
+    content, 
+    visibility, 
+    lat, 
+    lng, 
+    tags, 
+    imageKeys: imageKeys,
+    locationName 
+  });
+}

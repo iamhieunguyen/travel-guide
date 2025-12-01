@@ -144,7 +144,7 @@ export function deleteArticle(articleId) {
   return http("DELETE", `/articles/${encodeURIComponent(articleId)}`);
 }
 
-// ===== List + Search (Giữ nguyên) =====
+// ===== List + Search =====
 export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
   params.set("scope", scope);
@@ -152,6 +152,7 @@ export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
   if (nextToken) params.set("nextToken", nextToken);
   return http("GET", `/articles?${params.toString()}`, null, { useCache: true });
 }
+
 export function searchArticles({ bbox, q = "", tags = "", scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
   params.set("bbox", bbox);
@@ -265,6 +266,7 @@ const articleService = {
 };
 
 export default articleService;
+
 export async function createArticleWithMultipleUploads({
   files, title, content, visibility = "public", lat, lng, tags = [], locationName
 }) {

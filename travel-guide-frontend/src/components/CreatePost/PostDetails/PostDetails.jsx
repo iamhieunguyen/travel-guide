@@ -40,7 +40,7 @@ export default function PostDetails({
       setCaption(initialCaption);
       setPrivacy(initialPrivacy);
     }
-  }, [editMode, editPostData, hasLoadedEditData]);
+  }, [editMode, editPostData, hasLoadedEditData, setCaption, setPrivacy]);
   
   // Update locationSearch khi locationData thay đổi
   useEffect(() => {

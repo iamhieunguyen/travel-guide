@@ -11,8 +11,8 @@ import {
   LayoutGrid,
   Map
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { useCreatePostModal } from '../../contexts/CreatePostModalContext';
+import { useAuth } from '../../context/AuthContext';
+import { useCreatePostModal } from '../../context/CreatePostModalContext';
 import api from '../../services/article';
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker';
 import MapView from '../../components/map/MapView';
@@ -21,7 +21,21 @@ import './PersonalPage.css';
 export default function PersonalPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, authChecked } = useAuth(); // Thêm authChecked
-  const { openModal, refreshKey } = useCreatePostModal();
+  const { openModal } = useCreatePostModal();
+
+  const displayName =
+    user?.displayName ||
+    user?.name ||
+    user?.username ||
+    user?.email?.split('@')[0] ||
+    '';
+  const displayInitial = displayName?.charAt(0)?.toUpperCase() || 'U';
+  const profileBio = user?.bio || 'Lưu giữ những mảnh ghép của cuộc đời.';
+  const showLocations = user?.showLocationPref ?? true;
+  const mapType = user?.mapTypePref || 'roadmap';
+  const [userLocation, setUserLocation] = useState(null);
+  const [locationError, setLocationError] = useState('');
+  const [locating, setLocating] = useState(false);
 
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -151,26 +165,67 @@ export default function PersonalPage() {
       }
     };
     if (user) fetchMemories();
-  }, [user, refreshKey]);
+  }, [user]);
+
+  useEffect(() => {
+    if (!showLocations) {
+      setUserLocation(null);
+      setLocationError('');
+      setLocating(false);
+      return;
+    }
+    if (viewMode !== 'map') return;
+    if (!navigator.geolocation) {
+      setLocationError('Trình duyệt không hỗ trợ định vị.');
+      setLocating(false);
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError('');
+        setLocating(false);
+      },
+      (error) => {
+        setLocationError(error.message || 'Không thể lấy vị trí hiện tại.');
+        setUserLocation(null);
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+      }
+    );
+  }, [showLocations, viewMode]);
 
   const filteredMemories = useMemo(() => {
-    return memories.filter(m => {
+    return memories.filter((m) => {
       // 1. Filter Privacy
       const matchPrivacy = privacyFilter === 'all' || m.scope === privacyFilter;
-      
-      // 2. Filter Date (Tạm thời vô hiệu hóa logic so sánh ngày để debug hiển thị)
-      // Chỉ cần có bài là hiện, bất chấp ngày tháng người dùng chọn
-      // Logic cũ:
-      /*
+
+      // 2. Filter Date theo khoảng thời gian người dùng chọn
       let matchDate = true;
-      if (dateRange?.from) { ... }
-      if (matchDate && dateRange?.to) { ... }
-      */
-      const matchDate = true; // Force true
+      if (dateRange?.from) {
+        const from = new Date(dateRange.from);
+        from.setHours(0, 0, 0, 0);
+        const d = new Date(m.date);
+        d.setHours(0, 0, 0, 0);
+        if (d < from) matchDate = false;
+      }
+      if (matchDate && dateRange?.to) {
+        const to = new Date(dateRange.to);
+        to.setHours(23, 59, 59, 999);
+        const d = new Date(m.date);
+        if (d > to) matchDate = false;
+      }
 
       return matchPrivacy && matchDate;
     });
-  }, [memories, privacyFilter]);
+  }, [memories, privacyFilter, dateRange]);
 
   const formatDate = (date) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -196,13 +251,13 @@ export default function PersonalPage() {
             {user?.picture ? (
               <img src={user.picture} alt="Avatar" className="avatar-img" />
             ) : (
-              <div className="avatar-placeholder">{user?.username?.[0]?.toUpperCase() || 'U'}</div>
+              <div className="avatar-placeholder">{displayInitial}</div>
             )}
           </div>
           
-          <div className="profile-text">
-            <h1 className="profile-name">{user?.name || user?.username}</h1>
-            <p className="profile-bio">Lưu giữ những mảnh ghép của cuộc đời.</p>
+            <div className="profile-text">
+            <h1 className="profile-name">{displayName}</h1>
+            <p className="profile-bio">{profileBio}</p>
             <div className="profile-meta">
               <span><strong>{memories.length}</strong> ký ức</span>
               <span className="dot">•</span>
@@ -309,7 +364,7 @@ export default function PersonalPage() {
                       <div className="card-body">
                         <div className="card-meta">
                           <span className="date">{formatDate(memory.date)}</span>
-                          {memory.location && (
+                          {showLocations && memory.location && (
                             <span className="location">
                               <MapPin size={12} /> 
                               {typeof memory.location === 'object' ? memory.location.name : memory.location}
@@ -329,18 +384,38 @@ export default function PersonalPage() {
 
             {viewMode === 'map' && (
               <div className="map-view-container">
-                {filteredMemories.length === 0 && (
-                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
-                     Không có địa điểm nào phù hợp bộ lọc
-                   </div>
+                {showLocations ? (
+                  <>
+                    {locating && (
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/95 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
+                        Đang lấy vị trí của bạn...
+                      </div>
+                    )}
+                    {locationError && (
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-red-50 px-4 py-2 rounded-full shadow-md text-sm text-red-600">
+                        {locationError}
+                      </div>
+                    )}
+                    {filteredMemories.length === 0 && !locating && !locationError && (
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
+                        Không có địa điểm nào phù hợp bộ lọc
+                      </div>
+                    )}
+                    <MapView 
+                      locations={filteredMemories} 
+                      userLocation={userLocation}
+                      mapType={mapType}
+                      onMarkerClick={(memory) => {
+                        const fullMemory = memories.find(m => m.id === memory.id);
+                        if(fullMemory) setSelectedMemory(fullMemory);
+                      }}
+                    />
+                  </>
+                ) : (
+                  <div className="flex items-center justify-center w-full h-64 bg-white/60 rounded-2xl border border-dashed border-gray-200 text-gray-500 text-sm">
+                    Bạn đang tắt hiển thị vị trí. Bật lại trong Cài đặt để xem bản đồ.
+                  </div>
                 )}
-                <MapView 
-                  locations={filteredMemories} 
-                  onMarkerClick={(memory) => {
-                    const fullMemory = memories.find(m => m.id === memory.id);
-                    if(fullMemory) setSelectedMemory(fullMemory);
-                  }}
-                />
               </div>
             )}
           </>
@@ -366,7 +441,7 @@ export default function PersonalPage() {
                 
                 <h2 className="modal-title">{selectedMemory.title}</h2>
                 
-                {selectedMemory.location && (
+                {showLocations && selectedMemory.location && (
                   <div className="modal-location">
                     <MapPin size={16} /> 
                     {typeof selectedMemory.location === 'object' 

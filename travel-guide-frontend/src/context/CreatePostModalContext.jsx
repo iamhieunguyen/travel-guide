@@ -14,7 +14,7 @@ export function CreatePostModalProvider({ children }) {
   const [editPostData, setEditPostData] = useState(null);
   const [caption, setCaption] = useState("");
   const [privacy, setPrivacy] = useState("public");
-  const { getIdToken, refreshAuth } = useAuth();
+  const { getIdToken, refreshAuth, user } = useAuth();
 
   const openModal = useCallback(() => {
     if (!getIdToken()) {
@@ -27,7 +27,9 @@ export function CreatePostModalProvider({ children }) {
     setAspect("1:1");
     setEditMode(false);
     setEditPostData(null);
-  }, [getIdToken]);
+    setCaption("");
+    setPrivacy(user?.defaultPrivacyPref || "public");
+  }, [getIdToken, user]);
 
   const openEditModal = useCallback((post) => {
     if (!getIdToken()) {
@@ -52,8 +54,8 @@ export function CreatePostModalProvider({ children }) {
     setEditMode(false);
     setEditPostData(null);
     setCaption("");
-    setPrivacy("public");
-  }, []);
+    setPrivacy(user?.defaultPrivacyPref || "public");
+  }, [user]);
 
   // Data URL -> File (có guard)
   const dataURLToFile = useCallback((dataurl, filename) => {

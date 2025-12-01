@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,8 +15,14 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
+const UserLocationIcon = L.divIcon({
+  className: 'user-location-marker',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
 // Component quan trọng: Fix lỗi map không hiện khi chuyển tab
-function MapController({ markers }) {
+function MapController({ markers, userLocation }) {
   const map = useMap();
   
   useEffect(() => {
@@ -27,17 +33,41 @@ function MapController({ markers }) {
     }, 100);
 
     // 2. Auto-zoom nếu có markers
-    if (markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
+    const points = [...markers];
+    if (userLocation?.lat && userLocation?.lng) {
+      points.push({ lat: userLocation.lat, lng: userLocation.lng });
+    }
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points.map(m => [m.lat, m.lng]));
       map.fitBounds(bounds, { padding: [50, 50] });
     }
-  }, [markers, map]);
+  }, [markers, map, userLocation]);
 
   return null;
 }
 
-export default function MapView({ locations = [], onMarkerClick }) {
+function getTileConfig(mapType) {
+  switch (mapType) {
+    case 'satellite':
+      return {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution:
+          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      };
+    case 'roadmap':
+    default:
+      return {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      };
+  }
+}
+
+export default function MapView({ locations = [], onMarkerClick, userLocation, mapType = 'roadmap' }) {
   const defaultCenter = [16.047079, 108.206230]; 
+  const tileConfig = useMemo(() => getTileConfig(mapType), [mapType]);
 
   const validMarkers = locations.filter(
     loc => loc.location && loc.location.lat && loc.location.lng
@@ -59,11 +89,11 @@ export default function MapView({ locations = [], onMarkerClick }) {
         style={{ height: '100%', width: '100%', borderRadius: '16px' }}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution={tileConfig.attribution}
+          url={tileConfig.url}
         />
         
-        <MapController markers={validMarkers} />
+        <MapController markers={validMarkers} userLocation={userLocation} />
 
         {validMarkers.map((marker) => (
           <Marker 
@@ -84,6 +114,15 @@ export default function MapView({ locations = [], onMarkerClick }) {
             </Popup>
           </Marker>
         ))}
+
+        {userLocation?.lat && userLocation?.lng && (
+          <Marker 
+            position={[userLocation.lat, userLocation.lng]}
+            icon={UserLocationIcon}
+          >
+            <Popup>Vị trí của bạn</Popup>
+          </Marker>
+        )}
       </MapContainer>
     </div>
   );

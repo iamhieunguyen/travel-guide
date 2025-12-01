@@ -20,9 +20,9 @@ html:has(#landing-page-wrapper) {
   
   min-height: 100vh;
   background: 
-    linear-gradient(135deg, #e0f2fe 0%, #bae6fd 30%, #7dd3fc 60%, #38bdf8 100%),
-    radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    linear-gradient(135deg, #ecfdf5 0%, #d1fae5 30%, #a7f3d0 60%, #6ee7b7 100%),
+    radial-gradient(circle at 20% 50%, rgba(129, 201, 103, 0.12) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(13, 148, 136, 0.08) 0%, transparent 50%);
   background-size: 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
   /* Font stack ưu tiên tiếng Việt */

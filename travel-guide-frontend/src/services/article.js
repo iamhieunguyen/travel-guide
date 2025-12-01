@@ -17,8 +17,6 @@ const CF_BASE = rawCF
   ? (/^https?:\/\//i.test(rawCF) ? rawCF : `https://${rawCF}`).replace(/\/+$/, "")
   : "";
 
-const X_USER_ID = process.env.REACT_APP_X_USER_ID || "";
-
 // ===== Simple cache (Giữ nguyên) =====
 const requestCache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 phút

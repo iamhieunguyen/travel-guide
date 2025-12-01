@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
 import ChristmasEffects from '../components/ChristmasEffects';
-import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MessageCircle, MapPin, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -88,15 +88,24 @@ export default function HomePage() {
   const { openModal, openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
 
+  const displayName =
+    user?.displayName ||
+    user?.username ||
+    user?.email?.split('@')[0] ||
+    'User';
+  const displayInitial = displayName?.charAt(0)?.toUpperCase() || 'U';
+  const userHandle =
+    user?.username ||
+    user?.email?.split('@')[0] ||
+    'user';
+
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [nextToken, setNextToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [scope, setScope] = useState('public');
+  const [scope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // string rỗng
-  const [isSearching, setIsSearching] = useState(false);
 
   const loadPosts = useCallback(
     async (token = null, query = '') => {
@@ -106,7 +115,6 @@ export default function HomePage() {
 
         const trimmed = (query || '').trim();
         const isSearchMode = trimmed.length > 0;
-        setIsSearching(isSearchMode);
 
         let response;
 
@@ -159,7 +167,7 @@ export default function HomePage() {
 
         setNextToken(response.nextToken || null);
       } catch (err) {
-        setError(err.message || 'Có lỗi xảy ra');
+        console.error('Lỗi khi tải bài viết:', err);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -183,7 +191,7 @@ export default function HomePage() {
     }
     // Khi scope đổi, load lại theo search hiện tại (nếu có)
     loadPosts(null, searchQuery);
-  }, [scope, loadPosts, user, navigate, authChecked]); // searchQuery không cần trong deps vì truyền param vào loadPosts
+  }, [scope, loadPosts, user, navigate, authChecked, searchQuery]);
 
   const loadMore = () => {
     if (nextToken) loadPosts(nextToken, searchQuery);
@@ -225,15 +233,6 @@ export default function HomePage() {
 
   const toggleMenu = (postId) => {
     setOpenMenuId(openMenuId === postId ? null : postId);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   return (
@@ -312,9 +311,7 @@ export default function HomePage() {
               >
                 <div className="w-7 h-7 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-xs">
-                    {user?.username?.charAt(0)?.toUpperCase() ||
-                      user?.email?.charAt(0)?.toUpperCase() ||
-                      'U'}
+                    {displayInitial}
                   </span>
                 </div>
                 <span className="font-medium text-base">Trang cá nhân</span>
@@ -348,9 +345,7 @@ export default function HomePage() {
                   <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
                     Hello,{' '}
                     <span className="text-[#0891b2]">
-                      {user?.username ||
-                        user?.email?.split('@')[0] ||
-                        'User'}
+                      {displayName}
                     </span>
                   </h2>
 
@@ -406,21 +401,15 @@ export default function HomePage() {
                   >
                     <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-sm">
-                        {user?.username?.charAt(0)?.toUpperCase() ||
-                          user?.email?.charAt(0)?.toUpperCase() ||
-                          'U'}
+                        {displayInitial}
                       </span>
                     </div>
                     <div className="text-left">
                       <p className="font-semibold text-gray-900 text-sm">
-                        {user?.username ||
-                          user?.email?.split('@')[0] ||
-                          'User'}
+                        {displayName}
                       </p>
                       <p className="text-xs text-gray-500">
-                        @{user?.username ||
-                          user?.email?.split('@')[0] ||
-                          'user'}
+                        @{userHandle}
                       </p>
                     </div>
                   </button>

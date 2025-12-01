@@ -17,12 +17,11 @@ import {
   Moon,
   Sun
 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/personal/BackButton';
 import PrivacyDropdown from '../../components/settings/PrivacyDropdown';
 import LanguageDropdown from '../../components/settings/LanguageDropdown';
 import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
-import MapUnitDropdown from '../../components/settings/MapUnitDropdown';
 import './SettingsPage.css';
 
 // Translations
@@ -58,8 +57,6 @@ const translations = {
     defaultPrivacyDesc: 'Thiết lập quyền riêng tư mặc định cho các ký ức mới',
     showLocation: 'Hiển thị vị trí',
     showLocationDesc: 'Cho phép hiển thị vị trí trên bản đồ',
-    allowSharing: 'Cho phép chia sẻ',
-    allowSharingDesc: 'Cho phép người khác chia sẻ ký ức của bạn',
     
     // Notifications Section
     notificationSettings: 'Cài đặt thông báo',
@@ -76,8 +73,6 @@ const translations = {
     mapDescription: 'Tùy chỉnh trải nghiệm bản đồ của bạn',
     mapType: 'Loại bản đồ',
     mapTypeDesc: 'Chọn loại bản đồ bạn muốn hiển thị',
-    mapUnit: 'Đơn vị đo lường',
-    mapUnitDesc: 'Chọn đơn vị đo lường cho khoảng cách',
     autoZoom: 'Tự động phóng to',
     autoZoomDesc: 'Tự động phóng to khi chọn địa điểm',
     
@@ -147,8 +142,6 @@ const translations = {
     defaultPrivacyDesc: 'Set default privacy for new memories',
     showLocation: 'Show Location',
     showLocationDesc: 'Allow location display on map',
-    allowSharing: 'Allow Sharing',
-    allowSharingDesc: 'Allow others to share your memories',
     
     // Notifications Section
     notificationSettings: 'Notification Settings',
@@ -165,8 +158,6 @@ const translations = {
     mapDescription: 'Customize your map experience',
     mapType: 'Map Type',
     mapTypeDesc: 'Choose the map type you want to display',
-    mapUnit: 'Measurement Unit',
-    mapUnitDesc: 'Choose measurement unit for distance',
     autoZoom: 'Auto Zoom',
     autoZoomDesc: 'Automatically zoom when selecting a location',
     
@@ -207,20 +198,21 @@ const translations = {
   }
 };
 
+const DEFAULT_BIO = 'Lưu giữ những mảnh ghép của cuộc đời.';
+
 export default function SettingsPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout, authChecked } = useAuth();
+  const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
   const [activeSection, setActiveSection] = useState('account');
   
   // Account Settings
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
-  const [bio, setBio] = useState('');
+  const [bio, setBio] = useState(DEFAULT_BIO);
   
   // Privacy Settings
   const [defaultPrivacy, setDefaultPrivacy] = useState('public');
   const [showLocation, setShowLocation] = useState(true);
-  const [allowSharing, setAllowSharing] = useState(true);
   
   // Notification Settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -229,7 +221,6 @@ export default function SettingsPage() {
   
   // Map Settings
   const [mapType, setMapType] = useState('roadmap');
-  const [mapUnit, setMapUnit] = useState('metric');
   const [autoZoom, setAutoZoom] = useState(true);
   
   // Appearance Settings
@@ -254,7 +245,21 @@ export default function SettingsPage() {
       if (user) {
         const userEmail = user.email || user.attributes?.email || user.username || '';
         setEmail(userEmail);
-        setDisplayName(user.attributes?.name || userEmail.split('@')[0] || '');
+        // Ưu tiên giống logic hiển thị ở Home/PersonalPage: username trước, rồi đến name, cuối cùng mới fallback email
+        const preferredName =
+          user.displayName ||
+          user.username ||
+          user.attributes?.name ||
+          (userEmail ? userEmail.split('@')[0] : '');
+        setDisplayName(preferredName || '');
+        const initialBio = user.bio || DEFAULT_BIO;
+        setBio(initialBio);
+        const initialShowLocation = user.showLocationPref ?? true;
+        setShowLocation(initialShowLocation);
+        const initialDefaultPrivacy = user.defaultPrivacyPref || 'public';
+        setDefaultPrivacy(initialDefaultPrivacy);
+        const initialMapType = user.mapTypePref || 'roadmap';
+        setMapType(initialMapType);
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -277,12 +282,6 @@ export default function SettingsPage() {
   // Get translations based on language
   const t = translations[language] || translations.vi;
 
-  const handleSaveAccount = () => {
-    // TODO: Implement save account settings
-    console.log('Saving account settings:', { displayName, email, bio });
-    alert(t.accountSaved);
-  };
-
   const handleChangePassword = () => {
     if (newPassword !== confirmPassword) {
       alert(t.passwordMismatch);
@@ -294,7 +293,6 @@ export default function SettingsPage() {
     }
     // TODO: Implement password change
     console.log('Changing password');
-    alert(t.passwordChanged);
     setShowPasswordForm(false);
     setCurrentPassword('');
     setNewPassword('');
@@ -303,13 +301,15 @@ export default function SettingsPage() {
 
   const handleSaveSettings = () => {
     // TODO: Implement save all settings
+    updateDisplayName(displayName);
+    updateProfileBio(bio);
     console.log('Saving settings:', {
-      privacy: { defaultPrivacy, showLocation, allowSharing },
+      account: { displayName, bio },
+      privacy: { defaultPrivacy, showLocation },
       notifications: { emailNotifications, newMemoryNotifications, shareNotifications },
-      map: { mapType, mapUnit, autoZoom },
+      map: { mapType, autoZoom },
       appearance: { theme, language }
     });
-    alert(t.settingsSaved);
   };
 
   const handleDeleteAccount = () => {
@@ -333,8 +333,7 @@ export default function SettingsPage() {
     { id: 'privacy', label: t.privacy, icon: Shield },
     { id: 'notifications', label: t.notifications, icon: Bell },
     { id: 'map', label: t.map, icon: MapIcon },
-    { id: 'appearance', label: t.appearance, icon: Palette },
-    { id: 'security', label: t.security, icon: Lock }
+    { id: 'appearance', label: t.appearance, icon: Palette }
   ];
 
   const renderAccountSection = () => (
@@ -389,250 +388,20 @@ export default function SettingsPage() {
             id="bio"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            placeholder={t.bioPlaceholder}
+            placeholder={DEFAULT_BIO}
             rows={4}
           />
         </div>
 
-        <button className="save-btn" onClick={handleSaveAccount}>
-          <Save className="w-4 h-4" />
-          {t.saveChanges}
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderPrivacySection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.privacySettings}</h2>
-        <p className="section-description">{t.privacyDescription}</p>
       </div>
 
+      {/* Khối bảo mật được gộp chung trong phần Tài khoản */}
       <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.defaultPrivacy}</h3>
-            <p>{t.defaultPrivacyDesc}</p>
-          </div>
-          <div className="setting-control">
-            <PrivacyDropdown
-              value={defaultPrivacy}
-              onChange={setDefaultPrivacy}
-            />
-          </div>
+        <div className="section-subheader">
+          <h2>{t.security}</h2>
+          <p className="section-description">{t.securityDescription}</p>
         </div>
 
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.showLocation}</h3>
-            <p>{t.showLocationDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={showLocation}
-                onChange={(e) => setShowLocation(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.allowSharing}</h3>
-            <p>{t.allowSharingDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={allowSharing}
-                onChange={(e) => setAllowSharing(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderNotificationsSection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.notificationSettings}</h2>
-        <p className="section-description">{t.notificationDescription}</p>
-      </div>
-
-      <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.emailNotifications}</h3>
-            <p>{t.emailNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={emailNotifications}
-                onChange={(e) => setEmailNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.newMemoryNotifications}</h3>
-            <p>{t.newMemoryNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={newMemoryNotifications}
-                onChange={(e) => setNewMemoryNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.shareNotifications}</h3>
-            <p>{t.shareNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={shareNotifications}
-                onChange={(e) => setShareNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderMapSection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.mapSettings}</h2>
-        <p className="section-description">{t.mapDescription}</p>
-      </div>
-
-      <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.mapType}</h3>
-            <p>{t.mapTypeDesc}</p>
-          </div>
-          <div className="setting-control">
-            <MapTypeDropdown
-              value={mapType}
-              onChange={setMapType}
-            />
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.mapUnit}</h3>
-            <p>{t.mapUnitDesc}</p>
-          </div>
-          <div className="setting-control">
-            <MapUnitDropdown
-              value={mapUnit}
-              onChange={setMapUnit}
-            />
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.autoZoom}</h3>
-            <p>{t.autoZoomDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={autoZoom}
-                onChange={(e) => setAutoZoom(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAppearanceSection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.appearanceSettings}</h2>
-        <p className="section-description">{t.appearanceDescription}</p>
-      </div>
-
-      <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.theme}</h3>
-            <p>{t.themeDesc}</p>
-          </div>
-          <div className="setting-control">
-            <div className="theme-selector">
-              <button
-                className={`theme-option ${theme === 'light' ? 'active' : ''}`}
-                onClick={() => setTheme('light')}
-              >
-                <Sun className="w-5 h-5" />
-                <span>{t.light}</span>
-              </button>
-              <button
-                className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
-                onClick={() => setTheme('dark')}
-              >
-                <Moon className="w-5 h-5" />
-                <span>{t.dark}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.language}</h3>
-            <p>{t.languageDesc}</p>
-          </div>
-          <div className="setting-control">
-            <LanguageDropdown
-              value={language}
-              onChange={setLanguage}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSecuritySection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.security}</h2>
-        <p className="section-description">{t.securityDescription}</p>
-      </div>
-
-      <div className="settings-content">
         {!showPasswordForm ? (
           <button
             className="action-btn"
@@ -739,11 +508,217 @@ export default function SettingsPage() {
     </div>
   );
 
+  const renderPrivacySection = () => (
+    <div className={`settings-section section-content section-entering`}>
+      <div className="section-header">
+        <h2>{t.privacySettings}</h2>
+        <p className="section-description">{t.privacyDescription}</p>
+      </div>
+
+      <div className="settings-content">
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.defaultPrivacy}</h3>
+            <p>{t.defaultPrivacyDesc}</p>
+          </div>
+          <div className="setting-control">
+            <PrivacyDropdown
+              value={defaultPrivacy}
+              language={language}
+              onChange={(val) => {
+                setDefaultPrivacy(val);
+                updateDefaultPrivacyPref(val);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.showLocation}</h3>
+            <p>{t.showLocationDesc}</p>
+          </div>
+          <div className="setting-control">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={showLocation}
+                onChange={(e) => {
+                  const nextValue = e.target.checked;
+                  setShowLocation(nextValue);
+                  updateShowLocationPref(nextValue);
+                }}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+
+  const renderNotificationsSection = () => (
+    <div className={`settings-section section-content section-entering`}>
+      <div className="section-header">
+        <h2>{t.notificationSettings}</h2>
+        <p className="section-description">{t.notificationDescription}</p>
+      </div>
+
+      <div className="settings-content">
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.emailNotifications}</h3>
+            <p>{t.emailNotificationsDesc}</p>
+          </div>
+          <div className="setting-control">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={emailNotifications}
+                onChange={(e) => setEmailNotifications(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.newMemoryNotifications}</h3>
+            <p>{t.newMemoryNotificationsDesc}</p>
+          </div>
+          <div className="setting-control">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={newMemoryNotifications}
+                onChange={(e) => setNewMemoryNotifications(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.shareNotifications}</h3>
+            <p>{t.shareNotificationsDesc}</p>
+          </div>
+          <div className="setting-control">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={shareNotifications}
+                onChange={(e) => setShareNotifications(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderMapSection = () => (
+    <div className={`settings-section section-content section-entering`}>
+      <div className="section-header">
+        <h2>{t.mapSettings}</h2>
+        <p className="section-description">{t.mapDescription}</p>
+      </div>
+
+      <div className="settings-content">
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.mapType}</h3>
+            <p>{t.mapTypeDesc}</p>
+          </div>
+          <div className="setting-control">
+            <MapTypeDropdown
+              value={mapType}
+              language={language}
+              onChange={(val) => {
+                setMapType(val);
+                updateMapTypePref(val);
+              }}
+            />
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.autoZoom}</h3>
+            <p>{t.autoZoomDesc}</p>
+          </div>
+          <div className="setting-control">
+            <label className="toggle-switch">
+              <input
+                type="checkbox"
+                checked={autoZoom}
+                onChange={(e) => setAutoZoom(e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAppearanceSection = () => (
+    <div className={`settings-section section-content section-entering`}>
+      <div className="section-header">
+        <h2>{t.appearanceSettings}</h2>
+        <p className="section-description">{t.appearanceDescription}</p>
+      </div>
+
+      <div className="settings-content">
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.theme}</h3>
+            <p>{t.themeDesc}</p>
+          </div>
+          <div className="setting-control">
+            <div className="theme-selector">
+              <button
+                className={`theme-option ${theme === 'light' ? 'active' : ''}`}
+                onClick={() => setTheme('light')}
+              >
+                <Sun className="w-5 h-5" />
+                <span>{t.light}</span>
+              </button>
+              <button
+                className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
+                onClick={() => setTheme('dark')}
+              >
+                <Moon className="w-5 h-5" />
+                <span>{t.dark}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="setting-item">
+          <div className="setting-info">
+            <h3>{t.language}</h3>
+            <p>{t.languageDesc}</p>
+          </div>
+          <div className="setting-control">
+            <LanguageDropdown
+              value={language}
+              onChange={setLanguage}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className={`settings-page ${theme === 'dark' ? 'dark-mode' : ''}`}>
       <header className="settings-header">
         <div className="header-content">
-          <BackButton onClick={() => navigate('/home')} />
+          <BackButton onClick={() => navigate('/profile')} />
           <h1>{t.title}</h1>
         </div>
       </header>
@@ -767,6 +742,10 @@ export default function SettingsPage() {
           </nav>
 
           <div className="sidebar-footer">
+            <button className="save-all-btn" onClick={handleSaveSettings}>
+              <Save className="w-4 h-4" />
+              {t.saveAllSettings}
+            </button>
             <button className="logout-btn" onClick={handleLogout}>
               <LogOut className="w-4 h-4" />
               {t.logout}
@@ -789,18 +768,6 @@ export default function SettingsPage() {
           )}
           {activeSection === 'appearance' && (
             <div key="appearance">{renderAppearanceSection()}</div>
-          )}
-          {activeSection === 'security' && (
-            <div key="security">{renderSecuritySection()}</div>
-          )}
-
-          {activeSection !== 'security' && (
-            <div className="settings-footer">
-              <button className="save-all-btn" onClick={handleSaveSettings}>
-                <Save className="w-4 h-4" />
-                {t.saveAllSettings}
-              </button>
-            </div>
           )}
         </main>
       </div>

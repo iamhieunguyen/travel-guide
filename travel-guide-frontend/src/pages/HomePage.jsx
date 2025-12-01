@@ -4,18 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import {
-  Heart,
-  MessageCircle,
-  MapPin,
-  Clock,
-  Plus,
-  Eye,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
+import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {

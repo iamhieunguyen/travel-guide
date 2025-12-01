@@ -1,0 +1,43 @@
+.map-container-wrapper {
+  height: 600px; /* Tăng chiều cao lên chút */
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid #e2e8f0;
+  position: relative;
+  z-index: 1; /* Đặt z-index dương để chắc chắn hiển thị */
+}
+
+.custom-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  width: 200px !important;
+}
+
+.popup-img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+}
+
+.popup-info {
+  padding: 10px;
+}
+
+.popup-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.popup-info span {
+  font-size: 0.75rem;
+  color: #64748b;
+}

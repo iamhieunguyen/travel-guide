@@ -1,5 +1,5 @@
 // pages/HomePage.jsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
@@ -94,6 +94,8 @@ export default function HomePage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
   const [isSearching, setIsSearching] = useState(false);
+  const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
+  const searchInputRef = useRef(null); // Ref for search input
 
   // Fetch location name
   const fetchLocationName = async (lat, lng) => {
@@ -114,25 +116,12 @@ export default function HomePage() {
       if (!token) setLoading(true);
       else setLoadingMore(true);
 
-      let response;
-      if (query && query.trim()) {
-        // Nếu có search query, dùng searchArticles
-        response = await api.searchArticles({
-          q: query.trim(),
-          scope: scope,
-          limit: 10,
-          nextToken: token
-        });
-        setIsSearching(true);
-      } else {
-        // Nếu không có query, dùng listArticles bình thường
-        response = await api.listArticles({
-          scope: scope,
-          limit: 10,
-          nextToken: token
-        });
-        setIsSearching(false);
-      }
+      // Luôn dùng listArticles, không dùng searchArticles để tránh case-sensitive issue
+      const response = await api.listArticles({
+        scope: scope,
+        limit: 50, // Load nhiều hơn để có đủ kết quả sau khi filter
+        nextToken: token
+      });
 
       const postsWithLocation = await Promise.all(
         response.items.map(async (post) => {
@@ -144,7 +133,7 @@ export default function HomePage() {
         })
       );
 
-      // Nếu đang search, lọc thêm theo location name
+      // Filter ở FE với case-insensitive search
       let filteredPosts = postsWithLocation;
       if (query && query.trim()) {
         const searchTerm = query.trim().toLowerCase();
@@ -159,6 +148,9 @@ export default function HomePage() {
                  title.includes(searchTerm) ||
                  content.includes(searchTerm);
         });
+        setIsSearching(true);
+      } else {
+        setIsSearching(false);
       }
 
       if (token) {
@@ -181,6 +173,25 @@ export default function HomePage() {
     }
   };
 
+  // Load user's favorite articles
+  const loadFavorites = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      console.log('📥 Loading user favorites...');
+      const response = await api.listFavoriteArticles({ limit: 100 });
+      console.log('📦 Favorites response:', response);
+      
+      if (response && response.items) {
+        const favoriteIds = new Set(response.items.map(item => item.articleId));
+        setLikedPosts(favoriteIds);
+        console.log('✅ Loaded favorites:', favoriteIds.size, 'articles', Array.from(favoriteIds));
+      }
+    } catch (error) {
+      console.error('❌ Error loading favorites:', error);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!authChecked) return;
     if (scope === 'mine' && !user) {
@@ -188,14 +199,77 @@ export default function HomePage() {
       return;
     }
     loadPosts();
-  }, [scope, loadPosts, user, navigate, authChecked]);
+    loadFavorites(); // Load favorites when component mounts
+  }, [scope, loadPosts, loadFavorites, user, navigate, authChecked]);
 
   const loadMore = () => {
     if (nextToken) loadPosts(nextToken);
   };
 
   const handleLike = async (postId) => {
-    console.log('Like post:', postId);
+    try {
+      const isLiked = likedPosts.has(postId);
+      
+      console.log('🔄 Toggling like for post:', postId, 'Current state:', isLiked ? 'liked' : 'not liked');
+      
+      if (isLiked) {
+        // Unfavorite
+        console.log('📤 Calling unfavoriteArticle API...');
+        const response = await api.unfavoriteArticle(postId);
+        console.log('✅ Unfavorite response:', response);
+        
+        setLikedPosts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(postId);
+          return newSet;
+        });
+        
+        // Update like count
+        setPosts(prev => prev.map(post => 
+          post.articleId === postId 
+            ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
+            : post
+        ));
+        
+        if (window.showSuccessToast) {
+          window.showSuccessToast('Đã bỏ quan tâm bài viết');
+        }
+      } else {
+        // Favorite
+        console.log('📤 Calling favoriteArticle API...');
+        const response = await api.favoriteArticle(postId);
+        console.log('✅ Favorite response:', response);
+        
+        setLikedPosts(prev => new Set([...prev, postId]));
+        
+        // Update like count
+        setPosts(prev => prev.map(post => 
+          post.articleId === postId 
+            ? { ...post, likeCount: (post.likeCount || 0) + 1 }
+            : post
+        ));
+        
+        if (window.showSuccessToast) {
+          window.showSuccessToast('Đã quan tâm bài viết');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error toggling like:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      
+      if (window.showSuccessToast) {
+        const errorMsg = error.status === 404 
+          ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
+          : error.status === 401
+          ? 'Bạn cần đăng nhập để thực hiện thao tác này'
+          : `Lỗi: ${error.message}`;
+        window.showSuccessToast(errorMsg);
+      }
+    }
   };
 
   const handleComment = (postId) => {
@@ -265,20 +339,30 @@ export default function HomePage() {
               {/* Logo/Title */}
               <div className="mb-6 px-3">
                 <h1 className="text-2xl font-bold text-white">
-                  TRAVEL-<span className="text-[#0891b2]">GUIDE</span>
+                  TRAVEL <span className="text-[#92ADA4]">GUIDE</span>
                 </h1>
               </div>
 
               {/* Navigation Items with Text */}
               <div className="space-y-1">
-                <button className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group">
+                <button 
+                  onClick={() => {
+                    setSearchQuery('');
+                    setIsSearching(false);
+                    loadPosts(null, '');
+                  }}
+                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                >
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/>
                   </svg>
                   <span className="font-medium text-base">Trang chủ</span>
                 </button>
 
-                <button className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group">
+                <button 
+                  onClick={() => searchInputRef.current?.focus()}
+                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
@@ -306,10 +390,10 @@ export default function HomePage() {
                 </button>
 
                 <button 
-                  onClick={() => navigate('/profile')}
+                  onClick={() => navigate('/personal')}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
                 >
-                  <div className="w-7 h-7 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
+                  <div className="w-7 h-7 bg-[#92ADA4] rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-xs">
                       {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
@@ -343,19 +427,20 @@ export default function HomePage() {
                 <div className="flex items-center">
                   {/* Greeting */}
                   <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
-                    Hello, <span className="text-[#0891b2]">{user?.username || user?.email?.split('@')[0] || 'User'}</span>
+                    Hello, <span className="text-[#92ADA4]">{user?.username || user?.email?.split('@')[0] || 'User'}</span>
                   </h2>
 
                   {/* Search Bar - Same row as greeting */}
                   <div className="flex-1">
                     <div className="relative">
                       <input
+                        ref={searchInputRef}
                         type="text"
                         placeholder="Tìm kiếm theo vị trí, caption"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
-                        className="w-full px-5 py-3 pr-14 rounded-full border border-gray-300 focus:outline-none focus:border-[#0891b2] text-base"
+                        className="w-full px-5 py-3 pr-14 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
                       />
                       <button 
                         onClick={handleSearch}
@@ -385,7 +470,7 @@ export default function HomePage() {
                     onClick={() => navigate('/profile')}
                     className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
                   >
-                    <div className="w-10 h-10 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full flex items-center justify-center">
+                    <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-sm">
                         {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
@@ -431,8 +516,7 @@ export default function HomePage() {
                 <p className="text-gray-600 mb-6">Hãy tạo bài viết đầu tiên của bạn!</p>
                 <button
                   onClick={openModal}
-                  className="text-white px-6 py-3 rounded-full hover:shadow-lg transition font-medium"
-                  style={{ background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' }}
+                  className="text-white px-6 py-3 rounded-full hover:shadow-lg transition font-medium bg-[#92ADA4] hover:bg-[#7d9a91]"
                 >
                   Tạo bài viết mới
                 </button>
@@ -451,7 +535,7 @@ export default function HomePage() {
                       {/* User Info - Inside white container */}
                       <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' }}>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4]">
                             <span className="text-white font-bold text-base">
                               {post.username?.charAt(0)?.toUpperCase() || 'U'}
                             </span>
@@ -541,26 +625,42 @@ export default function HomePage() {
                               {/* Main Action Button - Quan tâm bài đăng */}
                               <button 
                                 onClick={() => handleLike(post.articleId)}
-                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-colors group ${
+                                  likedPosts.has(post.articleId)
+                                    ? 'bg-[#92ADA4] hover:bg-[#7d9a91]'
+                                    : 'bg-[#f5f5f5] hover:bg-[#92ADA4]'
+                                }`}
                               >
-                                <Heart className="w-5 h-5 text-gray-700" />
-                                <span className="text-gray-700 font-medium text-sm">Quan tâm bài đăng</span>
+                                <Heart 
+                                  className={`w-5 h-5 transition-colors ${
+                                    likedPosts.has(post.articleId)
+                                      ? 'text-white fill-white'
+                                      : 'text-gray-700 group-hover:text-white'
+                                  }`}
+                                />
+                                <span className={`font-medium text-sm transition-colors ${
+                                  likedPosts.has(post.articleId)
+                                    ? 'text-white'
+                                    : 'text-gray-700 group-hover:text-white'
+                                }`}>
+                                  {likedPosts.has(post.articleId) ? 'Đã quan tâm' : 'Quan tâm bài đăng'}
+                                </span>
                               </button>
 
                               {/* Share Button */}
                               <button 
-                                className="p-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                                className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
                               >
-                                <Share2 className="w-5 h-5 text-gray-700" />
+                                <Share2 className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
                               </button>
 
                               {/* More Button - Show for all posts */}
                               <div className="relative">
                                 <button 
                                   onClick={() => toggleMenu(post.articleId)}
-                                  className="p-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                                  className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
                                 >
-                                  <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
                                     <circle cx="12" cy="5" r="2"/>
                                     <circle cx="12" cy="12" r="2"/>
                                     <circle cx="12" cy="19" r="2"/>
@@ -623,10 +723,64 @@ export default function HomePage() {
 
                             {/* Post Caption Below Action Buttons */}
                             {(post.content || post.title) && (
-                              <div>
-                                <p className="text-gray-800 text-sm leading-relaxed">
-                                  {post.content || post.title}
-                                </p>
+                              <div className="mt-3 p-3">
+                                <div className="flex items-start gap-3 mb-3">
+                                  {/* Avatar */}
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0">
+                                    <span className="text-white font-bold text-sm">
+                                      {post.username?.charAt(0)?.toUpperCase() || 'U'}
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Content */}
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-semibold text-gray-900 text-sm">
+                                        {post.username || `User_${post.ownerId?.substring(0, 6)}`}
+                                      </span>
+                                      <span className="text-gray-400 text-xs">
+                                        {getTimeAgo(post.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="text-gray-700 text-sm leading-relaxed">
+                                      {post.content || post.title}
+                                    </p>
+                                    
+                                    {/* Tags Display */}
+                                    {post.tags && post.tags.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {post.tags.map((tagId, index) => {
+                                          const tagLabels = {
+                                            'beach': '🏖️ Biển',
+                                            'mountain': '⛰️ Núi',
+                                            'river': '🏞️ Sông',
+                                            'forest': '🌲 Rừng',
+                                            'cold': '❄️ Lạnh',
+                                            'hot': '🌡️ Nóng',
+                                            'rain': '🌧️ Mưa',
+                                            'sunny': '☀️ Nắng'
+                                          };
+                                          return (
+                                            <span
+                                              key={index}
+                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20"
+                                            >
+                                              {tagLabels[tagId] || tagId}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Like Count - Always at bottom */}
+                                <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
+                                  <Heart className="w-4 h-4" />
+                                  <span className="text-sm font-medium">
+                                    {post.likeCount || 0} lượt quan tâm
+                                  </span>
+                                </div>
                               </div>
                             )}
                           </div>
@@ -661,3 +815,4 @@ export default function HomePage() {
     </div>
   );
 }
+//kiệt

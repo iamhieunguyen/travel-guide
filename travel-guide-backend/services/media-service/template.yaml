@@ -1,18 +1,32 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide Media Service - Image processing and thumbnails
+
 Parameters:
   CoreStackName:
     Type: String
     Description: Name of the core infrastructure stack
+
   Environment:
     Type: String
     Default: staging
-    AllowedValues: [staging, prod]
+    AllowedValues:
+      - staging
+      - prod
     Description: Environment name
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: Dummy CORS parameter (not used directly in media service)
+
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
+
 Resources:
+  ################################
+  # SHARED LAYER
+  ################################
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -22,6 +36,7 @@ Resources:
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
+
   ##############################
   # LAMBDA FUNCTIONS
   ##############################
@@ -32,28 +47,41 @@ Resources:
       Handler: thumbnail_generator.lambda_handler
       Runtime: python3.11
       Timeout: 90
-      MemorySize: 1024  # Higher memory for image processing
+      MemorySize: 1024
       Layers:
         - !Ref CommonLayer
       Environment:
         Variables:
-          BUCKET_NAME: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-          DETECT_LABELS_QUEUE_URL: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-DetectLabelsQueueUrl'
+          BUCKET_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+          DETECT_LABELS_QUEUE_URL:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-DetectLabelsQueueUrl"
       Policies:
         - Version: "2012-10-17"
           Statement:
+            # Read/write objects in article images bucket
             - Effect: Allow
               Action:
                 - s3:GetObject
                 - s3:PutObject
-              Resource: !Sub 
-                - "${bucketArn}/*"
-                - bucketArn: !ImportValue '${CoreStackName}-ArticleImagesBucketName.Arn'
+              Resource: !Sub
+                - "arn:aws:s3:::${BucketName}/*"
+                - BucketName:
+                    Fn::ImportValue:
+                      Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+
+            # List bucket
             - Effect: Allow
               Action: s3:ListBucket
-              Resource: !ImportValue '${CoreStackName}-ArticleImagesBucketName.Arn'
+              Resource: !Sub
+                - "arn:aws:s3:::${BucketName}"
+                - BucketName:
+                    Fn::ImportValue:
+                      Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+
+            # CloudWatch Logs
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
@@ -68,67 +96,74 @@ Resources:
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
+
   ##############################
-  # S3 TRIGGERS
+  # SQS QUEUES + DLQ
   ##############################
   ImageValidatorQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-image-validator-queue'
+      QueueName: !Sub "${AWS::StackName}-image-validator-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ImageAnalyzerQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-image-analyzer-queue'
+      QueueName: !Sub "${AWS::StackName}-image-analyzer-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   DetectLabelsQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-detect-labels-queue'
+      QueueName: !Sub "${AWS::StackName}-detect-labels-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ContentModerationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-content-moderation-queue'
+      QueueName: !Sub "${AWS::StackName}-content-moderation-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ThumbnailQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-thumbnail-queue'
+      QueueName: !Sub "${AWS::StackName}-thumbnail-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ImageProcessingDLQ:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub '${AWS::StackName}-image-processing-dlq'
+      QueueName: !Sub "${AWS::StackName}-image-processing-dlq"
       MessageRetentionPeriod: 1209600
       VisibilityTimeout: 300
+
   ##############################
-  # S3 BUCKET NOTIFICATIONS
+  # QUEUE POLICIES (ALLOW S3 TO SEND)
   ##############################
   ImageValidatorQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -136,7 +171,7 @@ Resources:
       Queues:
         - !Ref ImageValidatorQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -146,14 +181,15 @@ Resources:
             Resource: !GetAtt ImageValidatorQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+
   ImageAnalyzerQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues:
         - !Ref ImageAnalyzerQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -163,14 +199,15 @@ Resources:
             Resource: !GetAtt ImageAnalyzerQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+
   DetectLabelsQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues:
         - !Ref DetectLabelsQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -180,14 +217,15 @@ Resources:
             Resource: !GetAtt DetectLabelsQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+
   ContentModerationQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues:
         - !Ref ContentModerationQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -197,14 +235,15 @@ Resources:
             Resource: !GetAtt ContentModerationQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"
+
   ThumbnailQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues:
         - !Ref ThumbnailQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -214,60 +253,4 @@ Resources:
             Resource: !GetAtt ThumbnailQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
-  ImageValidatorS3Notification:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !ImportValue 
-        'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: "Allow"
-            Principal: "*"
-            Action: "s3:ObjectCreated:*"
-            Resource: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}/articles/*"
-            Condition:
-              StringEquals:
-                "s3:x-amz-destination-bucket": !ImportValue 
-                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-  ##############################
-  # S3 BUCKET NOTIFICATIONS
-  ##############################
-  ImageValidatorS3Notification:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !ImportValue 
-        'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: "Allow"
-            Principal: "*"
-            Action: "s3:ObjectCreated:*"
-            Resource: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}/articles/*"
-            Condition:
-              StringEquals:
-                "s3:x-amz-destination-bucket": !ImportValue 
-                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-  ImageValidatorS3Notification:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !ImportValue 
-        'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: "Allow"
-            Principal: "*"
-            Action: "s3:ObjectCreated:*"
-            Resource: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}/articles/*"
-            Condition:
-              StringEquals:
-                "s3:x-amz-destination-bucket": !ImportValue 
-                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
-  ImageValidatorS3Notification:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !ImportValue 
-        'Fn::Sub': '${CoreStackName}-ArticleImages
+                aws:SourceArn: !Sub "arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}"

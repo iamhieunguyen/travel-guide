@@ -22,7 +22,7 @@ Resources:
     Properties:
       LayerName: !Sub article-service-common-${Environment}
       Description: Shared dependencies for article service
-      ContentUri: layer/
+      ContentUri: ../../shared/layers/common/
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
@@ -50,7 +50,7 @@ Resources:
             'Fn::Sub': '${CoreStackName}-UserPoolId'
           CLIENT_ID: !ImportValue 
             'Fn::Sub': '${CoreStackName}-UserPoolClientId'
-          AWS_REGION: !Ref AWS::Region
+          # AWS_REGION: !Ref AWS::Region
           ENVIRONMENT: !Ref Environment
           CORS_ORIGIN: !Ref CorsOrigin
       Policies:
@@ -326,11 +326,11 @@ Resources:
       StageName: !Ref Environment
       Name: !Sub TravelGuide-ArticleAPI-${Environment}
       EndpointConfiguration: REGIONAL
-      Cors:
-        AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
-        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
-        AllowOrigin: !Ref CorsOrigin
-        MaxAge: "'7200'"
+      # Cors:
+      #   AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+      #   AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+      #   AllowOrigin: !Ref CorsOrigin
+      #   MaxAge: "'7200'"
       Auth:
         ApiKeyRequired: false
         ResourcePolicy:

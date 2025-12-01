@@ -1,18 +1,32 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Travel Guide AI Service - Image analysis with Rekognition
+
 Parameters:
   CoreStackName:
     Type: String
     Description: Name of the core infrastructure stack
+
   Environment:
     Type: String
     Default: staging
-    AllowedValues: [staging, prod]
+    AllowedValues:
+      - staging
+      - prod
     Description: Environment name
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: Dummy CORS param (not used directly in AI service)
+
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
+
 Resources:
+  ################################
+  # SHARED LAYER
+  ################################
   CommonLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -22,6 +36,10 @@ Resources:
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Retain
+
+  ##############################
+  # DETECT LABELS FUNCTION
+  ##############################
   DetectLabelsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -34,38 +52,42 @@ Resources:
         - !Ref CommonLayer
       Environment:
         Variables:
-          TABLE_NAME: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
-          BUCKET_NAME: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          TABLE_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticlesTableName"
+          BUCKET_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           MIN_CONFIDENCE: "75.0"
           MAX_LABELS: "5"
-          CONTENT_MODERATION_QUEUE_URL: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ContentModerationQueueUrl'
-          CONFIG_BUCKET: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
+          CONFIG_BUCKET:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           CONFIG_KEY: "config/label_priority_config.json"
           ENVIRONMENT: !Ref Environment
       Policies:
         - S3ReadPolicy:
-            BucketName: !ImportValue 
-              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+            BucketName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
         - DynamoDBCrudPolicy:
-            TableName: !ImportValue 
-              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticlesTableName"
         - SQSPollerPolicy:
             QueueName: !GetAtt DetectLabelsQueue.QueueName
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - rekognition:DetectLabels
-              Resource: '*'
+              Resource: "*"
             - Effect: Allow
               Action:
                 - sqs:SendMessage
               Resource: !GetAtt ContentModerationQueue.Arn
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
@@ -81,6 +103,10 @@ Resources:
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
+
+  ##############################
+  # CONTENT MODERATION FUNCTION
+  ##############################
   ContentModerationFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -93,28 +119,32 @@ Resources:
         - !Ref CommonLayer
       Environment:
         Variables:
-          TABLE_NAME: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
-          BUCKET_NAME: !ImportValue 
-            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          TABLE_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticlesTableName"
+          BUCKET_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           MODERATION_CONFIDENCE: "75.0"
           ENVIRONMENT: !Ref Environment
       Policies:
         - S3CrudPolicy:
-            BucketName: !ImportValue 
-              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+            BucketName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
         - DynamoDBCrudPolicy:
-            TableName: !ImportValue 
-              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticlesTableName"
         - SQSPollerPolicy:
             QueueName: !GetAtt ContentModerationQueue.QueueName
-        - Version: '2012-10-17'
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
                 - rekognition:DetectModerationLabels
-              Resource: '*'
-        - Version: '2012-10-17'
+              Resource: "*"
+        - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
@@ -130,37 +160,42 @@ Resources:
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
+
   ##############################
   # SQS QUEUES
   ##############################
   DetectLabelsQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub 'travel-guide-${Environment}-detect-labels-queue'
+      QueueName: !Sub "travel-guide-${Environment}-detect-labels-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ContentModerationQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub 'travel-guide-${Environment}-content-moderation-queue'
+      QueueName: !Sub "travel-guide-${Environment}-content-moderation-queue"
       VisibilityTimeout: 180
       MessageRetentionPeriod: 345600
       ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
+
   ImageProcessingDLQ:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: !Sub 'travel-guide-${Environment}-image-processing-dlq'
+      QueueName: !Sub "${AWS::StackName}-image-processing-dlq"
       MessageRetentionPeriod: 1209600
       VisibilityTimeout: 300
+
+
   ##############################
-  # QUEUE POLICIES
+  # QUEUE POLICIES (ALLOW S3 TO SEND)
   ##############################
   DetectLabelsQueuePolicy:
     Type: AWS::SQS::QueuePolicy
@@ -168,7 +203,7 @@ Resources:
       Queues:
         - !Ref DetectLabelsQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -178,15 +213,19 @@ Resources:
             Resource: !GetAtt DetectLabelsQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !ImportValue 
-                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketArn'
+                aws:SourceArn: !Sub
+                  - "arn:aws:s3:::${BucketName}"
+                  - BucketName:
+                      Fn::ImportValue:
+                        Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+
   ContentModerationQueuePolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       Queues:
         - !Ref ContentModerationQueue
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal:
@@ -196,8 +235,12 @@ Resources:
             Resource: !GetAtt ContentModerationQueue.Arn
             Condition:
               ArnLike:
-                aws:SourceArn: !ImportValue 
-                  'Fn::Sub': '${CoreStackName}-ArticleImagesBucketArn'
+                aws:SourceArn: !Sub
+                  - "arn:aws:s3:::${BucketName}"
+                  - BucketName:
+                      Fn::ImportValue:
+                        Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+
 Outputs:
   AIServiceOutputs:
     Value: "AI Service deployed successfully"

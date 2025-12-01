@@ -49,7 +49,8 @@ def lambda_handler(event, context):
                     ':owner_id': user_id
                 },
                 'ScanIndexForward': False, # Mới nhất trước
-                'Limit': limit
+                'Limit': limit,
+                'ProjectionExpression': 'articleId, ownerId, title, content, createdAt, lat, lng, locationName, imageKeys, imageKey, visibility, tags, username'
             }
         else:
             # Query theo visibility nếu scope là public

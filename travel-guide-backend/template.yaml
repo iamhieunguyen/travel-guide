@@ -474,6 +474,8 @@ Resources:
           Properties:
             Path: /articles/{articleId}
             Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   ListArticlesFunction:
     Type: AWS::Serverless::Function

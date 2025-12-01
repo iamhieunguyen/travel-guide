@@ -6,6 +6,7 @@ import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
 import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
+import PostMap from '../components/PostMap';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -229,6 +230,20 @@ export default function HomePage() {
     setOpenMenuId(openMenuId === postId ? null : postId);
   };
 
+  const getTimeAgo = (dateString) => {
+    const now = new Date();
+    const postDate = new Date(dateString);
+    const diffMs = now - postDate;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffDays > 0) return `${diffDays} ngày trước`;
+    if (diffHours > 0) return `${diffHours} giờ trước`;
+    if (diffMinutes > 0) return `${diffMinutes} phút trước`;
+    return 'Vừa xong';
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
       month: 'short',
@@ -336,7 +351,7 @@ export default function HomePage() {
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="Search"
+                        placeholder="Tìm kiếm theo vị trí, caption"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
@@ -391,7 +406,7 @@ export default function HomePage() {
             {/* Scrollable Content */}
             <div className="py-6 overflow-y-auto flex-1">
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 px-8">
+            <div className="px-8">
               {/* Main Feed */}
               <div className="space-y-8">
             {loading && posts.length === 0 ? (
@@ -432,9 +447,9 @@ export default function HomePage() {
                   );
                   
                   return (
-                    <div key={post.articleId} className="max-w-2xl mx-auto bg-white rounded-[32px] shadow-lg overflow-hidden p-6">
+                    <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
                       {/* User Info - Inside white container */}
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' }}>
                             <span className="text-white font-bold text-base">
@@ -445,107 +460,177 @@ export default function HomePage() {
                             <p className="font-bold text-gray-800 text-base">
                               {post.username || `User_${post.ownerId?.substring(0, 6)}`}
                             </p>
-                            {(post.location?.name || post.location) && (
-                              <div className="flex items-center text-sm" style={{ color: '#0891b2' }}>
-                                <MapPin className="w-3 h-3 mr-1" />
-                                <span className="line-clamp-1 font-medium">{post.location?.name || post.location}</span>
+                            {(post.location?.name || post.location || post.locationName) && (
+                              <div className="flex items-center text-sm group relative text-gray-500">
+                                <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span className="line-clamp-1 font-normal cursor-pointer">
+                                  {post.location?.name || post.location || post.locationName}
+                                </span>
+                                {/* Tooltip on hover */}
+                                <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-md whitespace-normal">
+                                  <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                  {post.location?.name || post.location || post.locationName}
+                                </div>
                               </div>
                             )}
                           </div>
                         </div>
-                        {isOwner && (
-                          <div className="relative">
-                            <button 
-                              onClick={() => toggleMenu(post.articleId)}
-                              className="text-gray-400 hover:text-gray-600 p-2"
-                            >
-                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="5" r="2"/>
-                                <circle cx="12" cy="12" r="2"/>
-                                <circle cx="12" cy="19" r="2"/>
-                              </svg>
-                            </button>
-                          
-                            {openMenuId === post.articleId && (
-                              <>
-                                <div 
-                                  className="fixed inset-0 z-[9998]" 
-                                  onClick={() => setOpenMenuId(null)}
-                                />
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl z-[9999] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.1)' }}>
-                                  <button
-                                    onClick={() => handleEditPost(post)}
-                                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    <span>Chỉnh sửa</span>
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePost(post.articleId)}
-                                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition flex items-center space-x-2"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    <span>Xóa</span>
-                                  </button>
-                                </div>
-                              </>
+                      </div>
+
+                      {/* 2-Column Layout: Image Left, Map Right */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left: Post Images Only */}
+                        <div>
+                          {(post.imageKeys && post.imageKeys.length > 0) ? (
+                            <PostImageCarousel images={post.imageKeys} postTitle={post.title || post.content} />
+                          ) : post.imageKey ? (
+                            <div className="relative rounded-3xl overflow-hidden bg-gray-100" style={{ height: '550px' }}>
+                              <img
+                                src={post.imageKey.startsWith('http') 
+                                  ? post.imageKey 
+                                  : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`}
+                                alt={post.title || post.content}
+                                className="w-full h-full object-contain"
+                                onError={(e) => {
+                                  e.target.src = 'https://placehold.co/600x600/e2e8f0/64748b?text=No+Image';
+                                }}
+                              />
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {/* Right: Location Map, Action Buttons, and Caption */}
+                        {post.lat && post.lng && (
+                          <div className="flex flex-col space-y-3">
+                            {/* Time posted */}
+                            <div className="flex items-center text-sm text-gray-500 group relative cursor-pointer">
+                              <Clock className="w-4 h-4 mr-2" />
+                              <span>{getTimeAgo(post.createdAt)}</span>
+                              {/* Tooltip with full date/time */}
+                              <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+                                <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                Đăng vào {new Date(post.createdAt).toLocaleString('vi-VN', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  day: 'numeric',
+                                  month: 'long',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            </div>
+                            
+                            <PostMap 
+                              lat={post.lat} 
+                              lng={post.lng} 
+                              locationName={post.locationName || post.location?.name || post.location}
+                              imageUrl={
+                                post.imageKeys && post.imageKeys.length > 0
+                                  ? (post.imageKeys[0].startsWith('http') 
+                                      ? post.imageKeys[0]
+                                      : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKeys[0]}`)
+                                  : post.imageKey
+                                    ? (post.imageKey.startsWith('http')
+                                        ? post.imageKey
+                                        : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`)
+                                    : null
+                              }
+                            />
+
+                            {/* Action Buttons Below Map */}
+                            <div className="flex items-center gap-3">
+                              {/* Main Action Button - Quan tâm bài đăng */}
+                              <button 
+                                onClick={() => handleLike(post.articleId)}
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                              >
+                                <Heart className="w-5 h-5 text-gray-700" />
+                                <span className="text-gray-700 font-medium text-sm">Quan tâm bài đăng</span>
+                              </button>
+
+                              {/* Share Button */}
+                              <button 
+                                className="p-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                              >
+                                <Share2 className="w-5 h-5 text-gray-700" />
+                              </button>
+
+                              {/* More Button - Show for all posts */}
+                              <div className="relative">
+                                <button 
+                                  onClick={() => toggleMenu(post.articleId)}
+                                  className="p-3 bg-[#f5f5f5] hover:bg-[#e8e8e8] rounded-2xl transition-colors"
+                                >
+                                  <svg className="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="5" r="2"/>
+                                    <circle cx="12" cy="12" r="2"/>
+                                    <circle cx="12" cy="19" r="2"/>
+                                  </svg>
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {openMenuId === post.articleId && (
+                                  <>
+                                    <div 
+                                      className="fixed inset-0 z-[9998]" 
+                                      onClick={() => setOpenMenuId(null)}
+                                    />
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl z-[9999] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.1)' }}>
+                                      {isOwner ? (
+                                        <>
+                                          {/* Owner menu: Edit and Delete */}
+                                          <button
+                                            onClick={() => handleEditPost(post)}
+                                            className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            <span>Chỉnh sửa</span>
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeletePost(post.articleId)}
+                                            className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition flex items-center space-x-2"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            <span>Xóa</span>
+                                          </button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          {/* Non-owner menu: Hide post */}
+                                          <button
+                                            onClick={() => {
+                                              setOpenMenuId(null);
+                                              console.log('Hide post:', post.articleId);
+                                              // TODO: Implement hide post functionality
+                                            }}
+                                            className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            </svg>
+                                            <span>Ẩn bài viết</span>
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Post Caption Below Action Buttons */}
+                            {(post.content || post.title) && (
+                              <div>
+                                <p className="text-gray-800 text-sm leading-relaxed">
+                                  {post.content || post.title}
+                                </p>
+                              </div>
                             )}
                           </div>
                         )}
-                      </div>
-
-                      {/* Post Images */}
-                      <div className="mb-4">
-                        {(post.imageKeys && post.imageKeys.length > 0) ? (
-                          <PostImageCarousel images={post.imageKeys} postTitle={post.title || post.content} />
-                        ) : post.imageKey ? (
-                          <div className="relative rounded-3xl overflow-hidden bg-gray-100" style={{ height: '550px' }}>
-                            <img
-                              src={post.imageKey.startsWith('http') 
-                                ? post.imageKey 
-                                : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`}
-                              alt={post.title || post.content}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                e.target.src = 'https://placehold.co/600x600/e2e8f0/64748b?text=No+Image';
-                              }}
-                            />
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* Post Caption - Above actions */}
-                      {(post.content || post.title) && (
-                        <div className="mb-3">
-                          <p className="text-gray-800 text-sm leading-relaxed">
-                            {post.content || post.title}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Instagram-style Action Buttons */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <button 
-                            onClick={() => handleLike(post.articleId)}
-                            className="hover:opacity-70 transition"
-                          >
-                            <Heart className="w-7 h-7 text-gray-800" />
-                          </button>
-                          <button 
-                            onClick={() => handleComment(post.articleId)}
-                            className="hover:opacity-70 transition"
-                          >
-                            <MessageCircle className="w-7 h-7 text-gray-800" />
-                          </button>
-                          <button className="hover:opacity-70 transition">
-                            <Share2 className="w-7 h-7 text-gray-800" />
-                          </button>
-                        </div>
                       </div>
                     </div>
                   );
@@ -567,34 +652,7 @@ export default function HomePage() {
             )}
               </div>
 
-              {/* Right Sidebar */}
-              <aside className="hidden lg:block">
-                <div className="sticky top-0 space-y-5">
-                  {/* Stories Section */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm">
-                    <h3 className="font-bold text-gray-900 text-lg mb-4">Stories</h3>
-                    <div className="text-center py-8">
-                      <p className="text-gray-400 text-sm">Chưa có dữ liệu</p>
-                    </div>
-                  </div>
 
-                  {/* Suggestions Section */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm">
-                    <h3 className="font-bold text-gray-900 text-lg mb-4">Suggestions</h3>
-                    <div className="text-center py-8">
-                      <p className="text-gray-400 text-sm">Chưa có dữ liệu</p>
-                    </div>
-                  </div>
-
-                  {/* Recommendations Section */}
-                  <div className="bg-white rounded-[20px] p-5 shadow-sm">
-                    <h3 className="font-bold text-gray-900 text-lg mb-4">Recommendations</h3>
-                    <div className="text-center py-8">
-                      <p className="text-gray-400 text-sm">Chưa có dữ liệu</p>
-                    </div>
-                  </div>
-                </div>
-              </aside>
             </div>
             </div>
           </div>

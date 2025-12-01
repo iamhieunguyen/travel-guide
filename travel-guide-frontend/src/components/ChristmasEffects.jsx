@@ -6,21 +6,21 @@ export default function ChristmasEffects() {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    // Generate snowflakes - random positions
-    const flakes = Array.from({ length: 30 }, (_, i) => ({
+    // Generate more snowflakes - 80 snowflakes
+    const flakes = Array.from({ length: 80 }, (_, i) => ({
       id: i,
       left: Math.random() * 100,
-      animationDuration: 5 + Math.random() * 5,
+      animationDuration: 5 + Math.random() * 3, // 5-8 seconds
       animationDelay: Math.random() * 10,
-      fontSize: 12 + Math.random() * 18,
-      opacity: 0.4 + Math.random() * 0.6,
+      fontSize: 10 + Math.random() * 15,
+      opacity: 0.5 + Math.random() * 0.5,
     }));
     setSnowflakes(flakes);
 
-    // Hide effects after 7 seconds
+    // Hide effects after 10 seconds
     const timer = setTimeout(() => {
       setIsVisible(false);
-    }, 7000);
+    }, 10000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -30,7 +30,7 @@ export default function ChristmasEffects() {
   return (
     <>
       {/* Falling Snow */}
-      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden animate-fadeOut" style={{ animationDelay: '6s', animationDuration: '1s' }}>
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden animate-fadeOut" style={{ animationDelay: '9s', animationDuration: '1s' }}>
         {snowflakes.map((flake) => (
           <div
             key={flake.id}
@@ -50,7 +50,7 @@ export default function ChristmasEffects() {
       </div>
 
       {/* Falling Christmas Trees */}
-      <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden animate-fadeOut" style={{ animationDelay: '6s', animationDuration: '1s' }}>
+      <div className="fixed inset-0 pointer-events-none z-40 overflow-hidden animate-fadeOut" style={{ animationDelay: '9s', animationDuration: '1s' }}>
         {Array.from({ length: 10 }, (_, i) => (
           <div
             key={i}

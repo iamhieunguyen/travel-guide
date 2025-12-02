@@ -98,14 +98,16 @@ def lambda_handler(event, context):
         items = response['Items']
         next_key = response.get('LastEvaluatedKey')
 
-        # Chuyển Decimal sang float cho frontend
+        # Chuyển Decimal sang float/int cho frontend
         processed_items = []
         for item in items:
-            processed_item = dict(item)
-            if 'lat' in processed_item:
-                processed_item['lat'] = float(processed_item['lat'])
-            if 'lng' in processed_item:
-                processed_item['lng'] = float(processed_item['lng'])
+            processed_item = {}
+            for k, v in item.items():
+                if isinstance(v, Decimal):
+                    # Chuyển Decimal sang int nếu là số nguyên, ngược lại float
+                    processed_item[k] = int(v) if v % 1 == 0 else float(v)
+                else:
+                    processed_item[k] = v
             processed_items.append(processed_item)
 
         result = {

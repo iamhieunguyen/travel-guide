@@ -1,8 +1,0 @@
-# Rekognition Functions Requirements
-# These are the dependencies needed for AI image analysis
-
-# AWS SDK for Python
-boto3>=1.26.137
-
-# No additional dependencies needed - Rekognition is AWS native!
-# All image processing is done server-side by AWS

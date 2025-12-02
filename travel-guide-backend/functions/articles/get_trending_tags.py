@@ -1,17 +1,27 @@
 """
-Get trending tags from all articles
-Aggregates autoTags from Rekognition analysis
+Get trending tags from GalleryTrendsTable
+Simple scan and sort by count
 """
 import os
 import json
 import boto3
 from decimal import Decimal
-from collections import Counter
 from cors import ok, error, options
 
 dynamodb = boto3.resource("dynamodb")
-TABLE_NAME = os.environ["TABLE_NAME"]
-table = dynamodb.Table(TABLE_NAME)
+GALLERY_TRENDS_TABLE = os.environ.get("GALLERY_TRENDS_TABLE", "")
+table = dynamodb.Table(GALLERY_TRENDS_TABLE) if GALLERY_TRENDS_TABLE else None
+
+
+def decimal_to_native(obj):
+    """Convert Decimal to native Python types"""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    elif isinstance(obj, dict):
+        return {k: decimal_to_native(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [decimal_to_native(i) for i in obj]
+    return obj
 
 
 def lambda_handler(event, context):
@@ -20,77 +30,43 @@ def lambda_handler(event, context):
         return options()
 
     try:
+        if not table:
+            return error(500, "Gallery Trends table not configured")
+        
         params = event.get("queryStringParameters") or {}
-        limit = int(params.get("limit", 20))  # Top 20 trending tags
+        limit = int(params.get("limit", 20))
         
-        # Scan all public articles to get autoTags
-        # Note: Some old articles may not have visibility field, treat them as public
-        scan_kwargs = {
-            'FilterExpression': 'attribute_not_exists(visibility) OR visibility = :visibility',
-            'ExpressionAttributeValues': {
-                ':visibility': 'public'
-            }
-        }
-        
-        tag_counter = Counter()
-        tag_images = {}  # Store latest image for each tag
-        tag_counts_detail = {}  # Store count and latest createdAt
+        # Scan all tags
+        scan_kwargs = {}
+        all_tags = []
         
         while True:
             response = table.scan(**scan_kwargs)
-            items = response.get('Items', [])
+            all_tags.extend(response.get('Items', []))
             
-            for item in items:
-                auto_tags = item.get('autoTags', [])
-                created_at = item.get('createdAt', '')
-                article_id = item.get('articleId', '')
-                
-                # Get image URL - handle both old and new format
-                image_key = None
-                if item.get('imageKeys') and len(item['imageKeys']) > 0:
-                    image_key = item['imageKeys'][0]
-                elif item.get('imageKey'):
-                    image_key = item['imageKey']
-                
-                # Debug log
-                if not image_key and auto_tags:
-                    print(f"Article {article_id} has tags but no image: {auto_tags}")
-                
-                # Count tags and track latest image
-                for tag in auto_tags:
-                    tag_lower = tag.lower()
-                    tag_counter[tag_lower] += 1
-                    
-                    # Update image if this is newer
-                    if tag_lower not in tag_counts_detail or created_at > tag_counts_detail[tag_lower]['latest_date']:
-                        tag_counts_detail[tag_lower] = {
-                            'count': tag_counter[tag_lower],
-                            'latest_date': created_at,
-                            'cover_image': image_key
-                        }
-            
-            # Check for more items
             if 'LastEvaluatedKey' not in response:
                 break
             scan_kwargs['ExclusiveStartKey'] = response['LastEvaluatedKey']
         
-        # Get top N tags
-        top_tags = tag_counter.most_common(limit)
+        # Sort by count (descending)
+        all_tags.sort(key=lambda x: x.get('count', 0), reverse=True)
+        
+        # Get top N
+        top_tags = all_tags[:limit]
         
         # Format response
         trending_tags = []
-        for tag_name, count in top_tags:
-            detail = tag_counts_detail.get(tag_name, {})
+        for tag in top_tags:
             trending_tags.append({
-                'tag_name': tag_name.title(),  # Capitalize first letter
-                'count': count,
-                'cover_image': detail.get('cover_image'),
-                'last_updated': detail.get('latest_date')
+                'tag_name': tag.get('tag_name', '').title(),
+                'count': decimal_to_native(tag.get('count', 0)),
+                'cover_image': tag.get('cover_image'),
+                'last_updated': tag.get('last_updated', '')
             })
         
         return ok(200, {
             'items': trending_tags,
-            'total_tags': len(tag_counter)
+            'total_tags': len(all_tags)
         })
         
     except Exception as e:

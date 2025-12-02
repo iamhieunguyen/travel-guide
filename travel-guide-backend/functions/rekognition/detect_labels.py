@@ -421,6 +421,13 @@ def lambda_handler(event, context):
                     if success:
                         results['succeeded'] += 1
                         
+                        # Save to Gallery tables
+                        from save_to_gallery import save_photo_to_gallery, update_trending_tags
+                        tag_names = [label['name'] for label in labels_data]
+                        image_url = key  # S3 key
+                        save_photo_to_gallery(article_id, image_url, tag_names, status='public')
+                        update_trending_tags(tag_names, image_url)
+                        
                         # Forward to next queue
                         forward_to_next_queue(bucket, key, article_id)
                     else:

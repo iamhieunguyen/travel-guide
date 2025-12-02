@@ -5,6 +5,8 @@
 .vscode/
 .idea/
 *.log
+package-lock.json
+package.json
 
 # sam env (file bạn không muốn push)
 **/sam-env

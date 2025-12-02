@@ -286,6 +286,17 @@ Resources:
         - AttributeName: articleId
           KeyType: RANGE
 
+  UserProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
   ##############################
   # AUTH (COGNITO)
   ##############################
@@ -389,6 +400,104 @@ Resources:
           Properties:
             Path: /auth/confirm
             Method: POST
+
+  ##############################
+  # USER PROFILE FUNCTIONS
+  ##############################
+  GetProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: get_profile.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  UpdateProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: update_profile.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserProfilesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminUpdateUserAttributes
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        UpdateProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  GetAvatarUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: get_avatar_upload_url.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetAvatarUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /profile/avatar-upload-url
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ChangePasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: change_password.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ChangePassword
+              Resource: '*'
+      Events:
+        ChangePasswordApi:
+          Type: Api
+          Properties:
+            Path: /auth/change-password
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
@@ -924,6 +1033,16 @@ Resources:
               Cookies:
                 Forward: none
             Compress: true
+          - PathPattern: "avatars/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
         PriceClass: PriceClass_100
         HttpVersion: http2
         IPV6Enabled: true
@@ -949,3 +1068,6 @@ Outputs:
   CloudFrontDomainForImages:
     Value: !GetAtt CloudFrontDistribution.DomainName
     Description: Use this domain for serving images via CloudFront for better performance
+  UserProfilesTableName:
+    Value: !Ref UserProfilesTable
+    Description: DynamoDB table for user profiles

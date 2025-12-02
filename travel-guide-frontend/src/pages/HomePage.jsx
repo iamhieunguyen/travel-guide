@@ -8,8 +8,8 @@ import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import { useNewPostsPolling } from '../hooks/useNewPostsPolling';
+import { useInfiniteScroll } from '../hook/useInfiniteScroll';
+import { useNewPostsPolling } from '../hook/useNewPostsPolling';
 import NewPostsBanner from '../components/NewPostsBanner';
 
 // Component carousel để lướt qua nhiều ảnh
@@ -142,7 +142,7 @@ export default function HomePage() {
   const { newPostsCount, resetNewPosts } = useNewPostsPolling({
     checkNewPosts,
     interval: 10000, // 5 seconds (for testing - change back to 30000 for production)
-    enabled: posts.length > 0 && !loading && !isSearching, // Disable when searching
+    enabled: posts.length > 0 && !loading && !searchQuery, // Disable when searching
   });
 
   // Use infinite scroll hook

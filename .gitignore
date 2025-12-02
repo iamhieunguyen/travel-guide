@@ -28,3 +28,8 @@
 
 # optional: ignore any node_modules anywhere
 **/node_modules/
+/package.json
+/package-lock.json
+
+
+

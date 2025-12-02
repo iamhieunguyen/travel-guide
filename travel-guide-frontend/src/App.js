@@ -52,7 +52,7 @@ export default function App() {
             <Route path="/home" element={<HomePage />} />
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/personal" element={<PersonalPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path='/settings' element={<SettingsPage />} />
 
           </Routes>
           <CreatePostModal />

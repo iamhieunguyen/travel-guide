@@ -524,6 +524,29 @@ Resources:
               Authorizer: CognitoAuthorizer
 
   ##############################
+  # GALLERY & TRENDING FUNCTIONS
+  ##############################
+  GetTrendingTagsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_trending_tags.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+      Events:
+        GetTrendingTagsApi:
+          Type: Api
+          Properties:
+            Path: /gallery/trending
+            Method: GET
+
+  ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################
   CreateArticleFunction:

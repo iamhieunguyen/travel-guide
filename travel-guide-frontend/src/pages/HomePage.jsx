@@ -100,41 +100,34 @@ export default function HomePage() {
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
   
-  // New posts detection state
-  const [latestPostId, setLatestPostId] = useState(null);
+  // New posts detection state - store the latest createdAt timestamp
+  const [latestCreatedAt, setLatestCreatedAt] = useState(null);
 
   // Check for new posts
   const checkNewPosts = useCallback(async () => {
-    if (!latestPostId || posts.length === 0) return 0;
+    if (!latestCreatedAt || posts.length === 0) return 0;
     
     try {
+      // Get latest posts
       const response = await api.listArticles({
         scope: scope,
-        limit: 1,
+        limit: 20, // Check up to 20 posts
       });
       
       if (response.items && response.items.length > 0) {
-        const newestPost = response.items[0];
-        
-        // Compare timestamps
-        if (newestPost.createdAt > latestPostId) {
-          // Count how many new posts by checking until we find our latest
-          const countResponse = await api.listArticles({
-            scope: scope,
-            limit: 20, // Check up to 20 new posts
-          });
-          
-          let count = 0;
-          for (const post of countResponse.items) {
-            if (post.createdAt > latestPostId) {
-              count++;
-            } else {
-              break;
-            }
+        // Count only posts with createdAt NEWER than our latest
+        // This ignores updated old posts
+        let count = 0;
+        for (const post of response.items) {
+          if (post.createdAt > latestCreatedAt) {
+            count++;
+          } else {
+            // Stop when we reach posts we've already seen
+            break;
           }
-          
-          return count;
         }
+        
+        return count;
       }
       
       return 0;
@@ -142,13 +135,13 @@ export default function HomePage() {
       console.error('Error checking new posts:', error);
       return 0;
     }
-  }, [latestPostId, scope, posts.length]);
+  }, [latestCreatedAt, scope, posts.length]);
 
   // Use new posts polling hook
   const { newPostsCount, resetNewPosts } = useNewPostsPolling({
     checkNewPosts,
     interval: 10000, // 5 seconds (for testing - change back to 30000 for production)
-    enabled: posts.length > 0 && !loading,
+    enabled: posts.length > 0 && !loading && !isSearching, // Disable when searching
   });
 
   // Use infinite scroll hook
@@ -194,9 +187,9 @@ export default function HomePage() {
         setPosts(prev => [...prev, ...posts]);
       } else {
         setPosts(posts);
-        // Set latest post ID for new posts detection
+        // Set latest createdAt timestamp for new posts detection
         if (posts.length > 0) {
-          setLatestPostId(posts[0].createdAt);
+          setLatestCreatedAt(posts[0].createdAt);
         }
       }
       setNextToken(response.nextToken);

@@ -185,6 +185,7 @@ def lambda_handler(event, context):
             "geohash": f"{lat_f:.6f},{lng_f:.6f}",
             "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
+            "favoriteCount": 0,  # Khởi tạo counter
         }
 
         # Thêm các fields liên quan đến ảnh vào item DynamoDB
@@ -204,10 +205,14 @@ def lambda_handler(event, context):
         # Lưu vào DynamoDB
         table.put_item(Item=item)
 
-        # Chuẩn bị response (chuyển Decimal → float)
+        # Chuẩn bị response (chuyển Decimal → float/int)
         resp = {}
         for k, v in item.items():
-            resp[k] = float(v) if isinstance(v, Decimal) else v
+            if isinstance(v, Decimal):
+                # Chuyển Decimal sang float hoặc int
+                resp[k] = int(v) if v % 1 == 0 else float(v)
+            else:
+                resp[k] = v
 
         print(f"Article created: {article_id} by user {owner_id}")
         return ok(201, resp)

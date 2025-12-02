@@ -718,7 +718,7 @@ export default function SettingsPage() {
     <div className={`settings-page ${theme === 'dark' ? 'dark-mode' : ''}`}>
       <header className="settings-header">
         <div className="header-content">
-          <BackButton onClick={() => navigate('/profile')} />
+          <BackButton onClick={() => navigate('/home')} />
           <h1>{t.title}</h1>
         </div>
       </header>

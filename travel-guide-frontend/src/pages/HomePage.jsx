@@ -7,6 +7,9 @@ import api from '../services/article';
 import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
+import { useNewPostsPolling } from '../hooks/useNewPostsPolling';
+import NewPostsBanner from '../components/NewPostsBanner';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -96,20 +99,61 @@ export default function HomePage() {
   const [isSearching, setIsSearching] = useState(false);
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
+  
+  // New posts detection state - store the latest createdAt timestamp
+  const [latestCreatedAt, setLatestCreatedAt] = useState(null);
 
-  // Fetch location name
-  const fetchLocationName = async (lat, lng) => {
+  // Check for new posts
+  const checkNewPosts = useCallback(async () => {
+    if (!latestCreatedAt || posts.length === 0) return 0;
+    
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { 'Accept-Language': 'vi' } }
-      );
-      const data = await response.json();
-      return data.display_name || `${lat}, ${lng}`;
+      // Get latest posts
+      const response = await api.listArticles({
+        scope: scope,
+        limit: 20, // Check up to 20 posts
+      });
+      
+      if (response.items && response.items.length > 0) {
+        // Count only posts with createdAt NEWER than our latest
+        // This ignores updated old posts
+        let count = 0;
+        for (const post of response.items) {
+          if (post.createdAt > latestCreatedAt) {
+            count++;
+          } else {
+            // Stop when we reach posts we've already seen
+            break;
+          }
+        }
+        
+        return count;
+      }
+      
+      return 0;
     } catch (error) {
-      return null;
+      console.error('Error checking new posts:', error);
+      return 0;
     }
-  };
+  }, [latestCreatedAt, scope, posts.length]);
+
+  // Use new posts polling hook
+  const { newPostsCount, resetNewPosts } = useNewPostsPolling({
+    checkNewPosts,
+    interval: 10000, // 5 seconds (for testing - change back to 30000 for production)
+    enabled: posts.length > 0 && !loading && !isSearching, // Disable when searching
+  });
+
+  // Use infinite scroll hook
+  const { sentinelRef } = useInfiniteScroll({
+    loadMore: () => {
+      if (nextToken && !loadingMore) {
+        loadPosts(nextToken, searchQuery);
+      }
+    },
+    hasMore: !!nextToken,
+    isLoading: loadingMore,
+  });
 
   const loadPosts = useCallback(async (token = null, query = '') => {
     try {
@@ -122,7 +166,7 @@ export default function HomePage() {
         response = await api.searchArticles({
           q: query.trim(),
           scope: scope,
-          limit: 10,
+          limit: 3,
           nextToken: token
         });
         setIsSearching(true);
@@ -130,26 +174,23 @@ export default function HomePage() {
         // Nếu không có query, dùng listArticles bình thường
         response = await api.listArticles({
           scope: scope,
-          limit: 10,
+          limit: 3,
           nextToken: token
         });
         setIsSearching(false);
       }
 
-      const postsWithLocation = await Promise.all(
-        response.items.map(async (post) => {
-          if (post.lat && post.lng && !post.location) {
-            const locationName = await fetchLocationName(post.lat, post.lng);
-            return { ...post, location: locationName };
-          }
-          return post;
-        })
-      );
+      // Backend already has locationName, no need to fetch from Nominatim
+      const posts = response.items;
 
       if (token) {
-        setPosts(prev => [...prev, ...postsWithLocation]);
+        setPosts(prev => [...prev, ...posts]);
       } else {
-        setPosts(postsWithLocation);
+        setPosts(posts);
+        // Set latest createdAt timestamp for new posts detection
+        if (posts.length > 0) {
+          setLatestCreatedAt(posts[0].createdAt);
+        }
       }
       setNextToken(response.nextToken);
     } catch (error) {
@@ -165,6 +206,25 @@ export default function HomePage() {
       loadPosts(null, searchQuery);
     }
   };
+
+  // Load new posts when banner is clicked
+  const loadNewPosts = useCallback(async () => {
+    try {
+      // Smooth scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Wait a bit for scroll animation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Reset new posts count
+      resetNewPosts();
+      
+      // Reload posts from beginning
+      await loadPosts(null, searchQuery);
+    } catch (error) {
+      console.error('Error loading new posts:', error);
+    }
+  }, [resetNewPosts, loadPosts, searchQuery]);
 
   // Load user's favorite articles
   const loadFavorites = useCallback(async () => {
@@ -217,10 +277,10 @@ export default function HomePage() {
           return newSet;
         });
         
-        // Update like count
+        // Update favoriteCount (backend tự động giảm)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
+            ? { ...post, favoriteCount: Math.max(0, (post.favoriteCount || 0) - 1), likeCount: Math.max(0, (post.likeCount || post.favoriteCount || 0) - 1) }
             : post
         ));
         
@@ -235,10 +295,10 @@ export default function HomePage() {
         
         setLikedPosts(prev => new Set([...prev, postId]));
         
-        // Update like count
+        // Update favoriteCount (backend tự động tăng)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: (post.likeCount || 0) + 1 }
+            ? { ...post, favoriteCount: (post.favoriteCount || 0) + 1, likeCount: (post.likeCount || post.favoriteCount || 0) + 1 }
             : post
         ));
         
@@ -485,6 +545,9 @@ export default function HomePage() {
             <div className="py-6 overflow-y-auto flex-1">
 
             <div className="px-8">
+              {/* New Posts Banner */}
+              <NewPostsBanner count={newPostsCount} onLoadNew={loadNewPosts} />
+              
               {/* Main Feed */}
               <div className="space-y-8">
             {loading && posts.length === 0 ? (
@@ -771,7 +834,7 @@ export default function HomePage() {
                                 <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
-                                    {post.likeCount || 0} lượt quan tâm
+                                    {post.favoriteCount || post.likeCount || 0} lượt quan tâm
                                   </span>
                                 </div>
                               </div>
@@ -783,16 +846,21 @@ export default function HomePage() {
                   );
                 })}
 
-                {nextToken && (
-                  <div className="text-center py-4">
-                    <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      className="bg-white text-gray-700 px-6 py-3 rounded-full hover:shadow-md transition disabled:opacity-50 font-medium"
-                      style={{ border: '2px solid rgba(0,0,0,0.1)' }}
-                    >
-                      {loadingMore ? 'Đang tải...' : 'Tải thêm'}
-                    </button>
+                {/* Sentinel element for infinite scroll */}
+                <div ref={sentinelRef} className="h-4" />
+                
+                {/* Loading indicator */}
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#92ADA4]"></div>
+                    <p className="text-gray-600 mt-2">Đang tải thêm bài viết...</p>
+                  </div>
+                )}
+                
+                {/* End of feed message */}
+                {!nextToken && !loadingMore && posts.length > 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">🎉 Bạn đã xem hết tất cả bài viết</p>
                   </div>
                 )}
               </>

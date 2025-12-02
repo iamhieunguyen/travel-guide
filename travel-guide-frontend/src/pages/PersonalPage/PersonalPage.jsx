@@ -51,46 +51,22 @@ export default function PersonalPage() {
       try {
         setLoading(true);
         
-        // TẠM THỜI: Chỉ dùng logic lọc từ public vì backend scope='mine' chưa được deploy
+        // Lấy tất cả bài viết của user (public + private)
         let myItems = [];
         
-        // Lấy tất cả bài public
-        const publicResponse = await api.listArticles({ 
-          scope: 'public', 
+        // Sử dụng scope='mine' để lấy cả public và private
+        const myResponse = await api.listArticles({ 
+          scope: 'mine', 
           limit: 100, 
           useCache: false 
         });
-        const publicItems = publicResponse.items || [];
-        console.log('🌍 Public Items (all users):', publicItems.length, publicItems);
+        myItems = myResponse.items || [];
+        console.log('📝 My Items (public + private):', myItems.length, myItems);
         
-        // Helper function so sánh
-        const compare = (val1, val2) => {
-          if (!val1 || !val2) return false;
-          return String(val1).trim().toLowerCase() === String(val2).trim().toLowerCase();
-        };
-        
-        // Lọc CHỈ bài viết của user hiện tại
-        myItems = publicItems.filter(item => {
-          if (!user) return false;
-          
-          // Debug từng item
-          const isMyPost = (
-            compare(item.username, user.username) ||
-            (user.attributes?.name && compare(item.username, user.attributes.name)) ||
-            (user.attributes?.preferred_username && compare(item.username, user.attributes.preferred_username)) ||
-            (item.ownerId && user.sub && compare(item.ownerId, user.sub)) ||
-            (item.ownerId && compare(item.ownerId, user.username)) ||
-            (item.ownerId && user['cognito:username'] && compare(item.ownerId, user['cognito:username']))
-          );
-          
-          // Log để debug
-          if (isMyPost) {
-            console.log('✅ MY POST:', item.title, '| Username:', item.username, '| OwnerId:', item.ownerId);
-          } else {
-            console.log('❌ NOT MY POST:', item.title, '| Username:', item.username, '| OwnerId:', item.ownerId);
-          }
-          
-          return isMyPost;
+        // Backend đã filter theo user với scope='mine', không cần filter lại ở frontend
+        // Chỉ cần log để debug
+        myItems.forEach(item => {
+          console.log(`📄 ${item.title}: visibility=${item.visibility}, ownerId=${item.ownerId}`);
         });
         
         console.log('✅ Filtered MY Items:', myItems.length, myItems);

@@ -100,7 +100,7 @@ export function CreatePostModalProvider({ children }) {
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
-          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
+          locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
         };
         
         const result = await api.updateArticle(editPostData.articleId, updateData);
@@ -139,7 +139,7 @@ export function CreatePostModalProvider({ children }) {
           visibility: postData.privacy || 'public',
           lat: postData.location.lat,
           lng: postData.location.lng,
-          location: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
+          locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
           tags: []
         });
         console.log('✅ Upload success:', result);

@@ -57,34 +57,18 @@ export default function PersonalPage() {
         // Sử dụng scope='mine' để lấy cả public và private
         const myResponse = await api.listArticles({ 
           scope: 'mine', 
-          limit: 100, 
+          limit: 20, 
           useCache: false 
         });
         myItems = myResponse.items || [];
-        console.log('📝 My Items (public + private):', myItems.length, myItems);
         
-        // Backend đã filter theo user với scope='mine', không cần filter lại ở frontend
-        // Chỉ cần log để debug
-        myItems.forEach(item => {
-          console.log(`📄 ${item.title}: visibility=${item.visibility}, ownerId=${item.ownerId}`);
-        });
-        
-        console.log('✅ Filtered MY Items:', myItems.length, myItems);
-        console.log('👤 Current User Info:', {
-          username: user.username,
-          sub: user.sub,
-          cognitoUsername: user['cognito:username'],
-          attributesName: user.attributes?.name
-        });
+        // Debug only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📝 My Items:', myItems.length);
+        }
 
-        // DEBUG: Log để xem data
-        console.log('🔍 DEBUG Personal Page:');
-        console.log('👤 Current User:', user);
-
-        // Sort theo thời gian mới nhất
+        // Sort theo thời gian mới nhất (backend đã sort rồi, nhưng sort lại cho chắc)
         const sortedItems = myItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        console.log('📊 Total Items:', sortedItems.length, sortedItems);
 
         const mapped = sortedItems.map(item => {
           // Xác định tên location (ưu tiên locationName từ backend)
@@ -96,14 +80,6 @@ export default function PersonalPage() {
           } else if (item.location && typeof item.location === 'object' && item.location.name) {
             locationName = item.location.name;
           }
-          
-          // Debug location để kiểm tra
-          console.log('📍 Location Debug:', {
-            title: item.title,
-            locationName: item.locationName,
-            location: item.location,
-            finalName: locationName
-          });
           
           return {
             id: item.articleId,

@@ -41,7 +41,8 @@ def _convert_decimal(obj):
         out = {}
         for k, v in obj.items():
             if isinstance(v, Decimal):
-                out[k] = float(v)
+                # Chuyển Decimal sang int nếu là số nguyên, ngược lại float
+                out[k] = int(v) if v % 1 == 0 else float(v)
             elif isinstance(v, (dict, list)):
                 out[k] = _convert_decimal(v)
             else:

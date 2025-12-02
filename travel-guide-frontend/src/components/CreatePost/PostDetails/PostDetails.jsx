@@ -48,11 +48,12 @@ export default function PostDetails({
     console.log('📍 LocationData changed:', locationData);
   }, [locationData]);
   
-  // Load dữ liệu khi ở chế độ edit - CHỈ caption và privacy
+  // Load dữ liệu khi ở chế độ edit - CHỈ LẦN ĐẦU TIÊN
   useEffect(() => {
-    if (editMode && editPostData && !hasLoadedEditData) {
+    // CHỈ load khi chưa có caption (lần đầu tiên mở modal)
+    if (editMode && editPostData && !hasLoadedEditData && !caption) {
       setHasLoadedEditData(true);
-      console.log('📝 Loading edit data:', editPostData);
+      console.log('📝 Loading edit data (FIRST TIME ONLY):', editPostData);
       const initialCaption = editPostData.content || editPostData.title || "";
       const initialPrivacy = editPostData.visibility || "public";
       console.log('📝 Initial caption:', initialCaption);
@@ -61,7 +62,8 @@ export default function PostDetails({
       setCaption(initialCaption);
       setPrivacy(initialPrivacy);
     }
-  }, [editMode, editPostData, hasLoadedEditData, setCaption, setPrivacy]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode, editPostData, hasLoadedEditData]);
   
   // Update locationSearch khi locationData thay đổi
   useEffect(() => {
@@ -375,7 +377,7 @@ export default function PostDetails({
           
           {locationData && locationData.position && (
             <div className="mt-2 flex items-center space-x-1.5 text-xs text-gray-600">
-              <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-indigo-600" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
               <span>

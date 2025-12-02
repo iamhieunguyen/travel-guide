@@ -7,6 +7,7 @@ import api from '../services/article';
 import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
+import useProfile from '../hook/useProfile';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -84,6 +85,7 @@ export default function HomePage() {
   const { user, logout, authChecked } = useAuth();
   const { openModal, openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
+  const { profile } = useProfile();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,7 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
+  const mapType = user?.mapTypePref || 'roadmap';
 
   // Fetch location name
   const fetchLocationName = async (lat, lng) => {
@@ -368,10 +371,18 @@ export default function HomePage() {
                   onClick={() => navigate('/personal')}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
                 >
-                  <div className="w-7 h-7 bg-[#92ADA4] rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">
-                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                    {profile?.avatarUrl ? (
+                      <img
+                        src={profile.avatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-xs">
+                        {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    )}
                   </div>
                   <span className="font-medium text-base">Trang cá nhân</span>
                 </button>
@@ -445,11 +456,19 @@ export default function HomePage() {
                     onClick={() => navigate('/personal')}
                     className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
                   >
-                    <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">
-                        {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                      </span>
-                    </div>
+                <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden">
+                  {profile?.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-sm">
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
                     <div className="text-left">
                       <p className="font-semibold text-gray-900 text-sm">
                         {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
@@ -514,10 +533,18 @@ export default function HomePage() {
                       {/* User Info - Inside white container */}
                       <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4]">
-                            <span className="text-white font-bold text-base">
-                              {authorInitial}
-                            </span>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                            {isOwner && profile?.avatarUrl ? (
+                              <img
+                                src={profile.avatarUrl}
+                                alt={authorDisplayName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-base">
+                                {authorInitial}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <p className="font-bold text-gray-800 text-base">
@@ -597,6 +624,7 @@ export default function HomePage() {
                                         : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`)
                                     : null
                               }
+                              mapType={mapType}
                             />
 
                             {/* Action Buttons Below Map */}
@@ -705,10 +733,18 @@ export default function HomePage() {
                               <div className="mt-3 p-3">
                                 <div className="flex items-start gap-3 mb-3">
                                   {/* Avatar */}
-                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0">
-                                    <span className="text-white font-bold text-sm">
-                                      {authorInitial}
-                                    </span>
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0 overflow-hidden">
+                                    {isOwner && profile?.avatarUrl ? (
+                                      <img
+                                        src={profile.avatarUrl}
+                                        alt={authorDisplayName}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-white font-bold text-sm">
+                                        {authorInitial}
+                                      </span>
+                                    )}
                                   </div>
                                   
                                   {/* Content */}

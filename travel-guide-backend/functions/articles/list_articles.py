@@ -15,13 +15,34 @@ def _get_user_id(event):
     if x_user_id:
         return x_user_id
 
-    # Lấy giống create_article / favorite_article
+    # Lấy từ authorizer (nếu có)
     rc = event.get("requestContext") or {}
     auth = rc.get("authorizer") or {}
     claims = auth.get("claims") or {}
     sub = claims.get("sub")
     if sub:
         return sub
+
+    # Parse JWT token manually nếu không có authorizer
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            import base64
+            token = auth_header.split(" ")[1]
+            # Decode JWT payload (không verify - chỉ để lấy sub)
+            parts = token.split(".")
+            if len(parts) >= 2:
+                payload = parts[1]
+                # Add padding if needed
+                padding = 4 - len(payload) % 4
+                if padding != 4:
+                    payload += "=" * padding
+                decoded = base64.urlsafe_b64decode(payload)
+                claims = json.loads(decoded)
+                return claims.get("sub")
+        except Exception as e:
+            print(f"Error parsing JWT: {e}")
+            pass
 
     return None
 
@@ -38,6 +59,12 @@ def lambda_handler(event, context):
         next_token = params.get("nextToken")
 
         user_id = _get_user_id(event)
+        
+        # Debug logging
+        print(f"🔍 list_articles DEBUG:")
+        print(f"  scope: {scope}")
+        print(f"  user_id: {user_id}")
+        print(f"  headers: {event.get('headers', {})}")
 
         # Query DynamoDB
         if scope == "mine" and user_id:

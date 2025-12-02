@@ -554,7 +554,8 @@ Resources:
     Properties:
       CodeUri: functions/articles/
       Handler: list_articles.lambda_handler
-      Timeout: 15
+      Timeout: 10
+      MemorySize: 256
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable

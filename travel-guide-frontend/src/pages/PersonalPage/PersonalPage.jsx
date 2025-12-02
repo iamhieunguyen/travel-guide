@@ -51,64 +51,24 @@ export default function PersonalPage() {
       try {
         setLoading(true);
         
-        // TẠM THỜI: Chỉ dùng logic lọc từ public vì backend scope='mine' chưa được deploy
+        // Lấy tất cả bài viết của user (public + private)
         let myItems = [];
         
-        // Lấy tất cả bài public
-        const publicResponse = await api.listArticles({ 
-          scope: 'public', 
-          limit: 100, 
+        // Sử dụng scope='mine' để lấy cả public và private
+        const myResponse = await api.listArticles({ 
+          scope: 'mine', 
+          limit: 20, 
           useCache: false 
         });
-        const publicItems = publicResponse.items || [];
-        console.log('🌍 Public Items (all users):', publicItems.length, publicItems);
+        myItems = myResponse.items || [];
         
-        // Helper function so sánh
-        const compare = (val1, val2) => {
-          if (!val1 || !val2) return false;
-          return String(val1).trim().toLowerCase() === String(val2).trim().toLowerCase();
-        };
-        
-        // Lọc CHỈ bài viết của user hiện tại
-        myItems = publicItems.filter(item => {
-          if (!user) return false;
-          
-          // Debug từng item
-          const isMyPost = (
-            compare(item.username, user.username) ||
-            (user.attributes?.name && compare(item.username, user.attributes.name)) ||
-            (user.attributes?.preferred_username && compare(item.username, user.attributes.preferred_username)) ||
-            (item.ownerId && user.sub && compare(item.ownerId, user.sub)) ||
-            (item.ownerId && compare(item.ownerId, user.username)) ||
-            (item.ownerId && user['cognito:username'] && compare(item.ownerId, user['cognito:username']))
-          );
-          
-          // Log để debug
-          if (isMyPost) {
-            console.log('✅ MY POST:', item.title, '| Username:', item.username, '| OwnerId:', item.ownerId);
-          } else {
-            console.log('❌ NOT MY POST:', item.title, '| Username:', item.username, '| OwnerId:', item.ownerId);
-          }
-          
-          return isMyPost;
-        });
-        
-        console.log('✅ Filtered MY Items:', myItems.length, myItems);
-        console.log('👤 Current User Info:', {
-          username: user.username,
-          sub: user.sub,
-          cognitoUsername: user['cognito:username'],
-          attributesName: user.attributes?.name
-        });
+        // Debug only in development
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📝 My Items:', myItems.length);
+        }
 
-        // DEBUG: Log để xem data
-        console.log('🔍 DEBUG Personal Page:');
-        console.log('👤 Current User:', user);
-
-        // Sort theo thời gian mới nhất
+        // Sort theo thời gian mới nhất (backend đã sort rồi, nhưng sort lại cho chắc)
         const sortedItems = myItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        console.log('📊 Total Items:', sortedItems.length, sortedItems);
 
         const mapped = sortedItems.map(item => {
           // Xác định tên location (ưu tiên locationName từ backend)
@@ -120,14 +80,6 @@ export default function PersonalPage() {
           } else if (item.location && typeof item.location === 'object' && item.location.name) {
             locationName = item.location.name;
           }
-          
-          // Debug location để kiểm tra
-          console.log('📍 Location Debug:', {
-            title: item.title,
-            locationName: item.locationName,
-            location: item.location,
-            finalName: locationName
-          });
           
           return {
             id: item.articleId,

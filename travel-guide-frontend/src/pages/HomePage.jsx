@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 
@@ -87,13 +87,11 @@ export default function HomePage() {
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [nextToken, setNextToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [scope, setScope] = useState('public');
+  const [scope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
-  const [isSearching, setIsSearching] = useState(false);
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
 
@@ -125,7 +123,6 @@ export default function HomePage() {
           limit: 10,
           nextToken: token
         });
-        setIsSearching(true);
       } else {
         // Nếu không có query, dùng listArticles bình thường
         response = await api.listArticles({
@@ -133,7 +130,6 @@ export default function HomePage() {
           limit: 10,
           nextToken: token
         });
-        setIsSearching(false);
       }
 
       const postsWithLocation = await Promise.all(
@@ -153,7 +149,7 @@ export default function HomePage() {
       }
       setNextToken(response.nextToken);
     } catch (error) {
-      setError(error.message);
+      console.error('Lỗi khi tải bài viết:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -265,10 +261,6 @@ export default function HomePage() {
     }
   };
 
-  const handleComment = (postId) => {
-    console.log('Comment on post:', postId);
-  };
-
   const handleEditPost = (post) => {
     setOpenMenuId(null);
     openEditModal(post);
@@ -311,15 +303,6 @@ export default function HomePage() {
     return 'Vừa xong';
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
     <div className="min-h-screen bg-[#2d2d2d]">
       {/* Christmas Effects Overlay */}
@@ -341,7 +324,6 @@ export default function HomePage() {
                 <button 
                   onClick={() => {
                     setSearchQuery('');
-                    setIsSearching(false);
                     loadPosts(null, '');
                   }}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
@@ -388,7 +370,7 @@ export default function HomePage() {
                 >
                   <div className="w-7 h-7 bg-[#92ADA4] rounded-full flex items-center justify-center">
                     <span className="text-white font-bold text-xs">
-                      {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                     </span>
                   </div>
                   <span className="font-medium text-base">Trang cá nhân</span>
@@ -420,7 +402,7 @@ export default function HomePage() {
                 <div className="flex items-center">
                   {/* Greeting */}
                   <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
-                    Hello, <span className="text-[#92ADA4]">{user?.username || user?.email?.split('@')[0] || 'User'}</span>
+                    Hello, <span className="text-[#92ADA4]">{user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}</span>
                   </h2>
 
                   {/* Search Bar - Same row as greeting */}
@@ -460,20 +442,20 @@ export default function HomePage() {
 
                   {/* User Avatar and Name */}
                   <button 
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate('/personal')}
                     className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
                   >
                     <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center">
                       <span className="text-white font-bold text-sm">
-                        {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                        {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                       </span>
                     </div>
                     <div className="text-left">
                       <p className="font-semibold text-gray-900 text-sm">
-                        {user?.username || user?.email?.split('@')[0] || 'User'}
+                        {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        @{user?.username || user?.email?.split('@')[0] || 'user'}
+                        @{user?.displayName || user?.username || user?.email?.split('@')[0] || 'user'}
                       </p>
                     </div>
                   </button>
@@ -522,6 +504,10 @@ export default function HomePage() {
                     post.ownerId === user.username ||
                     post.ownerId === user['cognito:username']
                   );
+                  const authorDisplayName = isOwner
+                    ? (user?.displayName || user?.username || post.username || `User_${post.ownerId?.substring(0, 6)}`)
+                    : (post.username || `User_${post.ownerId?.substring(0, 6)}`);
+                  const authorInitial = authorDisplayName?.charAt(0)?.toUpperCase() || 'U';
                   
                   return (
                     <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
@@ -530,12 +516,12 @@ export default function HomePage() {
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4]">
                             <span className="text-white font-bold text-base">
-                              {post.username?.charAt(0)?.toUpperCase() || 'U'}
+                              {authorInitial}
                             </span>
                           </div>
                           <div>
                             <p className="font-bold text-gray-800 text-base">
-                              {post.username || `User_${post.ownerId?.substring(0, 6)}`}
+                              {authorDisplayName}
                             </p>
                             {(post.location?.name || post.location || post.locationName) && (
                               <div className="flex items-center text-sm group relative text-gray-500">
@@ -721,7 +707,7 @@ export default function HomePage() {
                                   {/* Avatar */}
                                   <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0">
                                     <span className="text-white font-bold text-sm">
-                                      {post.username?.charAt(0)?.toUpperCase() || 'U'}
+                                      {authorInitial}
                                     </span>
                                   </div>
                                   
@@ -729,7 +715,7 @@ export default function HomePage() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="font-semibold text-gray-900 text-sm">
-                                        {post.username || `User_${post.ownerId?.substring(0, 6)}`}
+                                        {authorDisplayName}
                                       </span>
                                       <span className="text-gray-400 text-xs">
                                         {getTimeAgo(post.createdAt)}

@@ -347,7 +347,7 @@ export default function SettingsPage() {
         <div className="avatar-section">
           <div className="avatar-container">
             <div className="avatar-placeholder">
-              <User className="w-12 h-12" />
+              {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
             </div>
             <button className="avatar-edit-btn">
               <Camera className="w-4 h-4" />
@@ -718,7 +718,7 @@ export default function SettingsPage() {
     <div className={`settings-page ${theme === 'dark' ? 'dark-mode' : ''}`}>
       <header className="settings-header">
         <div className="header-content">
-          <BackButton onClick={() => navigate('/profile')} />
+          <BackButton onClick={() => navigate('/personal')} />
           <h1>{t.title}</h1>
         </div>
       </header>

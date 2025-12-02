@@ -32,9 +32,11 @@ const setToCache = (key, data) => requestCache.set(key, { data, timestamp: Date.
 // ===== Fetch helper (Giữ nguyên) =====
 function authHeaders(hasBody = false) {
   const idToken = localStorage.getItem("idToken");
+  const xUserId = localStorage.getItem("X_USER_ID");
   const h = {};
   if (hasBody) h["Content-Type"] = "application/json"; // tránh preflight cho GET
   if (idToken) h.Authorization = `Bearer ${idToken}`;
+  if (xUserId) h["X-User-Id"] = xUserId;
   return h;
 }
 

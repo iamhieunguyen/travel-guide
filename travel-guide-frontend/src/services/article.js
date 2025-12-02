@@ -153,8 +153,8 @@ export function listArticles({ scope = "public", limit = 10, nextToken } = {}) {
 
 export function searchArticles({ bbox, q = "", tags = "", scope = "public", limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
-  params.set("bbox", bbox);
   params.set("scope", scope);
+  if (bbox) params.set("bbox", bbox);
   if (q) params.set("q", q);
   if (tags) params.set("tags", tags);
   if (limit) params.set("limit", String(limit));
@@ -241,6 +241,22 @@ export async function getMultipleArticles(articleIds) {
   return Promise.all(promises);
 }
 
+// ===== Favorites =====
+export function favoriteArticle(articleId) {
+  return http("POST", `/articles/${encodeURIComponent(articleId)}/favorite`);
+}
+
+export function unfavoriteArticle(articleId) {
+  return http("DELETE", `/articles/${encodeURIComponent(articleId)}/favorite`);
+}
+
+export function listFavoriteArticles({ limit = 10, nextToken } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: true });
+}
+
 // ===== Utils (Giữ nguyên) =====
 export function clearCache() {
   requestCache.clear();
@@ -260,6 +276,9 @@ const articleService = {
   buildImageUrlFromKey,
   getDisplayImageUrl,
   getMultipleArticles,
+  favoriteArticle,
+  unfavoriteArticle,
+  listFavoriteArticles,
   clearCache,
 };
 

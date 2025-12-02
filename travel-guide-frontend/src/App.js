@@ -9,8 +9,7 @@ import ConfirmDialog from './components/ConfirmDialog';
 import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
-import PersonalPage from "./pages/PersonalPage/PersonalPage";
-import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import PersonalPage from './pages/PersonalPage/PersonalPage';
 
 // Global functions
 window.showSuccessToast = null;
@@ -25,7 +24,7 @@ export default function App() {
     window.showSuccessToast = (message) => {
       setToast(message);
     };
-    
+
     window.showConfirmDialog = (message) => {
       return new Promise((resolve) => {
         setConfirm({
@@ -51,8 +50,8 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/home" element={<HomePage />} />
             <Route path="/auth" element={<AuthPage />} />
-            <Route path="/profile" element={<PersonalPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/personal" element={<PersonalPage />} />
+
           </Routes>
           <CreatePostModal />
           {toast && (

@@ -4,16 +4,66 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
 
-// Fix icon marker
+// Fix icon marker mặc định
 const DefaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
 });
 
 L.Marker.prototype.options.icon = DefaultIcon;
+
+// Icon bài viết giống PostMap ở HomePage (thumbnail tròn + chân)
+function createArticleIcon(imageUrl) {
+  if (!imageUrl) return DefaultIcon;
+
+  return L.divIcon({
+    className: '',
+    html: `
+      <div style="position: relative; width: 50px; height: 62px;">
+        <div style="
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          border: 3px solid #0891b2;
+          overflow: hidden;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+          background: white;
+          position: absolute;
+          top: 0;
+          left: 0;
+        ">
+          <img 
+            src="${imageUrl}" 
+            style="
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              display: block;
+            "
+            onerror="this.src='https://placehold.co/50x50/0891b2/white?text=📍'"
+          />
+        </div>
+        <div style="
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-top: 12px solid #0891b2;
+        "></div>
+      </div>
+    `,
+    iconSize: [50, 62],
+    iconAnchor: [25, 62],
+    popupAnchor: [0, -62],
+  });
+}
 
 const UserLocationIcon = L.divIcon({
   className: 'user-location-marker',
@@ -99,6 +149,7 @@ export default function MapView({ locations = [], onMarkerClick, userLocation, m
           <Marker 
             key={marker.id} 
             position={[marker.lat, marker.lng]}
+            icon={marker.image ? createArticleIcon(marker.image) : DefaultIcon}
             eventHandlers={{
               click: () => onMarkerClick && onMarkerClick(marker),
             }}

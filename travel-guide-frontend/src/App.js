@@ -11,7 +11,6 @@ import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
 import PersonalPage from './pages/PersonalPage/PersonalPage';
 import SettingsPage from './pages/SettingsPage/SettingsPage';
-import { Settings } from 'lucide-react';
 
 // Global functions
 window.showSuccessToast = null;

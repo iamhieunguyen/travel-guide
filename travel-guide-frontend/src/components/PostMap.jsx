@@ -3,7 +3,25 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-export default function PostMap({ lat, lng, locationName, imageUrl }) {
+function getTileConfig(mapType) {
+  switch (mapType) {
+    case 'satellite':
+      return {
+        url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        attribution:
+          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+      };
+    case 'roadmap':
+    default:
+      return {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      };
+  }
+}
+
+export default function PostMap({ lat, lng, locationName, imageUrl, height = 250, mapType = 'roadmap' }) {
   if (!lat || !lng) return null;
 
   // Create custom icon with thumbnail image
@@ -63,8 +81,13 @@ export default function PostMap({ lat, lng, locationName, imageUrl }) {
     popupAnchor: [1, -34],
   });
 
+  const tileConfig = getTileConfig(mapType);
+
   return (
-    <div className="w-full h-[250px] rounded-2xl overflow-hidden shadow-md relative z-0">
+    <div
+      className="w-full rounded-2xl overflow-hidden shadow-md relative z-0"
+      style={{ height: `${height}px` }}
+    >
       <MapContainer
         center={[lat, lng]}
         zoom={14}
@@ -76,8 +99,8 @@ export default function PostMap({ lat, lng, locationName, imageUrl }) {
         dragging={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution={tileConfig.attribution}
+          url={tileConfig.url}
         />
         <Marker position={[lat, lng]} icon={customIcon}>
           {locationName && (

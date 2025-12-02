@@ -72,9 +72,13 @@ export const useProfile = () => {
         throw new Error(validation.error);
       }
 
-      const response = await profileService.uploadAvatar(file);
-      setProfile(response.profile || response);
-      return response;
+      // Gửi file lên S3 + cập nhật avatarKey trên backend
+      await profileService.uploadAvatar(file);
+
+      // Sau khi upload xong, lấy lại profile mới từ API
+      const fresh = await profileService.getProfile();
+      setProfile(fresh);
+      return fresh;
     } catch (err) {
       console.error('Upload avatar error:', err);
       setError(err.message || 'Không thể upload avatar');

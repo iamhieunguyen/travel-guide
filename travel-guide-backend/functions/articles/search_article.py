@@ -99,31 +99,35 @@ def lambda_handler(event, context):
             q_lower = q.lower()
             expression_attribute_names["#titleLower"] = "titleLower"
             expression_attribute_names["#contentLower"] = "contentLower"
-            expression_attribute_names["#locationName"] = "locationName"
+            expression_attribute_names["#locationNameLower"] = "locationNameLower"
             expression_attribute_values[":q"] = q_lower
-            
+
             filter_parts.append(
-                "(contains(#titleLower, :q) OR contains(#contentLower, :q) OR contains(#locationName, :q))"
+                "contains(#titleLower, :q) OR "
+                "contains(#contentLower, :q) OR "
+                "(attribute_exists(#locationNameLower) AND contains(#locationNameLower, :q))"
             )
 
-        # Tìm theo tags (tags là một list trong DynamoDB)
+        # Tìm theo tags
         if tags:
-            tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+            tag_list = [t.strip().lower() for t in tags.split(",") if t.strip()]
             if tag_list:
-                expression_attribute_names["#tags"] = "tags"
                 tag_conditions = []
                 for i, tag in enumerate(tag_list):
-                    tag_key = f":tag{i}"
-                    tag_conditions.append(f"contains(#tags, {tag_key})")
-                    expression_attribute_values[tag_key] = tag
-                # (tagA OR tagB OR tagC)
-                filter_parts.append("(" + " OR ".join(tag_conditions) + ")")
+                    expression_attribute_names[f"#tag{i}"] = "tags"
+                    expression_attribute_values[f":tag{i}"] = tag
+                    tag_conditions.append(f"contains(#tag{i}, :tag{i})")
 
-        # TODO: nếu sau này dùng bbox (lat/lng) thì thêm vào filter_parts tại đây
+                if tag_conditions:
+                    filter_parts.append("(" + " OR ".join(tag_conditions) + ")")
 
+        # Combine filters với AND
         filter_expression = None
         if filter_parts:
-            filter_expression = " AND ".join(filter_parts)
+            if len(filter_parts) == 1:
+                filter_expression = filter_parts[0]
+            else:
+                filter_expression = " AND ".join([f"({part})" for part in filter_parts])
 
         # ------------------------------
         # 3) Gọi DynamoDB query
@@ -159,5 +163,4 @@ def lambda_handler(event, context):
 
     except Exception as e:
         print("Error in search_articles:", e)
-        # dùng error() để format giống các API khác
         return error(500, f"internal error: {e}")

@@ -94,13 +94,16 @@ def lambda_handler(event, context):
         # ------------------------------
         filter_parts = []
 
-        # Tìm theo text: title / content
+        # Tìm theo text: title / content / locationName (case-insensitive)
         if q:
-            expression_attribute_names["#title"] = "title"
-            expression_attribute_names["#content"] = "content"
-            expression_attribute_values[":q"] = q
+            q_lower = q.lower()
+            expression_attribute_names["#titleLower"] = "titleLower"
+            expression_attribute_names["#contentLower"] = "contentLower"
+            expression_attribute_names["#locationName"] = "locationName"
+            expression_attribute_values[":q"] = q_lower
+            
             filter_parts.append(
-                "(contains(#title, :q) OR contains(#content, :q))"
+                "(contains(#titleLower, :q) OR contains(#contentLower, :q) OR contains(#locationName, :q))"
             )
 
         # Tìm theo tags (tags là một list trong DynamoDB)

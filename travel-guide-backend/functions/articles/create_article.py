@@ -138,7 +138,9 @@ def lambda_handler(event, context):
             "articleId": article_id,
             "ownerId": owner_id,  # sub từ Cognito để check quyền
             "title": title,
+            "titleLower": title.lower(),  # For case-insensitive search
             "content": content,
+            "contentLower": content.lower(),  # For case-insensitive search
             "createdAt": created_at,
             "visibility": visibility,
             # Chuyển float sang Decimal cho DynamoDB

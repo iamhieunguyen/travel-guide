@@ -140,6 +140,16 @@ def lambda_handler(event, context):
                 set_parts.append(f"#{key} = :{key}")
                 expression_attribute_names[f"#{key}"] = key
                 
+                # Add lowercase fields for search
+                if key == "title":
+                    set_parts.append(f"#titleLower = :titleLower")
+                    expression_attribute_names["#titleLower"] = "titleLower"
+                    expression_attribute_values[":titleLower"] = value.lower()
+                elif key == "content":
+                    set_parts.append(f"#contentLower = :contentLower")
+                    expression_attribute_names["#contentLower"] = "contentLower"
+                    expression_attribute_values[":contentLower"] = value.lower()
+                
                 # Xử lý Decimal cho lat/lng
                 if key in ["lat", "lng"]:
                     try:

@@ -7,8 +7,8 @@ import api from '../services/article';
 import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll';
-import { useNewPostsPolling } from '../hooks/useNewPostsPolling';
+import { useInfiniteScroll } from '../hook/useInfiniteScroll';
+import { useNewPostsPolling } from '../hook/useNewPostsPolling';
 import NewPostsBanner from '../components/NewPostsBanner';
 
 // Component carousel để lướt qua nhiều ảnh

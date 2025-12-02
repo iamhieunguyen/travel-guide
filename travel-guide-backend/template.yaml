@@ -567,6 +567,8 @@ Resources:
           Properties:
             Path: /articles
             Method: GET
+            Auth:
+             Authorizer: CognitoAuthorizer  
 
   UpdateArticleFunction:
     Type: AWS::Serverless::Function

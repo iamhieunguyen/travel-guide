@@ -28,10 +28,6 @@ def _thumb_from_image_key(image_key: str) -> str:
 
 
 def _reverse_geocode(lat: float, lng: float) -> str | None:
-    """
-    Gọi Nominatim để lấy locationName (display_name) từ lat/lng.
-    Làm ở BE để tránh CORS và dễ kiểm soát.
-    """
     try:
         base_url = "https://nominatim.openstreetmap.org/reverse"
         params = {
@@ -185,6 +181,7 @@ def lambda_handler(event, context):
             "geohash": f"{lat_f:.6f},{lng_f:.6f}",
             "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
+            "favoriteCount": 0,  # Khởi tạo counter
         }
 
         # Thêm các fields liên quan đến ảnh vào item DynamoDB

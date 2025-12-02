@@ -217,10 +217,10 @@ export default function HomePage() {
           return newSet;
         });
         
-        // Update like count
+        // Update favoriteCount (backend tự động giảm)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
+            ? { ...post, favoriteCount: Math.max(0, (post.favoriteCount || 0) - 1), likeCount: Math.max(0, (post.likeCount || post.favoriteCount || 0) - 1) }
             : post
         ));
         
@@ -235,10 +235,10 @@ export default function HomePage() {
         
         setLikedPosts(prev => new Set([...prev, postId]));
         
-        // Update like count
+        // Update favoriteCount (backend tự động tăng)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: (post.likeCount || 0) + 1 }
+            ? { ...post, favoriteCount: (post.favoriteCount || 0) + 1, likeCount: (post.likeCount || post.favoriteCount || 0) + 1 }
             : post
         ));
         
@@ -771,7 +771,7 @@ export default function HomePage() {
                                 <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
-                                    {post.likeCount || 0} lượt quan tâm
+                                    {post.favoriteCount || post.likeCount || 0} lượt quan tâm
                                   </span>
                                 </div>
                               </div>

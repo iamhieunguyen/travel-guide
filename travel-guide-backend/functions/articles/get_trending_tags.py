@@ -24,8 +24,9 @@ def lambda_handler(event, context):
         limit = int(params.get("limit", 20))  # Top 20 trending tags
         
         # Scan all public articles to get autoTags
+        # Note: Some old articles may not have visibility field, treat them as public
         scan_kwargs = {
-            'FilterExpression': 'visibility = :visibility',
+            'FilterExpression': 'attribute_not_exists(visibility) OR visibility = :visibility',
             'ExpressionAttributeValues': {
                 ':visibility': 'public'
             }
@@ -42,13 +43,18 @@ def lambda_handler(event, context):
             for item in items:
                 auto_tags = item.get('autoTags', [])
                 created_at = item.get('createdAt', '')
+                article_id = item.get('articleId', '')
                 
-                # Get image URL
+                # Get image URL - handle both old and new format
                 image_key = None
                 if item.get('imageKeys') and len(item['imageKeys']) > 0:
                     image_key = item['imageKeys'][0]
                 elif item.get('imageKey'):
                     image_key = item['imageKey']
+                
+                # Debug log
+                if not image_key and auto_tags:
+                    print(f"Article {article_id} has tags but no image: {auto_tags}")
                 
                 # Count tags and track latest image
                 for tag in auto_tags:

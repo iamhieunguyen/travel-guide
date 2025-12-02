@@ -51,32 +51,13 @@ export default function SmartGalleryPage() {
             <span className="font-medium">Quay lại</span>
           </button>
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="bg-gradient-to-r from-[#92ADA4] to-[#7d9a91] p-3 rounded-2xl">
-              <Sparkles className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-                Trending Tags
-              </h1>
-              <p className="text-white/70 text-lg">
-                Khám phá các chủ đề đang được quan tâm nhất
-              </p>
-            </div>
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-center gap-6 text-white/60 text-sm">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              <span>{trendingTags.length} chủ đề nổi bật</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M17.707 9.293a1 1 0 010 1.414l-7 7a1 1 0 01-1.414 0l-7-7A.997.997 0 012 10V5a3 3 0 013-3h5c.256 0 .512.098.707.293l7 7zM5 6a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-              </svg>
-              <span>{totalTags} tags tổng cộng</span>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+              Trending Tags
+            </h1>
+            <p className="text-white/70 text-base">
+              Khám phá các chủ đề đang được quan tâm nhất • {trendingTags.length} tags
+            </p>
           </div>
         </div>
 
@@ -120,15 +101,52 @@ export default function SmartGalleryPage() {
             </button>
           </div>
         ) : (
-          // Trending Tags Grid
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {trendingTags.map((tag, index) => (
-              <TrendingTagCard
-                key={`${tag.tag_name}-${index}`}
-                tag={tag}
-                onClick={handleTagClick}
-              />
-            ))}
+          <div className="space-y-8">
+            {/* Trending Tags - This Week */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-[#92ADA4]" />
+                  Trending Tags — This Week
+                </h2>
+                <button 
+                  onClick={() => navigate('/home')}
+                  className="text-[#92ADA4] hover:text-[#7d9a91] text-sm font-medium transition-colors"
+                >
+                  View all trending this week →
+                </button>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
+                {trendingTags.slice(0, 10).map((tag, index) => (
+                  <TrendingTagCard
+                    key={`week-${tag.tag_name}-${index}`}
+                    tag={tag}
+                    onClick={handleTagClick}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* All Time Most Popular */}
+            {trendingTags.length > 10 && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-[#92ADA4]" />
+                    Tags — All Time Most Popular
+                  </h2>
+                </div>
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2">
+                  {trendingTags.slice(10).map((tag, index) => (
+                    <TrendingTagCard
+                      key={`all-${tag.tag_name}-${index}`}
+                      tag={tag}
+                      onClick={handleTagClick}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

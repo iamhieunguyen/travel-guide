@@ -310,6 +310,28 @@ Resources:
         - AttributeName: articleId
           KeyType: RANGE
 
+  GalleryPhotosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: photo_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: photo_id
+          KeyType: HASH
+
+  GalleryTrendsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: tag_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tag_name
+          KeyType: HASH
+
   UserProfilesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -522,6 +544,29 @@ Resources:
             Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
+
+  ##############################
+  # GALLERY & TRENDING FUNCTIONS
+  ##############################
+  GetTrendingTagsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_trending_tags.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryTrendsTable
+      Events:
+        GetTrendingTagsApi:
+          Type: Api
+          Properties:
+            Path: /gallery/trending
+            Method: GET
 
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
@@ -876,6 +921,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
           BUCKET_NAME: !Ref ArticleImagesBucket
           CONFIG_BUCKET: !Ref ArticleImagesBucket
           CONFIG_KEY: 'config/label_priority_config.json'
@@ -888,6 +935,10 @@ Resources:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
         - SQSPollerPolicy:
             QueueName: !GetAtt DetectLabelsQueue.QueueName
         - Version: '2012-10-17'

@@ -1,4 +1,0 @@
-boto3>=1.26.137
-python-jose[cryptography]>=3.3.0
-requests>=2.31.0
-Pillow>=10.0.0 # Cho thumbnail_generator

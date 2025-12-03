@@ -421,6 +421,27 @@ def lambda_handler(event, context):
                     if success:
                         results['succeeded'] += 1
                         
+                        # Save to Gallery tables
+                        try:
+                            import sys
+                            import os
+                            # Add current directory to path
+                            current_dir = os.path.dirname(os.path.abspath(__file__))
+                            if current_dir not in sys.path:
+                                sys.path.insert(0, current_dir)
+                            
+                            from save_to_gallery import save_photo_to_gallery, update_trending_tags
+                            tag_names = [label['name'] for label in labels_data]
+                            image_url = key  # S3 key
+                            save_photo_to_gallery(article_id, image_url, tag_names, status='public')
+                            update_trending_tags(tag_names, image_url)
+                            print("✓ Saved to Gallery tables")
+                        except Exception as gallery_error:
+                            print(f"⚠️  Failed to save to Gallery tables: {gallery_error}")
+                            # Don't fail the whole process if gallery save fails
+                            import traceback
+                            traceback.print_exc()
+                        
                         # Forward to next queue
                         forward_to_next_queue(bucket, key, article_id)
                     else:

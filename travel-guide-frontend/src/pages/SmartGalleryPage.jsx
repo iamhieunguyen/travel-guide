@@ -34,8 +34,8 @@ export default function SmartGalleryPage() {
   };
 
   const handleTagClick = (tag) => {
-    // Navigate to search page with tag filter
-    navigate(`/home?search=${encodeURIComponent(tag.tag_name)}`);
+    // Navigate to home page with tag filter (not text search)
+    navigate(`/home?tag=${encodeURIComponent(tag.tag_name)}`);
   };
 
   return (

@@ -202,6 +202,33 @@ def lambda_handler(event, context):
         if display_name:
             item["username"] = display_name
 
+        # Rate limiting: Check last post time
+        # Query user's last post to prevent spam
+        try:
+            last_posts = table.query(
+                IndexName='gsi_owner_createdAt',
+                KeyConditionExpression='ownerId = :owner_id',
+                ExpressionAttributeValues={':owner_id': owner_id},
+                ScanIndexForward=False,  # Most recent first
+                Limit=1
+            )
+            
+            if last_posts.get('Items'):
+                last_post = last_posts['Items'][0]
+                last_created = datetime.fromisoformat(last_post['createdAt'])
+                now = datetime.now(timezone.utc)
+                time_diff = (now - last_created).total_seconds()
+                
+                # Rate limit: 30 seconds between posts
+                RATE_LIMIT_SECONDS = 30
+                if time_diff < RATE_LIMIT_SECONDS:
+                    wait_time = int(RATE_LIMIT_SECONDS - time_diff) + 1  # +1 để đảm bảo đủ thời gian
+                    print(f"⚠️ Rate limit triggered for user {owner_id}: {wait_time}s remaining")
+                    return error(429, f"⏱️ Vui lòng đợi {wait_time}s trước khi đăng bài tiếp")
+        except Exception as e:
+            print(f"⚠️ Rate limit check error (non-critical): {e}")
+            # Continue anyway if rate limit check fails
+        
         # Lưu vào DynamoDB
         table.put_item(Item=item)
 

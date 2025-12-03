@@ -102,18 +102,118 @@ export default function HomePage() {
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
   
+  // New posts detection state - store the latest createdAt timestamp
+  const [latestCreatedAt, setLatestCreatedAt] = useState(null);
+
+  // Define loadPosts BEFORE any useEffect that uses it
+  const loadPosts = useCallback(async (token = null, query = '', tag = '') => {
+    try {
+      if (!token) setLoading(true);
+      else setLoadingMore(true);
+
+      let response;
+      if (tag && tag.trim()) {
+        // Nếu có tag filter, dùng searchArticles với tags parameter
+        console.log('🔍 Searching with tag:', tag.trim());
+        response = await api.searchArticles({
+          tags: tag.trim(),
+          scope: scope,
+          limit: 3,
+          nextToken: token
+        });
+        console.log('📦 Tag search response:', response);
+      } else if (query && query.trim()) {
+        // Nếu có search query, dùng searchArticles với q parameter
+        console.log('🔍 Searching with query:', query.trim());
+        response = await api.searchArticles({
+          q: query.trim(),
+          scope: scope,
+          limit: 3,
+          nextToken: token
+        });
+        console.log('📦 Query search response:', response);
+      } else {
+        // Nếu không có query hoặc tag, dùng listArticles bình thường
+        response = await api.listArticles({
+          scope: scope,
+          limit: 3,
+          nextToken: token
+        });
+      }
+
+      // Backend already has locationName, no need to fetch from Nominatim
+      const posts = response.items;
+      console.log('📊 Posts received:', posts.length, 'posts');
+      if (tag && posts.length > 0) {
+        console.log('🏷️ First post tags:', posts[0].tags, 'autoTags:', posts[0].autoTags);
+      }
+
+      if (token) {
+        setPosts(prev => [...prev, ...posts]);
+      } else {
+        setPosts(posts);
+        // Set latest createdAt timestamp for new posts detection
+        if (posts.length > 0) {
+          setLatestCreatedAt(posts[0].createdAt);
+        }
+      }
+      setNextToken(response.nextToken);
+    } catch (error) {
+      console.error('Lỗi khi tải bài viết:', error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [scope]);
+  
   // Read tag from URL on mount
+  const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
+  
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tag = params.get('tag');
+    const q = params.get('q');
+    
+    console.log('📍 Reading URL params - tag:', tag, 'q:', q);
+    
     if (tag) {
       setTagFilter(tag);
       setSearchQuery(''); // Clear text search when filtering by tag
+    } else if (q) {
+      setSearchQuery(q);
+      setTagFilter(''); // Clear tag filter when searching
     }
+    
+    setUrlParamsLoaded(true);
   }, []);
-  
-  // New posts detection state - store the latest createdAt timestamp
-  const [latestCreatedAt, setLatestCreatedAt] = useState(null);
+
+  // Sync URL changes (browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tag = params.get('tag');
+      const q = params.get('q');
+      
+      console.log('🔄 URL changed - tag:', tag, 'q:', q);
+      
+      if (tag) {
+        setTagFilter(tag);
+        setSearchQuery('');
+        loadPosts(null, '', tag);
+      } else if (q) {
+        setSearchQuery(q);
+        setTagFilter('');
+        loadPosts(null, q, '');
+      } else {
+        setTagFilter('');
+        setSearchQuery('');
+        loadPosts(null, '', '');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [loadPosts]);
 
   // Check for new posts
   const checkNewPosts = useCallback(async () => {
@@ -167,63 +267,18 @@ export default function HomePage() {
     isLoading: loadingMore,
   });
 
-  const loadPosts = useCallback(async (token = null, query = '', tag = '') => {
-    try {
-      if (!token) setLoading(true);
-      else setLoadingMore(true);
-
-      let response;
-      if (tag && tag.trim()) {
-        // Nếu có tag filter, dùng searchArticles với tags parameter
-        response = await api.searchArticles({
-          tags: tag.trim(),
-          scope: scope,
-          limit: 3,
-          nextToken: token
-        });
-      } else if (query && query.trim()) {
-        // Nếu có search query, dùng searchArticles với q parameter
-        response = await api.searchArticles({
-          q: query.trim(),
-          scope: scope,
-          limit: 3,
-          nextToken: token
-        });
-      } else {
-        // Nếu không có query hoặc tag, dùng listArticles bình thường
-        response = await api.listArticles({
-          scope: scope,
-          limit: 3,
-          nextToken: token
-        });
-      }
-
-      // Backend already has locationName, no need to fetch from Nominatim
-      const posts = response.items;
-
-      if (token) {
-        setPosts(prev => [...prev, ...posts]);
-      } else {
-        setPosts(posts);
-        // Set latest createdAt timestamp for new posts detection
-        if (posts.length > 0) {
-          setLatestCreatedAt(posts[0].createdAt);
-        }
-      }
-      setNextToken(response.nextToken);
-    } catch (error) {
-      console.error('Lỗi khi tải bài viết:', error);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [scope]);
-
   const handleSearch = (e) => {
     if (e.key === 'Enter' || e.type === 'click') {
+      console.log('🔍 Search triggered:', searchQuery);
       setTagFilter(''); // Clear tag filter when searching
-      // Clear URL params when doing text search
-      window.history.replaceState({}, '', '/home');
+      
+      // Update URL with search query
+      if (searchQuery.trim()) {
+        window.history.pushState({}, '', `/home?q=${encodeURIComponent(searchQuery)}`);
+      } else {
+        window.history.pushState({}, '', '/home');
+      }
+      
       loadPosts(null, searchQuery, '');
     }
   };
@@ -267,14 +322,17 @@ export default function HomePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!authChecked) return;
+    if (!authChecked || !urlParamsLoaded) return;
     if (scope === 'mine' && !user) {
       navigate('/auth');
       return;
     }
+    // Only load on initial mount or when scope/auth changes
+    // Tag and search changes are handled by their own handlers
+    console.log('🚀 Initial load with tagFilter:', tagFilter, 'searchQuery:', searchQuery);
     loadPosts(null, searchQuery, tagFilter);
     loadFavorites(); // Load favorites when component mounts
-  }, [scope, loadFavorites, user, navigate, authChecked, tagFilter]);
+  }, [scope, user, navigate, authChecked, urlParamsLoaded]); // Wait for URL params to be loaded, but don't re-run on tag/query changes
 
   const loadMore = () => {
     if (nextToken) loadPosts(nextToken, searchQuery, tagFilter);
@@ -387,6 +445,15 @@ export default function HomePage() {
     if (diffMinutes > 0) return `${diffMinutes} phút trước`;
     return 'Vừa xong';
   };
+
+  // Handle tag click - filter posts by tag
+  const handleTagClick = useCallback((tagName) => {
+    console.log('🏷️ Tag clicked:', tagName);
+    setSearchQuery(''); // Clear text search
+    setTagFilter(tagName);
+    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(tagName)}`);
+    loadPosts(null, '', tagName);
+  }, [loadPosts]);
 
   return (
     <div className="min-h-screen bg-[#2d2d2d]">
@@ -583,34 +650,84 @@ export default function HomePage() {
               {/* New Posts Banner */}
               <NewPostsBanner count={newPostsCount} onLoadNew={loadNewPosts} />
               
-              {/* Tag Filter Banner */}
+              {/* Tag Filter Banner - Improved with Animation */}
               {tagFilter && (
-                <div className="mb-6 bg-[#92ADA4]/10 border border-[#92ADA4]/30 rounded-2xl p-4 flex items-center justify-between">
+                <div className="mb-6 bg-gradient-to-r from-[#92ADA4]/10 to-[#92ADA4]/5 border border-[#92ADA4]/30 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-slideDown">
                   <div className="flex items-center gap-3">
-                    <svg className="w-5 h-5 text-[#92ADA4]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
+                    <div className="p-2 bg-[#92ADA4]/20 rounded-lg">
+                      <svg className="w-5 h-5 text-[#92ADA4]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                    </div>
                     <div>
-                      <p className="text-sm text-gray-600">Đang lọc theo tag:</p>
-                      <p className="font-semibold text-gray-900 lowercase">#{tagFilter}</p>
+                      <p className="text-xs text-gray-500 font-medium">Đang lọc theo tag</p>
+                      <p className="font-bold text-gray-900 text-base lowercase flex items-center gap-1">
+                        <span className="text-[#92ADA4]">#</span>{tagFilter}
+                      </p>
                     </div>
                   </div>
                   <button
                     onClick={() => {
+                      console.log('🗑️ Clearing tag filter');
                       setTagFilter('');
-                      window.history.replaceState({}, '', '/home');
+                      window.history.pushState({}, '', '/home');
                       loadPosts(null, '', '');
                     }}
-                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors text-sm"
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-all text-sm shadow-sm hover:shadow active:scale-95 flex items-center gap-2"
                   >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                     Xóa bộ lọc
                   </button>
                 </div>
               )}
               
+              {/* Search Query Banner */}
+              {searchQuery && !tagFilter && (
+                <div className="mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-slideDown">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 rounded-lg">
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Kết quả tìm kiếm cho</p>
+                      <p className="font-bold text-gray-900 text-base">"{searchQuery}"</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      console.log('🗑️ Clearing search query');
+                      setSearchQuery('');
+                      window.history.pushState({}, '', '/home');
+                      loadPosts(null, '', '');
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-all text-sm shadow-sm hover:shadow active:scale-95 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Xóa tìm kiếm
+                  </button>
+                </div>
+              )}
+              
+              {/* Loading State for Filters */}
+              {loading && (tagFilter || searchQuery) && posts.length === 0 && (
+                <div className="text-center py-8 bg-white rounded-2xl shadow-sm">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#92ADA4] mb-3"></div>
+                  <p className="text-gray-600 font-medium">
+                    {tagFilter ? `Đang tìm bài viết với tag #${tagFilter}...` : `Đang tìm kiếm "${searchQuery}"...`}
+                  </p>
+                </div>
+              )}
+              
               {/* Main Feed */}
               <div className="space-y-8">
-            {loading && posts.length === 0 ? (
+            {loading && posts.length === 0 && !tagFilter && !searchQuery ? (
               [...Array(3)].map((_, i) => (
                 <div key={i} className="bg-white rounded-3xl shadow-sm p-5 animate-pulse">
                   <div className="flex items-center space-x-3 mb-4">
@@ -883,10 +1000,11 @@ export default function HomePage() {
                                       {post.content || post.title}
                                     </p>
                                     
-                                    {/* Tags Display */}
-                                    {post.tags && post.tags.length > 0 && (
+                                    {/* Tags Display - Clickable (User Tags + AI Auto Tags) */}
+                                    {((post.tags && post.tags.length > 0) || (post.autoTags && post.autoTags.length > 0)) && (
                                       <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {post.tags.map((tagId, index) => {
+                                        {/* User-selected tags */}
+                                        {post.tags && post.tags.map((tagId, index) => {
                                           const tagLabels = {
                                             'beach': '🏖️ Biển',
                                             'mountain': '⛰️ Núi',
@@ -898,12 +1016,31 @@ export default function HomePage() {
                                             'sunny': '☀️ Nắng'
                                           };
                                           return (
-                                            <span
-                                              key={index}
-                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20"
+                                            <button
+                                              key={`user-tag-${index}`}
+                                              onClick={() => handleTagClick(tagId)}
+                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20 hover:bg-[#92ADA4]/20 hover:border-[#92ADA4]/40 transition-all cursor-pointer active:scale-95"
+                                              title={`Lọc theo tag: ${tagLabels[tagId] || tagId}`}
                                             >
                                               {tagLabels[tagId] || tagId}
-                                            </span>
+                                            </button>
+                                          );
+                                        })}
+                                        
+                                        {/* AI Auto Tags - Different color with AI icon */}
+                                        {post.autoTags && post.autoTags.map((tagId, index) => {
+                                          return (
+                                            <button
+                                              key={`auto-tag-${index}`}
+                                              onClick={() => handleTagClick(tagId)}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 transition-all cursor-pointer active:scale-95"
+                                              title={`AI Tag: ${tagId} (click để lọc)`}
+                                            >
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 22.5l-.394-1.933a2.25 2.25 0 00-1.423-1.423L12.75 18.75l1.933-.394a2.25 2.25 0 001.423-1.423l.394-1.933.394 1.933a2.25 2.25 0 001.423 1.423l1.933.394-1.933.394a2.25 2.25 0 00-1.423 1.423z"/>
+                                              </svg>
+                                              <span className="lowercase">{tagId}</span>
+                                            </button>
                                           );
                                         })}
                                       </div>

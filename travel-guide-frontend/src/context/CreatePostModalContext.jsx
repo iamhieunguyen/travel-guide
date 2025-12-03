@@ -14,6 +14,8 @@ export function CreatePostModalProvider({ children }) {
   const [editPostData, setEditPostData] = useState(null);
   const [caption, setCaption] = useState("");
   const [privacy, setPrivacy] = useState("public");
+  const [isPosting, setIsPosting] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(0);
   const { getIdToken, refreshAuth, user } = useAuth();
 
   const openModal = useCallback(() => {
@@ -74,6 +76,22 @@ export function CreatePostModalProvider({ children }) {
   }, []);
 
   const handleShare = useCallback(async (postData) => {
+    // Check if already posting
+    if (isPosting) {
+      console.log('⚠️ Already posting, ignoring duplicate request');
+      return;
+    }
+    
+    // Check cooldown
+    if (cooldownTime > 0) {
+      if (window.showSuccessToast) {
+        window.showSuccessToast(`Vui lòng đợi ${cooldownTime}s trước khi đăng bài tiếp`);
+      }
+      return;
+    }
+    
+    setIsPosting(true);
+    
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -154,11 +172,39 @@ export function CreatePostModalProvider({ children }) {
       console.error('Error details:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        status: error.status
       });
+      
+      // Handle rate limiting (429)
+      if (error.status === 429 || error.message?.includes('đợi')) {
+        // Extract wait time from error message
+        const match = error.message.match(/(\d+)s/);
+        const waitTime = match ? parseInt(match[1]) : 30;
+        
+        // Start cooldown timer
+        setCooldownTime(waitTime);
+        const interval = setInterval(() => {
+          setCooldownTime(prev => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
+        // Show toast
+        if (window.showSuccessToast) {
+          window.showSuccessToast(error.message || `Vui lòng đợi ${waitTime}s trước khi đăng bài tiếp`);
+        }
+      }
+      
       throw error;
+    } finally {
+      setIsPosting(false);
     }
-  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData]);
+  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData, isPosting, cooldownTime]);
 
   return (
     <CreatePostModalContext.Provider
@@ -179,7 +225,9 @@ export function CreatePostModalProvider({ children }) {
         caption,
         setCaption,
         privacy,
-        setPrivacy
+        setPrivacy,
+        isPosting,
+        cooldownTime
       }}
     >
       {children}

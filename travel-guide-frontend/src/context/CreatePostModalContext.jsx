@@ -1,5 +1,5 @@
 // context/CreatePostModalContext.jsx
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import api, { createArticleWithMultipleUploads } from "../services/article";
 
@@ -15,8 +15,78 @@ export function CreatePostModalProvider({ children }) {
   const [caption, setCaption] = useState("");
   const [privacy, setPrivacy] = useState("public");
   const [isPosting, setIsPosting] = useState(false);
+  
+  // Quản lý Cooldown
   const [cooldownTime, setCooldownTime] = useState(0);
+  const intervalRef = useRef(null); // Sử dụng useRef để quản lý interval
+
   const { getIdToken, refreshAuth, user } = useAuth();
+
+  // Hàm xử lý việc khởi động Cooldown Timer - Tinh tế và cô đọng hơn
+  const startCooldownTimer = useCallback((waitTime) => {
+    // 1. Dừng timer cũ nếu có
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    // 2. Lưu thời gian kết thúc vào localStorage để tránh bypass bằng refresh
+    const endTime = Date.now() + (waitTime * 1000);
+    localStorage.setItem('postCooldown', JSON.stringify({ endTime }));
+    
+    // 3. Thiết lập thời gian chờ
+    setCooldownTime(waitTime);
+    
+    // 4. Bắt đầu đếm ngược mượt mà
+    intervalRef.current = setInterval(() => {
+      setCooldownTime(prev => {
+        if (prev <= 1) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          // Xóa cooldown khỏi localStorage khi hết thời gian
+          localStorage.removeItem('postCooldown');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // 5. Hiển thị thông báo (nếu có sẵn)
+    if (window.showSuccessToast) {
+      const message = `⏱️ Vui lòng đợi ${waitTime}s trước khi đăng bài tiếp`;
+      window.showSuccessToast(message);
+    }
+    
+    console.log(`⏱️ Rate Limit: Bắt đầu đếm ngược ${waitTime}s`);
+  }, []);
+
+  // Load cooldown from localStorage on mount
+  useEffect(() => {
+    const savedCooldown = localStorage.getItem('postCooldown');
+    if (savedCooldown) {
+      const { endTime } = JSON.parse(savedCooldown);
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      if (remaining > 0) {
+        console.log(`⏱️ Khôi phục cooldown: ${remaining}s còn lại`);
+        startCooldownTimer(remaining);
+      } else {
+        // Cooldown đã hết, xóa khỏi localStorage
+        localStorage.removeItem('postCooldown');
+      }
+    }
+  }, [startCooldownTimer]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
 
   const openModal = useCallback(() => {
     if (!getIdToken()) {
@@ -84,8 +154,10 @@ export function CreatePostModalProvider({ children }) {
     
     // Check cooldown
     if (cooldownTime > 0) {
+      // Sử dụng thông báo trực tiếp từ state để tăng tính đồng bộ
+      const remainingTime = Math.max(1, cooldownTime);
       if (window.showSuccessToast) {
-        window.showSuccessToast(`Vui lòng đợi ${cooldownTime}s trước khi đăng bài tiếp`);
+        window.showSuccessToast(`Vui lòng đợi ${remainingTime}s trước khi đăng bài tiếp`);
       }
       return;
     }
@@ -176,35 +248,39 @@ export function CreatePostModalProvider({ children }) {
         status: error.status
       });
       
-      // Handle rate limiting (429)
+      // ✨ Xử lý Rate Limiting (429) - Chặn spam hiệu quả ✨
       if (error.status === 429 || error.message?.includes('đợi')) {
         // Extract wait time from error message
         const match = error.message.match(/(\d+)s/);
         const waitTime = match ? parseInt(match[1]) : 30;
         
-        // Start cooldown timer
-        setCooldownTime(waitTime);
-        const interval = setInterval(() => {
-          setCooldownTime(prev => {
-            if (prev <= 1) {
-              clearInterval(interval);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        console.log(`🚫 Rate limit hit! Cooldown: ${waitTime}s`);
         
-        // Show toast
-        if (window.showSuccessToast) {
-          window.showSuccessToast(error.message || `Vui lòng đợi ${waitTime}s trước khi đăng bài tiếp`);
-        }
+        // Gọi hàm xử lý Cooldown tập trung
+        startCooldownTimer(waitTime);
+
+        // Không ném lỗi nữa, chỉ return để tránh hiển thị lỗi 2 lần
+        return;
+      }
+      // ------------------------------------------------------------------------------------
+      
+      // Hiển thị thông báo lỗi cho các lỗi khác
+      if (window.showSuccessToast) {
+        const errorMsg = error.status === 401
+          ? '🔒 Vui lòng đăng nhập lại'
+          : error.status === 400
+          ? `❌ ${error.message || 'Dữ liệu không hợp lệ'}`
+          : error.status === 500
+          ? '⚠️ Lỗi server, vui lòng thử lại sau'
+          : `❌ ${error.message || 'Có lỗi xảy ra'}`;
+        window.showSuccessToast(errorMsg);
       }
       
       throw error;
     } finally {
       setIsPosting(false);
     }
-  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData, isPosting, cooldownTime]);
+  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData, isPosting, cooldownTime, startCooldownTimer]);
 
   return (
     <CreatePostModalContext.Provider

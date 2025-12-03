@@ -222,10 +222,11 @@ def lambda_handler(event, context):
                 # Rate limit: 30 seconds between posts
                 RATE_LIMIT_SECONDS = 30
                 if time_diff < RATE_LIMIT_SECONDS:
-                    wait_time = int(RATE_LIMIT_SECONDS - time_diff)
-                    return error(429, f"Vui lòng đợi {wait_time}s trước khi đăng bài tiếp")
+                    wait_time = int(RATE_LIMIT_SECONDS - time_diff) + 1  # +1 để đảm bảo đủ thời gian
+                    print(f"⚠️ Rate limit triggered for user {owner_id}: {wait_time}s remaining")
+                    return error(429, f"⏱️ Vui lòng đợi {wait_time}s trước khi đăng bài tiếp")
         except Exception as e:
-            print(f"Rate limit check error (non-critical): {e}")
+            print(f"⚠️ Rate limit check error (non-critical): {e}")
             # Continue anyway if rate limit check fails
         
         # Lưu vào DynamoDB

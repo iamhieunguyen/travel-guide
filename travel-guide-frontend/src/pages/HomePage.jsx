@@ -97,9 +97,20 @@ export default function HomePage() {
   const [scope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
+  const [tagFilter, setTagFilter] = useState(''); // Tag filter from URL
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
+  
+  // Read tag from URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tag = params.get('tag');
+    if (tag) {
+      setTagFilter(tag);
+      setSearchQuery(''); // Clear text search when filtering by tag
+    }
+  }, []);
   
   // New posts detection state - store the latest createdAt timestamp
   const [latestCreatedAt, setLatestCreatedAt] = useState(null);
@@ -156,14 +167,22 @@ export default function HomePage() {
     isLoading: loadingMore,
   });
 
-  const loadPosts = useCallback(async (token = null, query = '') => {
+  const loadPosts = useCallback(async (token = null, query = '', tag = '') => {
     try {
       if (!token) setLoading(true);
       else setLoadingMore(true);
 
       let response;
-      if (query && query.trim()) {
-        // Nếu có search query, dùng searchArticles
+      if (tag && tag.trim()) {
+        // Nếu có tag filter, dùng searchArticles với tags parameter
+        response = await api.searchArticles({
+          tags: tag.trim(),
+          scope: scope,
+          limit: 3,
+          nextToken: token
+        });
+      } else if (query && query.trim()) {
+        // Nếu có search query, dùng searchArticles với q parameter
         response = await api.searchArticles({
           q: query.trim(),
           scope: scope,
@@ -171,7 +190,7 @@ export default function HomePage() {
           nextToken: token
         });
       } else {
-        // Nếu không có query, dùng listArticles bình thường
+        // Nếu không có query hoặc tag, dùng listArticles bình thường
         response = await api.listArticles({
           scope: scope,
           limit: 3,
@@ -202,7 +221,10 @@ export default function HomePage() {
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' || e.type === 'click') {
-      loadPosts(null, searchQuery);
+      setTagFilter(''); // Clear tag filter when searching
+      // Clear URL params when doing text search
+      window.history.replaceState({}, '', '/home');
+      loadPosts(null, searchQuery, '');
     }
   };
 
@@ -219,11 +241,11 @@ export default function HomePage() {
       resetNewPosts();
       
       // Reload posts from beginning
-      await loadPosts(null, searchQuery);
+      await loadPosts(null, searchQuery, tagFilter);
     } catch (error) {
       console.error('Error loading new posts:', error);
     }
-  }, [resetNewPosts, loadPosts, searchQuery]);
+  }, [resetNewPosts, loadPosts, searchQuery, tagFilter]);
 
   // Load user's favorite articles
   const loadFavorites = useCallback(async () => {
@@ -250,12 +272,12 @@ export default function HomePage() {
       navigate('/auth');
       return;
     }
-    loadPosts();
+    loadPosts(null, searchQuery, tagFilter);
     loadFavorites(); // Load favorites when component mounts
-  }, [scope, loadPosts, loadFavorites, user, navigate, authChecked]);
+  }, [scope, loadFavorites, user, navigate, authChecked, tagFilter]);
 
   const loadMore = () => {
-    if (nextToken) loadPosts(nextToken);
+    if (nextToken) loadPosts(nextToken, searchQuery, tagFilter);
   };
 
   const handleLike = async (postId) => {
@@ -387,7 +409,9 @@ export default function HomePage() {
                 <button 
                   onClick={() => {
                     setSearchQuery('');
-                    loadPosts(null, '');
+                    setTagFilter('');
+                    window.history.replaceState({}, '', '/home');
+                    loadPosts(null, '', '');
                   }}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
                 >
@@ -558,6 +582,31 @@ export default function HomePage() {
             <div className="px-8">
               {/* New Posts Banner */}
               <NewPostsBanner count={newPostsCount} onLoadNew={loadNewPosts} />
+              
+              {/* Tag Filter Banner */}
+              {tagFilter && (
+                <div className="mb-6 bg-[#92ADA4]/10 border border-[#92ADA4]/30 rounded-2xl p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <svg className="w-5 h-5 text-[#92ADA4]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <div>
+                      <p className="text-sm text-gray-600">Đang lọc theo tag:</p>
+                      <p className="font-semibold text-gray-900 lowercase">#{tagFilter}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setTagFilter('');
+                      window.history.replaceState({}, '', '/home');
+                      loadPosts(null, '', '');
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-colors text-sm"
+                  >
+                    Xóa bộ lọc
+                  </button>
+                </div>
+              )}
               
               {/* Main Feed */}
               <div className="space-y-8">

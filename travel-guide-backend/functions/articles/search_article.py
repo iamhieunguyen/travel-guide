@@ -109,17 +109,27 @@ def lambda_handler(event, context):
                 "(attribute_exists(#locationNameLower) AND contains(#locationNameLower, :q))"
             )
 
-        # Tìm theo tags
+        # Tìm theo tags (search in both 'tags' and 'autoTags' fields)
+        # Note: Both fields are lists in DynamoDB, so we use contains() which works on lists
         if tags:
             tag_list = [t.strip().lower() for t in tags.split(",") if t.strip()]
             if tag_list:
+                # Use single attribute names for tags and autoTags
+                expression_attribute_names["#tags"] = "tags"
+                expression_attribute_names["#autoTags"] = "autoTags"
+                
                 tag_conditions = []
                 for i, tag in enumerate(tag_list):
-                    expression_attribute_names[f"#tag{i}"] = "tags"
                     expression_attribute_values[f":tag{i}"] = tag
-                    tag_conditions.append(f"contains(#tag{i}, :tag{i})")
+                    
+                    # Check if tag exists in either list field
+                    # contains() works on both strings and lists in DynamoDB
+                    tag_conditions.append(
+                        f"(contains(#tags, :tag{i}) OR contains(#autoTags, :tag{i}))"
+                    )
 
                 if tag_conditions:
+                    # Use OR to match any of the requested tags
                     filter_parts.append("(" + " OR ".join(tag_conditions) + ")")
 
         # Combine filters với AND

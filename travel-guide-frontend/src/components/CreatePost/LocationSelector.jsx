@@ -66,8 +66,19 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { 'Accept-Language': 'vi' } }
+        { 
+          headers: { 
+            'Accept-Language': 'en',
+            'User-Agent': 'TravelGuideApp/1.0'
+          } 
+        }
       );
+      
+      if (!response.ok) {
+        console.error(`Reverse geocode failed: ${response.status}`);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data && data.display_name) {
@@ -96,10 +107,26 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
       setIsLoadingLocations(true);
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationSearch)}&countrycodes=vn&format=json&limit=10&addressdetails=1`,
-          { headers: { 'Accept-Language': 'vi' } }
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationSearch)}&format=json&limit=10&addressdetails=1`,
+          { 
+            headers: { 
+              'Accept-Language': 'en',
+              'User-Agent': 'TravelGuideApp/1.0'
+            } 
+          }
         );
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        
+        if (!Array.isArray(data)) {
+          console.error('Invalid response format:', data);
+          setLocationSuggestions([]);
+          return;
+        }
         
         const suggestions = data.map((item, index) => ({
           id: index,
@@ -119,7 +146,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
       }
     };
 
-    const timeoutId = setTimeout(searchLocations, 500);
+    const timeoutId = setTimeout(searchLocations, 800); // Tăng delay để tránh rate limit
     return () => clearTimeout(timeoutId);
   }, [locationSearch]);
 

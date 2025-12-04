@@ -84,8 +84,8 @@ export default function PostDetails({
       setIsLoadingLocations(true);
       try {
         const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationSearch)}&countrycodes=vn&format=json&limit=5&addressdetails=1`,
-          { headers: { 'Accept-Language': 'vi' } }
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(locationSearch)}&format=json&limit=5&addressdetails=1`,
+          { headers: { 'Accept-Language': 'en' } }
         );
         const data = await response.json();
         

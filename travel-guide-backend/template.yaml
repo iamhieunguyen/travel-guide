@@ -235,7 +235,7 @@ Resources:
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
     DependsOn:
-      - ImageValidatorQueuePolicy
+      - DetectLabelsQueuePolicy
     Properties:
       BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
       VersioningConfiguration:
@@ -252,9 +252,9 @@ Resources:
         RestrictPublicBuckets: true
       NotificationConfiguration:
         QueueConfigurations:
-          # Send ObjectCreated events to Image Validator (first in pipeline)
+          # BYPASS ImageValidator (PIL issue) - Send directly to DetectLabels
           - Event: s3:ObjectCreated:*
-            Queue: !GetAtt ImageValidatorQueue.Arn
+            Queue: !GetAtt DetectLabelsQueue.Arn
             Filter:
               S3Key:
                 Rules:
@@ -342,6 +342,39 @@ Resources:
       KeySchema:
         - AttributeName: userId
           KeyType: HASH
+
+  # Location Cache Table for reverse geocoding results
+  LocationCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: geohash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Purpose
+          Value: ReverseGeocodingCache
+
+  ##############################
+  # AWS LOCATION SERVICE
+  ##############################
+  
+  # Place Index for global geocoding (using Esri provider for best global coverage)
+  TravelGuidePlaceIndex:
+    Type: AWS::Location::PlaceIndex
+    Properties:
+      IndexName: TravelGuidePlaceIndex
+      DataSource: Esri  # Best for global coverage
+      DataSourceConfiguration:
+        IntendedUse: SingleUse  # For geocoding only
+      Description: Place index for reverse geocoding with global coverage
+      PricingPlan: RequestBasedUsage
 
   ##############################
   # AUTH (COGNITO)
@@ -568,6 +601,26 @@ Resources:
             Path: /gallery/trending
             Method: GET
 
+  GetArticlesByTagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_articles_by_tag.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryPhotosTable
+      Events:
+        GetArticlesByTagApi:
+          Type: Api
+          Properties:
+            Path: /gallery/articles
+            Method: GET
+
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################
@@ -581,11 +634,22 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
       Events:
         CreateArticleApi:
           Type: Api
@@ -650,11 +714,22 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
       Events:
         UpdateArticleApi:
           Type: Api

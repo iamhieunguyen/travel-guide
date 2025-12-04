@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
+import galleryApi from '../services/galleryApi';
 import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
@@ -113,13 +114,12 @@ export default function HomePage() {
 
       let response;
       if (tag && tag.trim()) {
-        // Nếu có tag filter, dùng searchArticles với tags parameter
-        console.log('🔍 Searching with tag:', tag.trim());
-        response = await api.searchArticles({
-          tags: tag.trim(),
-          scope: scope,
-          limit: 3,
-          nextToken: token
+        // Nếu có tag filter, dùng galleryApi.getArticlesByTag (query từ GalleryPhotosTable)
+        // Đây là cách chính xác hơn vì GalleryPhotosTable đã lưu mapping tag -> photo_id
+        console.log('🔍 Searching with tag (via Gallery API):', tag.trim());
+        response = await galleryApi.getArticlesByTag({
+          tag: tag.trim(),
+          limit: 10
         });
         console.log('📦 Tag search response:', response);
       } else if (query && query.trim()) {
@@ -177,7 +177,9 @@ export default function HomePage() {
     console.log('📍 Reading URL params - tag:', tag, 'q:', q);
     
     if (tag) {
-      setTagFilter(tag);
+      // Normalize tag to lowercase to match database format
+      const normalizedTag = tag.toLowerCase();
+      setTagFilter(normalizedTag);
       setSearchQuery(''); // Clear text search when filtering by tag
     } else if (q) {
       setSearchQuery(q);
@@ -197,9 +199,11 @@ export default function HomePage() {
       console.log('🔄 URL changed - tag:', tag, 'q:', q);
       
       if (tag) {
-        setTagFilter(tag);
+        // Normalize tag to lowercase to match database format
+        const normalizedTag = tag.toLowerCase();
+        setTagFilter(normalizedTag);
         setSearchQuery('');
-        loadPosts(null, '', tag);
+        loadPosts(null, '', normalizedTag);
       } else if (q) {
         setSearchQuery(q);
         setTagFilter('');
@@ -449,10 +453,12 @@ export default function HomePage() {
   // Handle tag click - filter posts by tag
   const handleTagClick = useCallback((tagName) => {
     console.log('🏷️ Tag clicked:', tagName);
+    // Normalize tag to lowercase to match database format
+    const normalizedTag = tagName.toLowerCase();
     setSearchQuery(''); // Clear text search
-    setTagFilter(tagName);
-    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(tagName)}`);
-    loadPosts(null, '', tagName);
+    setTagFilter(normalizedTag);
+    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(normalizedTag)}`);
+    loadPosts(null, '', normalizedTag);
   }, [loadPosts]);
 
   return (

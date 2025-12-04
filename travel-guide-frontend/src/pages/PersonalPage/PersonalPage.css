@@ -6,6 +6,80 @@
   font-family: 'Inter', sans-serif;
 }
 
+/* THEME VARIANTS */
+.journal-page--light {
+  background-color: #fdfbf7;
+  color: #2c3e50;
+}
+
+.journal-page--dark {
+  background-color: #020617;
+  color: #e5e7eb;
+}
+
+.journal-page--dark .toolbar-sticky-wrapper {
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom-color: rgba(148, 163, 184, 0.3);
+}
+
+.journal-page--dark .view-switcher {
+  background: #020617;
+}
+
+.journal-page--dark .view-tab {
+  color: #94a3b8;
+}
+
+.journal-page--dark .view-tab.active {
+  background: #020617;
+  color: #2dd4bf;
+}
+
+.journal-page--dark .memory-stream {
+  color: #e5e7eb;
+}
+
+.journal-page--dark .journal-card {
+  background: #020617;
+  border-color: #1f2937;
+}
+
+.journal-page--dark .card-title {
+  color: #f9fafb;
+}
+
+.journal-page--dark .card-snippet {
+  color: #e5e7eb;
+}
+
+.journal-page--dark .empty-journal,
+.journal-page--dark .loading-spinner {
+  color: #e5e7eb;
+}
+
+.journal-page--dark .journal-modal-backdrop {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+.journal-page--dark .journal-modal {
+  background: #020617;
+  border-color: #1f2937;
+}
+
+.journal-page--dark .modal-body {
+  background: #020617;
+}
+
+.journal-page--dark .modal-author-info .name {
+  color: #f9fafb;
+}
+
+.journal-page--dark .modal-author-info .location,
+.journal-page--dark .modal-top-bar span,
+.journal-page--dark .modal-like-count span {
+  color: #cbd5f5;
+}
+
 /* --- HEADER --- */
 .journal-header { position: relative; margin-bottom: 1rem; }
 
@@ -72,6 +146,29 @@
 
 .dot { color: #cbd5e1; }
 
+.journal-page--dark .profile-meta {
+  background: rgba(30, 41, 59, 0.8);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.journal-page--dark .profile-meta strong {
+  color: #e5e7eb;
+}
+
+.journal-page--dark .dot {
+  color: #64748b;
+}
+
+.journal-page--dark .profile-bio {
+  color: #94a3b8;
+}
+
+.journal-page--dark .profile-bio::before {
+  background: #475569;
+}
+
 /* --- NEW TOOLBAR STYLES (REPLACES MOOD NAV) --- */
 .toolbar-sticky-wrapper {
   position: sticky;
@@ -82,6 +179,14 @@
   padding: 1rem 0;
   margin-bottom: 1.5rem;
   border-bottom: 1px solid rgba(0,0,0,0.03);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.journal-page--dark .toolbar-sticky-wrapper {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .journal-toolbar {
@@ -101,6 +206,12 @@
   background: #f1f5f9;
   padding: 4px;
   border-radius: 12px;
+  transition: background 0.3s ease;
+}
+
+.journal-page--dark .view-switcher {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .view-tab {
@@ -118,10 +229,26 @@
   transition: all 0.2s;
 }
 
+.journal-page--dark .view-tab {
+  color: #94a3b8;
+}
+
 .view-tab.active {
   background: white;
   color: #0891b2;
   box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.journal-page--dark .view-tab.active {
+  background: rgba(13, 148, 136, 0.2);
+  color: #2dd4bf;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+  border: 1px solid rgba(13, 148, 136, 0.3);
+}
+
+.journal-page--dark .view-tab:hover:not(.active) {
+  color: #cbd5e1;
+  background: rgba(148, 163, 184, 0.1);
 }
 
 /* Filter Group (Right side) */
@@ -130,11 +257,21 @@
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+  padding: 0.5rem;
+  border-radius: 12px;
+  transition: background 0.3s ease;
+}
+
+.journal-page--dark .filter-group {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  padding: 0.5rem;
 }
 
 .privacy-pills {
   display: flex;
   gap: 6px;
+  align-items: center;
 }
 
 .pill {
@@ -151,9 +288,21 @@
   transition: all 0.2s;
 }
 
+.journal-page--dark .pill {
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+  background: rgba(30, 41, 59, 0.4);
+}
+
 .pill:hover {
   border-color: #0891b2;
   color: #0891b2;
+}
+
+.journal-page--dark .pill:hover {
+  border-color: #2dd4bf;
+  color: #2dd4bf;
+  background: rgba(13, 148, 136, 0.15);
 }
 
 .pill.active {
@@ -162,10 +311,131 @@
   color: white;
 }
 
+.journal-page--dark .pill.active {
+  background: linear-gradient(135deg, #0891b2 0%, #2dd4bf 100%);
+  border-color: #2dd4bf;
+  color: white;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
+}
+
 /* --- Date Picker Wrapper --- */
 .date-filter-wrapper {
   position: relative;
   z-index: 50; /* Đảm bảo popup hiện lên trên các phần tử khác */
+}
+
+/* Style cho DateRangePicker trong chế độ tối */
+.journal-page--dark .date-filter-wrapper .picker-trigger {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+.journal-page--dark .date-filter-wrapper .picker-trigger:hover {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: #2dd4bf;
+  color: #cbd5e1;
+}
+
+.journal-page--dark .date-filter-wrapper .picker-trigger.active {
+  border-color: #2dd4bf;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2);
+}
+
+.journal-page--dark .date-filter-wrapper .picker-trigger.has-value {
+  color: #2dd4bf;
+  background: rgba(13, 148, 136, 0.15);
+  border-color: rgba(45, 212, 191, 0.4);
+}
+
+.journal-page--dark .date-filter-wrapper .clear-btn {
+  color: #94a3b8;
+}
+
+.journal-page--dark .date-filter-wrapper .clear-btn:hover {
+  background: rgba(148, 163, 184, 0.2);
+  color: #f87171;
+}
+
+.journal-page--dark .date-filter-wrapper .picker-dropdown {
+  background: rgba(15, 23, 42, 0.98);
+  border-color: rgba(148, 163, 184, 0.3);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.journal-page--dark .date-filter-wrapper .header-title-btn {
+  color: #e5e7eb;
+}
+
+.journal-page--dark .date-filter-wrapper .header-title-btn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .nav-btn {
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+.journal-page--dark .date-filter-wrapper .nav-btn:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #cbd5e1;
+  border-color: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .weekday {
+  color: #64748b;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day {
+  color: #cbd5e1;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day:hover:not(.empty):not(.selected) {
+  background-color: rgba(30, 41, 59, 0.8);
+  color: #e5e7eb;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day.today {
+  color: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day.today::after {
+  background: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day.selected {
+  background-color: #0891b2;
+  color: white;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-day.in-range {
+  background-color: rgba(13, 148, 136, 0.2);
+  color: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-cell {
+  color: #cbd5e1;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-cell:hover {
+  background: rgba(30, 41, 59, 0.8);
+  color: #2dd4bf;
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-cell.current {
+  color: #2dd4bf;
+  border-color: rgba(45, 212, 191, 0.4);
+}
+
+.journal-page--dark .date-filter-wrapper .calendar-cell.selected {
+  background: #0891b2;
+  color: white;
+}
+
+.journal-page--dark .date-filter-wrapper .text-gray-400 {
+  color: #64748b;
 }
 
 /* --- CARD UPDATES --- */
@@ -316,6 +586,21 @@
 
 .privacy-tag.private {
   background: rgba(30, 41, 59, 0.9);
+}
+
+.favorite-tag {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.95);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f97316;
 }
 
 .card-image img {
@@ -542,31 +827,53 @@
 
 .modal-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+  gap: 1rem;
   align-items: stretch;
-  height: 100%;
 }
 
 .modal-left {
-  background: #f8fafc;
-  padding: 1.5rem;
+  height: 100%;
+  display: flex;
+}
+
+.modal-left-inner {
+  width: 100%;
+  background: transparent;
+  border-radius: 24px;
+}
+
+.personal-carousel {
+  position: relative;
+  width: 100%;
+  height: 550px;
+  border-radius: 30px;
+  overflow: hidden;
+  background: #f1f5f9;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
 }
 
-.modal-img-container img {
+.personal-carousel img {
   width: 100%;
-  max-height: 420px;
+  height: 100%;
   object-fit: contain;
-  border-radius: 24px;
-  background: #f8fafc;
+  display: block;
 }
 
 .modal-image-carousel {
   position: relative;
   width: 100%;
+  max-width: 600px;
+}
+
+.modal-img-container img {
+  width: 100%;
+  height: 550px;              /* Giữ cùng chiều cao với trang Home */
+  object-fit: contain;        /* Không cắt ảnh, giữ đúng tỉ lệ gốc */
+  border-radius: 24px;
+  background: #f8fafc;
 }
 
 .modal-img-nav {
@@ -609,13 +916,70 @@
 }
 
 .modal-right {
-  padding: 1.5rem 1.75rem 1.75rem;
+  padding: 1rem 1.25rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  height: 100%;
 }
 
+.modal-author {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-author-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: #92ADA4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  overflow: hidden;
+  margin-right: 12px;
+}
+
+.modal-author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.modal-author-info {
+  flex: 1;
+}
+
+.modal-author-info .name {
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.modal-author-info .location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-size: 0.85rem;
+  margin: 2px 0 0;
+}
+
+.modal-author-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .modal-top-bar {
   display: flex;
   gap: 0.75rem;
@@ -649,10 +1013,10 @@
 }
 
 .modal-map-wrapper {
-  margin-bottom: 1.5rem;
-  border-radius: 20px;
+  margin-bottom: 1rem;
+  border-radius: 18px;
   overflow: hidden;
-  height: 380px;
+  height: 260px;
 }
 
 .modal-title {
@@ -733,10 +1097,28 @@
 }
 
 .modal-body {
-  font-size: 1rem;
-  line-height: 1.7;
+  background: #f8fafc;
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modal-content-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: #475569;
   white-space: pre-line;
+}
+
+.modal-like-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-weight: 600;
+  margin-top: 0.5rem;
 }
 
 .close-modal-btn {

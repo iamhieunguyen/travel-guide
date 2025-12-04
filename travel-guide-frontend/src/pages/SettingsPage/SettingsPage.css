@@ -21,9 +21,10 @@
   
   min-height: 100vh;
   background: 
-    linear-gradient(135deg, #e0f2fe 0%, #bae6fd 30%, #7dd3fc 60%, #38bdf8 100%),
-    radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+    /* Nền kem ấm + điểm nhấn xanh lá để làm nổi gradient nút */
+    linear-gradient(135deg, #fefce8 0%, #faf5ff 40%, #ecfeff 100%),
+    radial-gradient(circle at 20% 40%, rgba(34, 197, 94, 0.16) 0%, transparent 55%),
+    radial-gradient(circle at 85% 85%, rgba(45, 212, 191, 0.18) 0%, transparent 55%);
   background-size: 100% 100%, 100% 100%, 100% 100%;
   background-attachment: fixed;
   font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif;

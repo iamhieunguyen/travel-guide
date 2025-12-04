@@ -4,10 +4,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Sun, Moon, Globe } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
+import { useLanguage } from '../context/LanguageContext';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -86,6 +87,7 @@ export default function HomePage() {
   const { openModal, openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const { language, setLanguage } = useLanguage();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -95,8 +97,67 @@ export default function HomePage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
+  const [hiddenPostIds, setHiddenPostIds] = useState(new Set()); // Track hidden posts
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof window === 'undefined') return 'dark';
+    const stored = localStorage.getItem('homeThemeMode');
+    return stored === 'light' ? 'light' : 'dark';
+  });
+
+  const TEXT = {
+    vi: {
+      hello: 'Hello,',
+      home: 'Trang chủ',
+      search: 'Tìm kiếm',
+      favorite: 'Yêu thích',
+      create: 'Tạo',
+      personal: 'Trang cá nhân',
+      logout: 'Đăng xuất',
+      searchPlaceholder: 'Tìm kiếm theo vị trí, caption',
+      loadingMore: 'Đang tải...',
+      loadMore: 'Tải thêm',
+      noPostsTitle: 'Chưa có bài viết nào',
+      noPostsDesc: 'Hãy tạo bài viết đầu tiên của bạn!',
+      createFirstPost: 'Tạo bài viết mới',
+      likeCount: 'lượt quan tâm',
+      like: 'Quan tâm bài đăng',
+      liked: 'Đã quan tâm',
+      darkMode: 'Chế độ tối',
+      lightMode: 'Chế độ sáng',
+      languageToggle: 'Ngôn ngữ',
+    },
+    en: {
+      hello: 'Hello,',
+      home: 'Home',
+      search: 'Search',
+      favorite: 'Favorites',
+      create: 'Create',
+      personal: 'Profile',
+      logout: 'Logout',
+      searchPlaceholder: 'Search by location, caption',
+      loadingMore: 'Loading...',
+      loadMore: 'Load more',
+      noPostsTitle: 'No posts yet',
+      noPostsDesc: 'Create your first post!',
+      createFirstPost: 'Create new post',
+      likeCount: 'likes',
+      like: 'Like post',
+      liked: 'Liked',
+      darkMode: 'Dark Mode',
+      lightMode: 'Light Mode',
+      languageToggle: 'Language',
+    },
+  };
+
+  const L = TEXT[language] || TEXT.vi;
+
+  const isDarkMode = themeMode === 'dark';
+
+  // Classes cho chế độ sáng / tối
+  const pageBgClass = isDarkMode ? 'bg-black' : 'bg-white';
+  const mainCardBgClass = isDarkMode ? 'bg-[#111827]' : 'bg-white'; // nền khung lớn
 
   // Fetch location name
   const fetchLocationName = async (lat, lng) => {
@@ -124,14 +185,14 @@ export default function HomePage() {
           q: query.trim(),
           scope: scope,
           limit: 10,
-          nextToken: token
+          nextToken: token,
         });
       } else {
         // Nếu không có query, dùng listArticles bình thường
         response = await api.listArticles({
           scope: scope,
           limit: 10,
-          nextToken: token
+          nextToken: token,
         });
       }
 
@@ -146,7 +207,7 @@ export default function HomePage() {
       );
 
       if (token) {
-        setPosts(prev => [...prev, ...postsWithLocation]);
+        setPosts((prev) => [...prev, ...postsWithLocation]);
       } else {
         setPosts(postsWithLocation);
       }
@@ -175,7 +236,7 @@ export default function HomePage() {
       console.log('📦 Favorites response:', response);
       
       if (response && response.items) {
-        const favoriteIds = new Set(response.items.map(item => item.articleId));
+        const favoriteIds = new Set(response.items.map((item) => item.articleId));
         setLikedPosts(favoriteIds);
         console.log('✅ Loaded favorites:', favoriteIds.size, 'articles', Array.from(favoriteIds));
       }
@@ -210,18 +271,20 @@ export default function HomePage() {
         const response = await api.unfavoriteArticle(postId);
         console.log('✅ Unfavorite response:', response);
         
-        setLikedPosts(prev => {
+        setLikedPosts((prev) => {
           const newSet = new Set(prev);
           newSet.delete(postId);
           return newSet;
         });
         
         // Update like count
-        setPosts(prev => prev.map(post => 
-          post.articleId === postId 
-            ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
-            : post
-        ));
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.articleId === postId
+              ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
+              : post
+          )
+        );
         
         if (window.showSuccessToast) {
           window.showSuccessToast('Đã bỏ quan tâm bài viết');
@@ -232,14 +295,16 @@ export default function HomePage() {
         const response = await api.favoriteArticle(postId);
         console.log('✅ Favorite response:', response);
         
-        setLikedPosts(prev => new Set([...prev, postId]));
+        setLikedPosts((prev) => new Set([...prev, postId]));
         
         // Update like count
-        setPosts(prev => prev.map(post => 
-          post.articleId === postId 
-            ? { ...post, likeCount: (post.likeCount || 0) + 1 }
-            : post
-        ));
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.articleId === postId
+              ? { ...post, likeCount: (post.likeCount || 0) + 1 }
+              : post
+          )
+        );
         
         if (window.showSuccessToast) {
           window.showSuccessToast('Đã quan tâm bài viết');
@@ -250,15 +315,16 @@ export default function HomePage() {
       console.error('Error details:', {
         message: error.message,
         status: error.status,
-        stack: error.stack
+        stack: error.stack,
       });
       
       if (window.showSuccessToast) {
-        const errorMsg = error.status === 404 
-          ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
-          : error.status === 401
-          ? 'Bạn cần đăng nhập để thực hiện thao tác này'
-          : `Lỗi: ${error.message}`;
+        const errorMsg =
+          error.status === 404
+            ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
+            : error.status === 401
+            ? 'Bạn cần đăng nhập để thực hiện thao tác này'
+            : `Lỗi: ${error.message}`;
         window.showSuccessToast(errorMsg);
       }
     }
@@ -276,7 +342,7 @@ export default function HomePage() {
     try {
       await api.deleteArticle(postId);
       api.clearCache();
-      setPosts(prev => prev.filter(post => post.articleId !== postId));
+      setPosts((prev) => prev.filter((post) => post.articleId !== postId));
       setOpenMenuId(null);
       if (window.showSuccessToast) {
         window.showSuccessToast('Xóa bài viết thành công!');
@@ -300,6 +366,13 @@ export default function HomePage() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
+    if (language === 'en') {
+      if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffMinutes > 0) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+      return 'Just now';
+    }
+
     if (diffDays > 0) return `${diffDays} ngày trước`;
     if (diffHours > 0) return `${diffHours} giờ trước`;
     if (diffMinutes > 0) return `${diffMinutes} phút trước`;
@@ -307,7 +380,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#2d2d2d]">
+    <div className={`min-h-screen ${pageBgClass}`}>
       {/* Christmas Effects Overlay */}
       <ChristmasEffects />
       
@@ -317,8 +390,15 @@ export default function HomePage() {
           <div className="fixed left-3 top-24 bottom-6 w-64 px-4 flex flex-col">
               {/* Logo/Title */}
               <div className="mb-6 px-3">
-                <h1 className="text-2xl font-bold text-white">
-                  TRAVEL <span className="text-[#92ADA4]">GUIDE</span>
+                <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  TRAVEL{' '}
+                  <span
+                    style={{
+                      color: '#0d9488',
+                    }}
+                  >
+                    GUIDE
+                  </span>
                 </h1>
               </div>
 
@@ -329,47 +409,67 @@ export default function HomePage() {
                     setSearchQuery('');
                     loadPosts(null, '');
                   }}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-white hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-gray-800 hover:bg-gray-100 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/>
                   </svg>
-                  <span className="font-medium text-base">Trang chủ</span>
+                  <span className="font-medium text-base">{L.home}</span>
                 </button>
 
                 <button 
                   onClick={() => searchInputRef.current?.focus()}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-white hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-gray-800 hover:bg-gray-100 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                   </svg>
-                  <span className="font-medium text-base">Tìm kiếm</span>
+                  <span className="font-medium text-base">{L.search}</span>
                 </button>
 
-                <button className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group">
+                <button className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                                   transition-all duration-150 ease-out
+                                   ${isDarkMode 
+                                      ? 'text-white hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                      : 'text-gray-800 hover:bg-gray-100 hover:shadow-sm hover:font-semibold'}`}>
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                   </svg>
-                  <span className="font-medium text-base">Yêu thích</span>
+                  <span className="font-medium text-base">{L.favorite}</span>
                 </button>
 
                 <button 
                   onClick={openModal}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-white hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-gray-800 hover:bg-gray-100 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                     <line x1="12" y1="8" x2="12" y2="16"/>
                     <line x1="8" y1="12" x2="16" y2="12"/>
                   </svg>
-                  <span className="font-medium text-base">Tạo</span>
+                  <span className="font-medium text-base">{L.create}</span>
                 </button>
 
                 <button 
                   onClick={() => navigate('/personal')}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-white hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-gray-800 hover:bg-gray-100 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
                     {profile?.avatarUrl ? (
@@ -384,7 +484,7 @@ export default function HomePage() {
                       </span>
                     )}
                   </div>
-                  <span className="font-medium text-base">Trang cá nhân</span>
+                  <span className="font-medium text-base">{L.personal}</span>
                 </button>
               </div>
 
@@ -394,26 +494,36 @@ export default function HomePage() {
               {/* Logout Button - At Bottom */}
               <button 
                 onClick={logout}
-                className="w-full flex items-center space-x-4 p-3 text-white hover:bg-red-600 rounded-xl transition group border-t border-gray-700 mt-4 pt-4"
+                className={`w-full flex items-center space-x-4 p-3 rounded-xl border-t border-gray-200 mt-4 pt-4
+                           transition-all duration-200 ease-out
+                           hover:bg-gradient-to-r hover:from-red-600 hover:to-red-400 hover:text-white hover:shadow-lg
+                           ${isDarkMode ? 'text-white' : 'text-gray-800'}`}
               >
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                 </svg>
-                <span className="font-medium text-base">Đăng xuất</span>
+                <span className="font-medium text-base">{L.logout}</span>
               </button>
             </div>
         </aside>
 
-        {/* Main Content Area with cream background */}
+        {/* Main Content Area */}
         <div className="flex-1">
-          <div className="bg-[#faf8f3] rounded-[32px] h-full shadow-2xl overflow-hidden flex flex-col">
+          <div className={`${mainCardBgClass} rounded-[32px] h-full shadow-2xl overflow-hidden flex flex-col`}>
             {/* Header inside cream container - Fixed */}
             <div className="px-8 py-6 border-b border-gray-200/50">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
                 <div className="flex items-center">
                   {/* Greeting */}
-                  <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
-                    Hello, <span className="text-[#92ADA4]">{user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}</span>
+                  <h2 className={`text-3xl font-bold whitespace-nowrap mr-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {L.hello}{' '}
+                    <span
+                      style={{
+                        color: '#0d9488',
+                      }}
+                    >
+                      {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
+                    </span>
                   </h2>
 
                   {/* Search Bar - Same row as greeting */}
@@ -422,11 +532,14 @@ export default function HomePage() {
                       <input
                         ref={searchInputRef}
                         type="text"
-                        placeholder="Tìm kiếm theo vị trí, caption"
+                        placeholder={L.searchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
-                        className="w-full px-5 py-3 pr-14 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                        className={`w-full px-5 py-3 pr-14 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base
+                                   ${isDarkMode 
+                                      ? 'bg-black text-white border border-gray-700 placeholder:text-gray-400' 
+                                      : 'bg-white text-gray-900 border border-gray-300 placeholder:text-gray-400'}`}
                       />
                       <button 
                         onClick={handleSearch}
@@ -443,9 +556,56 @@ export default function HomePage() {
                 
                 {/* User Info */}
                 <div className="flex items-center justify-end space-x-4">
+                  {/* Theme + Language Toggles */}
+                  <div className="hidden md:flex items-center space-x-3 mr-2">
+                    {/* Theme toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = themeMode === 'dark' ? 'light' : 'dark';
+                        setThemeMode(next);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('homeThemeMode', next);
+                        }
+                      }}
+                      className={`flex items-center justify-center h-12 w-12 rounded-full shadow-sm transition
+                                 ${isDarkMode 
+                                   ? 'bg-slate-900 border border-gray-600 text-white hover:bg-slate-800' 
+                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                      title={isDarkMode ? L.darkMode : L.lightMode}
+                    >
+                      {isDarkMode ? (
+                        <Moon className="w-4 h-4 text-slate-100" />
+                      ) : (
+                        <Sun className="w-4 h-4 text-amber-400" />
+                      )}
+                    </button>
+
+                    {/* Language toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                      className={`flex items-center gap-1 px-4 h-12 rounded-full text-xs font-medium shadow-sm transition
+                                 ${isDarkMode 
+                                   ? 'bg-slate-900/70 border border-gray-600 text-white hover:bg-slate-800' 
+                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span className="uppercase">{language === 'vi' ? 'VI' : 'EN'}</span>
+                    </button>
+                  </div>
                   {/* Notification Icon */}
-                  <button className="relative p-2 hover:bg-gray-100 rounded-full transition">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <button
+                    className={`relative p-2 rounded-full transition-all duration-150 ease-out
+                               ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+                  >
+                    <svg
+                      className={`w-6 h-6 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                     {false && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
@@ -456,24 +616,24 @@ export default function HomePage() {
                     onClick={() => navigate('/personal')}
                     className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
                   >
-                <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden">
-                  {profile?.avatarUrl ? (
-                    <img
-                      src={profile.avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-white font-bold text-sm">
-                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  )}
-                </div>
-                    <div className="text-left">
-                      <p className="font-semibold text-gray-900 text-sm">
+                    <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden">
+                      {profile?.avatarUrl ? (
+                        <img
+                          src={profile.avatarUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-sm">
+                          {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      )}
+                    </div>
+                                    <div className="text-left">
+                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         @{user?.displayName || user?.username || user?.email?.split('@')[0] || 'user'}
                       </p>
                     </div>
@@ -490,7 +650,7 @@ export default function HomePage() {
               <div className="space-y-8">
             {loading && posts.length === 0 ? (
               [...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-3xl shadow-sm p-5 animate-pulse">
+                <div key={i} className={`${isDarkMode ? 'bg-[#020617]' : 'bg-white'} rounded-3xl shadow-sm p-5 animate-pulse`}>
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
                     <div className="flex-1">
@@ -504,20 +664,22 @@ export default function HomePage() {
                 </div>
               ))
             ) : posts.length === 0 ? (
-              <div className="bg-white rounded-3xl shadow-sm p-12 text-center">
+              <div className={`${isDarkMode ? 'bg-[#020617]' : 'bg-white'} rounded-3xl shadow-sm p-12 text-center`}>
                 <div className="text-6xl mb-4">📸</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Chưa có bài viết nào</h3>
-                <p className="text-gray-600 mb-6">Hãy tạo bài viết đầu tiên của bạn!</p>
+                <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{L.noPostsTitle}</h3>
+                <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-6`}>{L.noPostsDesc}</p>
                 <button
                   onClick={openModal}
                   className="text-white px-6 py-3 rounded-full hover:shadow-lg transition font-medium bg-[#92ADA4] hover:bg-[#7d9a91]"
                 >
-                  Tạo bài viết mới
+                  {L.createFirstPost}
                 </button>
               </div>
             ) : (
               <>
-                {posts.map((post) => {
+                {posts
+                  .filter((post) => !hiddenPostIds.has(post.articleId))
+                  .map((post) => {
                   const isOwner = user && (
                     post.ownerId === user.sub || 
                     post.ownerId === user.username ||
@@ -529,7 +691,7 @@ export default function HomePage() {
                   const authorInitial = authorDisplayName?.charAt(0)?.toUpperCase() || 'U';
                   
                   return (
-                    <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
+                    <div key={post.articleId} className={`${isDarkMode ? 'bg-[#020617] text-white' : 'bg-white'} rounded-[32px] shadow-lg overflow-hidden p-8`}>
                       {/* User Info - Inside white container */}
                       <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
@@ -599,13 +761,21 @@ export default function HomePage() {
                               {/* Tooltip with full date/time */}
                               <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
                                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                                Đăng vào {new Date(post.createdAt).toLocaleString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })}
+                                {language === 'en'
+                                  ? `Posted at ${new Date(post.createdAt).toLocaleString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}`
+                                  : `Đăng vào ${new Date(post.createdAt).toLocaleString('vi-VN', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}`}
                               </div>
                             </div>
                             
@@ -629,7 +799,7 @@ export default function HomePage() {
 
                             {/* Action Buttons Below Map */}
                             <div className="flex items-center gap-3">
-                              {/* Main Action Button - Quan tâm bài đăng */}
+                              {/* Main Action Button - Like/Favorite post */}
                               <button 
                                 onClick={() => handleLike(post.articleId)}
                                 className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-colors group ${
@@ -650,7 +820,7 @@ export default function HomePage() {
                                     ? 'text-white'
                                     : 'text-gray-700 group-hover:text-white'
                                 }`}>
-                                  {likedPosts.has(post.articleId) ? 'Đã quan tâm' : 'Quan tâm bài đăng'}
+                                  {likedPosts.has(post.articleId) ? L.liked : L.like}
                                 </span>
                               </button>
 
@@ -710,13 +880,12 @@ export default function HomePage() {
                                           <button
                                             onClick={() => {
                                               setOpenMenuId(null);
-                                              console.log('Hide post:', post.articleId);
-                                              // TODO: Implement hide post functionality
+                                              setHiddenPostIds((prev) => new Set([...prev, post.articleId]));
                                             }}
                                             className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
                                           >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                                             </svg>
                                             <span>Ẩn bài viết</span>
                                           </button>
@@ -766,14 +935,14 @@ export default function HomePage() {
                                       <div className="flex flex-wrap gap-1.5 mt-2">
                                         {post.tags.map((tagId, index) => {
                                           const tagLabels = {
-                                            'beach': '🏖️ Biển',
-                                            'mountain': '⛰️ Núi',
-                                            'river': '🏞️ Sông',
-                                            'forest': '🌲 Rừng',
-                                            'cold': '❄️ Lạnh',
-                                            'hot': '🌡️ Nóng',
-                                            'rain': '🌧️ Mưa',
-                                            'sunny': '☀️ Nắng'
+                                            beach: '🏖️ Biển',
+                                            mountain: '⛰️ Núi',
+                                            river: '🏞️ Sông',
+                                            forest: '🌲 Rừng',
+                                            cold: '❄️ Lạnh',
+                                            hot: '🌡️ Nóng',
+                                            rain: '🌧️ Mưa',
+                                            sunny: '☀️ Nắng',
                                           };
                                           return (
                                             <span
@@ -793,7 +962,7 @@ export default function HomePage() {
                                 <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
-                                    {post.likeCount || 0} lượt quan tâm
+                                    {post.likeCount || 0} {L.likeCount}
                                   </span>
                                 </div>
                               </div>
@@ -830,4 +999,5 @@ export default function HomePage() {
     </div>
   );
 }
-//kiệt
+
+

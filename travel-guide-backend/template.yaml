@@ -40,6 +40,7 @@ Resources:
         - python3.11
     Metadata:
       BuildMethod: python3.11
+  
   ##############################
   # SQS QUEUES
   ##############################
@@ -104,6 +105,17 @@ Resources:
     Properties:
       QueueName: !Sub '${AWS::StackName}-image-validator-queue'
       VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-notification-queue'
+      VisibilityTimeout: 180
       MessageRetentionPeriod: 345600  # 4 days
       ReceiveMessageWaitTimeSeconds: 20  # Long polling
       RedrivePolicy:
@@ -204,13 +216,25 @@ Resources:
   ##############################
   # DATA LAYER
   ##############################
+
+  # SNS Topic for user notifications
+  ProcessingNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-processing-notifications'
+      DisplayName: Image Processing Notifications
+
+  # SNS subscription for email (update this email in deployment)
+  ProcessingNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref ProcessingNotificationTopic
+      Endpoint: khiem120805@gmail.com  # CHANGE THIS TO YOUR EMAIL
+
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
     DependsOn:
-      - DetectLabelsQueuePolicy
-      - ContentModerationQueuePolicy
-      - ThumbnailQueuePolicy
-      - ImageAnalyzerQueuePolicy
       - ImageValidatorQueuePolicy
     Properties:
       BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
@@ -285,6 +309,28 @@ Resources:
           KeyType: HASH
         - AttributeName: articleId
           KeyType: RANGE
+
+  GalleryPhotosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: photo_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: photo_id
+          KeyType: HASH
+
+  GalleryTrendsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: tag_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tag_name
+          KeyType: HASH
 
   UserProfilesTable:
     Type: AWS::DynamoDB::Table
@@ -500,6 +546,29 @@ Resources:
               Authorizer: CognitoAuthorizer
 
   ##############################
+  # GALLERY & TRENDING FUNCTIONS
+  ##############################
+  GetTrendingTagsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_trending_tags.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryTrendsTable
+      Events:
+        GetTrendingTagsApi:
+          Type: Api
+          Properties:
+            Path: /gallery/trending
+            Method: GET
+
+  ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################
   CreateArticleFunction:
@@ -568,6 +637,8 @@ Resources:
           Properties:
             Path: /articles
             Method: GET
+            Auth:
+             Authorizer: CognitoAuthorizer  
 
   UpdateArticleFunction:
     Type: AWS::Serverless::Function
@@ -783,7 +854,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
+          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
@@ -796,7 +867,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt ThumbnailQueue.Arn
+              Resource: !GetAtt ContentModerationQueue.Arn
       Events:
         SQSEvent:
           Type: SQS
@@ -816,7 +887,7 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
-          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
+          NOTIFY_WORKER_QUEUE_URL: !Ref NotificationQueue
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -827,7 +898,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt DetectLabelsQueue.Arn
+              Resource: !GetAtt NotificationQueue.Arn
       Events:
         ThumbnailSQSEvent:
           Type: SQS
@@ -850,15 +921,24 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
           BUCKET_NAME: !Ref ArticleImagesBucket
-          MIN_CONFIDENCE: "75.0"
+          CONFIG_BUCKET: !Ref ArticleImagesBucket
+          CONFIG_KEY: 'config/label_priority_config.json'
+          MIN_CONFIDENCE: "70.0"
           MAX_LABELS: "5"
-          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
+          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
         - SQSPollerPolicy:
             QueueName: !GetAtt DetectLabelsQueue.QueueName
         - Version: '2012-10-17'
@@ -870,7 +950,7 @@ Resources:
             - Effect: Allow
               Action:
                 - sqs:SendMessage
-              Resource: !GetAtt ContentModerationQueue.Arn
+              Resource: !GetAtt ThumbnailQueue.Arn
       Events:
         DetectLabelsSQSEvent:
           Type: SQS
@@ -891,6 +971,7 @@ Resources:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
           MODERATION_CONFIDENCE: "75.0"
+          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -904,11 +985,176 @@ Resources:
               Action:
                 - rekognition:DetectModerationLabels
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt DetectLabelsQueue.Arn
       Events:
         ContentModerationSQSEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt ContentModerationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ##############################
+  # CONFIG FILE UPLOADER (Custom Resource)
+  ##############################
+
+  ConfigUploaderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3UploadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArticleImagesBucket.Arn}/config/*'
+
+  ConfigUploaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-config-uploader'
+      Runtime: python3.11
+      Role: !GetAtt ConfigUploaderRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  key = event['ResourceProperties']['ConfigKey']
+                  
+                  # The config content
+                  config = {
+                    "label_priorities": {
+                      "main": {
+                        "score_boost": 100,
+                        "keywords": [
+                          "beach", "mountain", "waterfall", "temple", "pagoda",
+                          "river", "lake", "cave", "forest", "rice terraces",
+                          "island", "sand dunes", "ancient town", "imperial city",
+                          "bridge", "fishing village", "night market", "street food",
+                          "coffee culture", "motorbike", "floating market",
+                          "hiking", "camping", "cycling", "kayaking", "diving",
+                          "swimming", "boating", "fishing",
+                          "traditional performance", "festival", "handicraft making",
+                          "cooking local cuisine", "tea plantation",
+                          "sunrise", "sunset", "monument", "landmark",
+                          "architecture", "palace"
+                        ]
+                      },
+                      "others": {
+                        "score_boost": 0,
+                        "keywords": []
+                      }
+                    },
+                    "penalties": {
+                      "penalty_score": -50,
+                      "keywords": [
+                        "mammal", "vertebrate", "human face", "adult", "animal",
+                        "indoors", "indoor", "pet", "dog", "cat", "baby", "child",
+                        "man", "woman", "people", "accessory", "footwear",
+                        "clothing", "vehicle", "electronics"
+                      ]
+                    },
+                    "custom_boosts": {
+                      "comment": "Add your specific use cases here",
+                      "examples": []
+                    },
+                    "excluded_labels": {
+                      "comment": "Labels to completely ignore",
+                      "keywords": []
+                    },
+                    "min_confidence_overrides": {
+                      "comment": "Require higher confidence for certain labels",
+                      "rules": [
+                        {
+                          "keyword": "temple",
+                          "min_confidence": 70,
+                          "reason": "Include temples even with lower confidence"
+                        }
+                      ]
+                    }
+                  }
+                  
+                  # Upload to S3
+                  s3.put_object(
+                      Bucket=bucket,
+                      Key=key,
+                      Body=json.dumps(config, indent=2),
+                      ContentType='application/json'
+                  )
+                  
+                  print(f"✓ Uploaded config to s3://{bucket}/{key}")
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'ConfigUploaded': True})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  ConfigUploadCustomResource:
+    Type: Custom::ConfigUploader
+    Properties:
+      ServiceToken: !GetAtt ConfigUploaderFunction.Arn
+      BucketName: !Ref ArticleImagesBucket
+      ConfigKey: 'config/label_priority_config.json'
+
+  ##############################
+  # NOTIFICATION FUNCTION
+  ##############################
+
+  NotifyWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/notifications/
+      Handler: notify_worker.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt NotificationQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref ProcessingNotificationTopic
+            - Effect: Allow
+              Action:
+                - logs:GetLogEvents
+              Resource: 'arn:aws:logs:*:*:*'
+      Events:
+        NotificationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt NotificationQueue.Arn
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true

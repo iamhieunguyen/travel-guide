@@ -33,8 +33,7 @@ def _get_current_user_id(event):
 
 def _convert_decimal(obj):
     """
-    Tiện ích nhỏ: chuyển Decimal sang float cho lat/lng.
-    Có thể mở rộng nếu sau này có nhiều field Decimal.
+    Tiện ích nhỏ: chuyển Decimal sang float/int cho lat/lng và favoriteCount.
     """
     if isinstance(obj, list):
         return [_convert_decimal(x) for x in obj]
@@ -42,7 +41,8 @@ def _convert_decimal(obj):
         out = {}
         for k, v in obj.items():
             if isinstance(v, Decimal):
-                out[k] = float(v)
+                # Chuyển Decimal sang int nếu là số nguyên, ngược lại float
+                out[k] = int(v) if v % 1 == 0 else float(v)
             elif isinstance(v, (dict, list)):
                 out[k] = _convert_decimal(v)
             else:

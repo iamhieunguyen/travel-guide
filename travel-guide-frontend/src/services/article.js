@@ -256,7 +256,8 @@ export function listFavoriteArticles({ limit = 10, nextToken } = {}) {
   const params = new URLSearchParams();
   if (limit) params.set("limit", String(limit));
   if (nextToken) params.set("nextToken", nextToken);
-  return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: true });
+  // Không cache để luôn lấy danh sách yêu thích mới nhất
+  return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: false });
 }
 
 // ===== Utils (Giữ nguyên) =====

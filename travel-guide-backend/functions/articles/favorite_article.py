@@ -62,11 +62,22 @@ def lambda_handler(event, context):
 
         now = datetime.now(timezone.utc).isoformat()
 
+        # Thêm vào favorites table
         favorites_table.put_item(
             Item={
                 "userId": user_id,
                 "articleId": article_id,
                 "createdAt": now,
+            }
+        )
+
+        # Tăng favoriteCount trong articles table
+        articles_table.update_item(
+            Key={"articleId": article_id},
+            UpdateExpression="SET favoriteCount = if_not_exists(favoriteCount, :zero) + :inc",
+            ExpressionAttributeValues={
+                ":zero": 0,
+                ":inc": 1
             }
         )
 

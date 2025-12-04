@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { CreatePostModalProvider } from './context/CreatePostModalContext';
 import CreatePostModal from './components/CreatePost/CreatePostModal';
 import SuccessToast from './components/SuccessToast';
@@ -45,32 +46,34 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CreatePostModalProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/personal" element={<PersonalPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <CreatePostModalProvider>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/home" element={<HomePage />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/personal" element={<PersonalPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
 
-          </Routes>
-          <CreatePostModal />
-          {toast && (
-            <SuccessToast
-              message={toast}
-              onClose={() => setToast(null)}
-            />
-          )}
-          {confirm && (
-            <ConfirmDialog
-              message={confirm.message}
-              onConfirm={confirm.onConfirm}
-              onCancel={confirm.onCancel}
-            />
-          )}
-        </CreatePostModalProvider>
-      </AuthProvider>
+            </Routes>
+            <CreatePostModal />
+            {toast && (
+              <SuccessToast
+                message={toast}
+                onClose={() => setToast(null)}
+              />
+            )}
+            {confirm && (
+              <ConfirmDialog
+                message={confirm.message}
+                onConfirm={confirm.onConfirm}
+                onCancel={confirm.onCancel}
+              />
+            )}
+          </CreatePostModalProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   );
 }

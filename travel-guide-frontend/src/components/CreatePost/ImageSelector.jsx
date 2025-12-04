@@ -17,8 +17,10 @@ export default function ImageSelector({ onNext }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [showAspectMenu, setShowAspectMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
+  const dropZoneRef = useRef(null);
 
   // Load ảnh từ context khi quay lại
   useEffect(() => {
@@ -40,9 +42,54 @@ export default function ImageSelector({ onNext }) {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    const urls = files.map((file) => URL.createObjectURL(file));
-    setImages(urls);
-    setCurrentIndex(0);
+    
+    // Thêm ảnh mới vào cuối danh sách (giữ thứ tự chọn)
+    const newUrls = files.map((file) => URL.createObjectURL(file));
+    setImages(prev => [...prev, ...newUrls]);
+    
+    // Nếu chưa có ảnh nào, set index = 0
+    if (images.length === 0) {
+      setCurrentIndex(0);
+    }
+  };
+
+  // Drag & Drop handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.type.startsWith('image/')
+    );
+    
+    if (files.length > 0) {
+      const newUrls = files.map((file) => URL.createObjectURL(file));
+      setImages(prev => [...prev, ...newUrls]);
+      
+      if (images.length === 0) {
+        setCurrentIndex(0);
+      }
+    }
   };
 
   const triggerFileSelect = () => {
@@ -152,10 +199,21 @@ export default function ImageSelector({ onNext }) {
         <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-6 pb-4 overflow-hidden" style={{ minHeight: "700px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
           {images.length === 0 ? (
             <>
-              <div className="flex flex-col items-center justify-center w-full h-full group px-4">
+              <div 
+                ref={dropZoneRef}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className="flex flex-col items-center justify-center w-full h-full group px-4"
+              >
                 <div 
                   onClick={triggerFileSelect}
-                  className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-[#92ADA4]/40 group-hover:border-[#92ADA4] transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-[#92ADA4]/20 relative max-w-[700px] w-full cursor-pointer" 
+                  className={`flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed transition-all duration-500 group-hover:scale-[1.01] relative max-w-[700px] w-full cursor-pointer ${
+                    isDragging 
+                      ? 'border-[#92ADA4] bg-[#92ADA4]/10 scale-[1.02]' 
+                      : 'border-[#92ADA4]/40 group-hover:border-[#92ADA4] group-hover:shadow-[#92ADA4]/20'
+                  }`}
                   style={{ zIndex: 30 }}
                 >
                   <div className="relative">
@@ -183,7 +241,6 @@ export default function ImageSelector({ onNext }) {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -191,7 +248,14 @@ export default function ImageSelector({ onNext }) {
             </>
           ) : (
             <div
-              className="relative bg-black rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl animate-fadeIn"
+              ref={dropZoneRef}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={`relative bg-black rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl animate-fadeIn transition-all ${
+                isDragging ? 'ring-4 ring-[#92ADA4] ring-opacity-50' : ''
+              }`}
               style={{
                 width: "900px",
                 height: "650px",
@@ -302,6 +366,24 @@ export default function ImageSelector({ onNext }) {
                   ))}
                 </div>
               )}
+              
+              {/* Nút thêm ảnh */}
+              <button
+                onClick={triggerFileSelect}
+                className="absolute top-4 right-4 bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
+              >
+                <Plus size={18} />
+                <span className="text-sm font-medium">Thêm ảnh</span>
+              </button>
+              
+              {/* Hidden file input for adding more images */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
           )}
         </div>

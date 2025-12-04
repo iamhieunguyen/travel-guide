@@ -217,25 +217,25 @@ Resources:
   # DATA LAYER
   ##############################
 
-  # SNS Topic for user notifications
-  ProcessingNotificationTopic:
+  # SNS Topic for admin notifications only (for critical moderation alerts)
+  AdminNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub '${AWS::StackName}-processing-notifications'
-      DisplayName: Image Processing Notifications
+      TopicName: !Sub '${AWS::StackName}-admin-notifications'
+      DisplayName: Admin Notifications for Critical Content
 
-  # SNS subscription for email (update this email in deployment)
-  ProcessingNotificationEmailSubscription:
+  # SNS subscription for admin email
+  AdminNotificationEmailSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Protocol: email
-      TopicArn: !Ref ProcessingNotificationTopic
-      Endpoint: khiem120805@gmail.com  # CHANGE THIS TO YOUR EMAIL
+      TopicArn: !Ref AdminNotificationTopic
+      Endpoint: khiem120805@gmail.com  # Admin email for critical alerts
 
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
     DependsOn:
-      - DetectLabelsQueuePolicy
+      - ImageValidatorQueuePolicy
     Properties:
       BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
       VersioningConfiguration:
@@ -1004,7 +1004,6 @@ Resources:
           MIN_CONFIDENCE: "70.0"
           MAX_LABELS: "5"
           THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -1047,11 +1046,15 @@ Resources:
           BUCKET_NAME: !Ref ArticleImagesBucket
           MODERATION_CONFIDENCE: "75.0"
           DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
+          ADMIN_SNS_TOPIC_ARN: !Ref AdminNotificationTopic
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
         - SQSPollerPolicy:
             QueueName: !GetAtt ContentModerationQueue.QueueName
         - Version: '2012-10-17'
@@ -1064,6 +1067,15 @@ Resources:
               Action:
                 - sqs:SendMessage
               Resource: !GetAtt DetectLabelsQueue.Arn
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref AdminNotificationTopic
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
       Events:
         ContentModerationSQSEvent:
           Type: SQS
@@ -1194,6 +1206,81 @@ Resources:
       ConfigKey: 'config/label_priority_config.json'
 
   ##############################
+  # FOLDER STRUCTURE CREATOR (Custom Resource)
+  ##############################
+
+  FolderCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3FolderCreationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArticleImagesBucket.Arn}/*'
+
+  FolderCreatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-folder-creator'
+      Runtime: python3.11
+      Role: !GetAtt FolderCreatorRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  folders = event['ResourceProperties']['Folders']
+                  
+                  # Create folder structure
+                  for folder in folders:
+                      # Ensure folder ends with /
+                      if not folder.endswith('/'):
+                          folder += '/'
+                      
+                      # Create empty object to represent folder
+                      s3.put_object(
+                          Bucket=bucket,
+                          Key=folder,
+                          Body=b''
+                      )
+                      print(f"✓ Created folder: {folder}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'FoldersCreated': True})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  FolderCreationCustomResource:
+    Type: Custom::FolderCreator
+    Properties:
+      ServiceToken: !GetAtt FolderCreatorFunction.Arn
+      BucketName: !Ref ArticleImagesBucket
+      Folders:
+        - 'articles/'
+        - 'thumbnails/'
+        - 'avatars/'
+        - 'config/'
+
+  ##############################
   # NOTIFICATION FUNCTION
   ##############################
 
@@ -1206,11 +1293,14 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
           CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+          SENDER_EMAIL: khiem120805@gmail.com  # CHANGE THIS to your verified SES email
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
         - SQSPollerPolicy:
@@ -1219,8 +1309,9 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
-                - sns:Publish
-              Resource: !Ref ProcessingNotificationTopic
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
             - Effect: Allow
               Action:
                 - logs:GetLogEvents

@@ -13,16 +13,18 @@ from decimal import Decimal
 sys.path.insert(0, '/var/task/functions')
 
 # Initialize AWS clients
-sns_client = boto3.client('sns')
+ses_client = boto3.client('ses')
 dynamodb = boto3.resource('dynamodb')
 cloudwatch = boto3.client('logs')
 
 # Environment variables
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN', '')
+USER_PROFILES_TABLE = os.environ.get('USER_PROFILES_TABLE', '')
 CLOUDFRONT_DOMAIN = os.environ.get('CLOUDFRONT_DOMAIN', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'khiem120805@gmail.com')
 
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
+user_profiles_table = dynamodb.Table(USER_PROFILES_TABLE) if USER_PROFILES_TABLE else None
 
 
 class NotificationError(Exception):
@@ -51,6 +53,20 @@ def get_article_details(article_id):
         return response.get('Item')
     except Exception as e:
         print(f"Failed to retrieve article {article_id}: {e}")
+        return None
+
+
+def get_user_email(owner_id):
+    """Get user email from user profiles table"""
+    if not user_profiles_table or not owner_id:
+        return None
+    
+    try:
+        response = user_profiles_table.get_item(Key={'userId': owner_id})
+        user_data = response.get('Item')
+        return user_data.get('email') if user_data else None
+    except Exception as e:
+        print(f"Failed to get user email: {e}")
         return None
 
 
@@ -238,29 +254,28 @@ def format_metadata(metadata):
     return "\n".join(lines) if lines else "No metadata available"
 
 
-def send_sns_notification(sns_topic_arn, subject, message, attributes=None):
-    """Send notification via SNS"""
-    if not sns_topic_arn:
-        print("SNS topic ARN not configured")
+def send_email_notification(recipient_email, subject, body_text):
+    """Send notification via SES"""
+    if not recipient_email:
+        print("No recipient email provided")
         return False
     
     try:
-        publish_args = {
-            'TopicArn': sns_topic_arn,
-            'Subject': subject,
-            'Message': message
-        }
+        response = ses_client.send_email(
+            Source=SENDER_EMAIL,
+            Destination={'ToAddresses': [recipient_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {'Text': {'Data': body_text, 'Charset': 'UTF-8'}}
+            }
+        )
         
-        if attributes:
-            publish_args['MessageAttributes'] = attributes
-        
-        response = sns_client.publish(**publish_args)
         message_id = response.get('MessageId')
-        print(f"✓ SNS notification sent - Message ID: {message_id}")
+        print(f"✓ Email sent to {recipient_email} - Message ID: {message_id}")
         return True
     
     except Exception as e:
-        print(f"Failed to send SNS notification: {e}")
+        print(f"Failed to send email: {e}")
         return False
 
 
@@ -296,47 +311,41 @@ def process_notification_message(bucket, key, article_id, final_status):
             print(f"⚠️ Article {article_id} not found in DynamoDB")
             return False
         
-        # Check if moderation passed (only notify on success or critical issues)
+        # Get owner email
+        owner_id = article_data.get('ownerId')
+        if not owner_id:
+            print(f"⚠️ No owner ID found for article {article_id}")
+            return False
+        
+        user_email = get_user_email(owner_id)
+        if not user_email:
+            print(f"⚠️ No email found for user {owner_id}")
+            return False
+        
+        # Check moderation status
         moderation_status = article_data.get('moderationStatus', 'pending')
         
-        if moderation_status == 'rejected':
-            # Build error notification for rejected images
-            error_details = {
-                'type': 'moderation',
-                'error': 'Image was rejected during content moderation. Please ensure your image complies with our guidelines.'
-            }
-            notification = build_error_notification(article_id, error_details)
-        else:
+        # Only send success notifications (deletion notifications are sent by content_moderation)
+        if moderation_status == 'approved':
             # Build success notification
             notification = build_success_notification(article_id, article_data)
-        
-        # Send SNS notification
-        if notification.get('success') or notification.get('subject'):
-            message_attributes = {
-                'articleId': {
-                    'StringValue': article_id,
-                    'DataType': 'String'
-                },
-                'status': {
-                    'StringValue': moderation_status,
-                    'DataType': 'String'
-                }
-            }
             
-            success = send_sns_notification(
-                SNS_TOPIC_ARN,
-                notification['subject'],
-                notification['body'],
-                message_attributes
-            )
-            
-            if success:
-                # Update article with notification sent timestamp
-                update_article_notification_status(article_id, True)
-                return True
+            if notification.get('success'):
+                success = send_email_notification(
+                    user_email,
+                    notification['subject'],
+                    notification['body']
+                )
+                
+                if success:
+                    update_article_notification_status(article_id, True)
+                    return True
+            else:
+                print(f"Failed to build notification: {notification.get('error', 'Unknown error')}")
+                return False
         else:
-            print(f"Failed to build notification: {notification.get('error', 'Unknown error')}")
-            return False
+            print(f"Skipping notification for status: {moderation_status}")
+            return True  # Not an error, just skipping
     
     except Exception as e:
         print(f"Error processing notification: {e}")

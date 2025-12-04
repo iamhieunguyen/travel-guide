@@ -16,12 +16,14 @@ s3_client = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 sns_client = boto3.client('sns')
 sqs_client = boto3.client('sqs')
+ses_client = boto3.client('ses')
 
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
 BUCKET_NAME = os.environ.get('BUCKET_NAME', '')
 MIN_CONFIDENCE = float(os.environ.get('MODERATION_CONFIDENCE', '75.0'))
-SNS_TOPIC_ARN = os.environ.get('MODERATION_SNS_TOPIC', '')
+ADMIN_SNS_TOPIC_ARN = os.environ.get('ADMIN_SNS_TOPIC_ARN', '')
 DETECT_LABELS_QUEUE_URL = os.environ.get('DETECT_LABELS_QUEUE_URL', '')
+USER_PROFILES_TABLE = os.environ.get('USER_PROFILES_TABLE', '')
 
 SEVERITY_LEVELS = {
     'Explicit Nudity': 'critical',
@@ -29,7 +31,7 @@ SEVERITY_LEVELS = {
     'Violence': 'critical',
     'Visually Disturbing': 'high',
     'Rude Gestures': 'medium',
-    'Drugs': 'high',
+    'Drugs': 'critical',
     'Tobacco': 'low',
     'Alcohol': 'low',
     'Gambling': 'medium',
@@ -44,6 +46,7 @@ SEVERITY_ACTIONS = {
 }
 
 table = dynamodb.Table(TABLE_NAME) if TABLE_NAME else None
+user_profiles_table = dynamodb.Table(USER_PROFILES_TABLE) if USER_PROFILES_TABLE else None
 
 
 def extract_article_id_from_key(s3_key):
@@ -128,8 +131,18 @@ def moderate_image(bucket, key):
 def handle_moderation_failure(bucket, key, article_id, moderation_result):
     """Take action based on moderation results"""
     action = moderation_result.get('action', 'log')
+    owner_id = None
     
     try:
+        # Get article owner ID for user notification
+        if table and article_id:
+            try:
+                article_response = table.get_item(Key={'articleId': article_id})
+                article_data = article_response.get('Item')
+                owner_id = article_data.get('ownerId') if article_data else None
+            except Exception as e:
+                print(f"Failed to get article owner: {e}")
+        
         if action == 'delete':
             print(f"🗑️ Deleting inappropriate image: {key}")
             
@@ -157,7 +170,13 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
                     }
                 )
             
-            return 'deleted'
+            # Send email to user about deletion
+            if owner_id:
+                user_email = get_user_email(owner_id)
+                if user_email:
+                    send_user_deletion_email(user_email, article_id, moderation_result)
+            
+            return 'deleted', owner_id
         
         elif action == 'quarantine':
             print(f"📦 Moving to quarantine: {key}")
@@ -193,7 +212,7 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
                     }
                 )
             
-            return 'quarantined'
+            return 'quarantined', owner_id
         
         elif action == 'flag':
             print(f"🚩 Flagging for review: {key}")
@@ -212,7 +231,7 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
                     }
                 )
             
-            return 'flagged'
+            return 'flagged', owner_id
         
         else:  # log
             print(f"📝 Logging moderation result: {key}")
@@ -230,17 +249,106 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
                     }
                 )
             
-            return 'logged'
+            return 'logged', owner_id
         
     except Exception as e:
         print(f"Error handling moderation failure: {e}")
-        return 'error'
+        return 'error', None
 
 
-def send_admin_notification(article_id, key, moderation_result):
+def get_user_email(owner_id):
+    """Get user email from user profiles table"""
+    if not user_profiles_table or not owner_id:
+        return None
+    
+    try:
+        response = user_profiles_table.get_item(Key={'userId': owner_id})
+        user_data = response.get('Item')
+        return user_data.get('email') if user_data else None
+    except Exception as e:
+        print(f"Failed to get user email: {e}")
+        return None
+
+
+def send_user_deletion_email(user_email, article_id, moderation_result):
+    """Send email to user notifying them of image deletion"""
+    if not user_email:
+        print("No user email provided, skipping user notification")
+        return False
+    
+    try:
+        labels = moderation_result.get('labels', [])
+        severity = moderation_result.get('maxSeverity', 'unknown')
+        
+        # Build email body
+        subject = f"⚠️ Your Image Was Removed - Content Policy Violation"
+        
+        body_text = f"""
+Hello,
+
+We're writing to inform you that your uploaded image (Article ID: {article_id}) has been removed from our platform due to a content policy violation.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ CONTENT MODERATION ALERT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Article ID: {article_id}
+Action Taken: Image Deleted
+Severity Level: {severity.upper()}
+Timestamp: {datetime.now(timezone.utc).isoformat()}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 DETECTED ISSUES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+        for label in labels:
+            body_text += f"• {label['category']} - {label['label']} (Confidence: {label['confidence']}%)\n"
+        
+        body_text += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Our automated content moderation system detected inappropriate content in your image. 
+This image has been permanently removed from our platform.
+
+WHY WAS MY IMAGE REMOVED?
+We use AI-powered content moderation to ensure all images comply with our community 
+guidelines. Images containing explicit, violent, or otherwise inappropriate content 
+are automatically flagged and removed.
+
+WHAT CAN I DO?
+• Review our content guidelines before uploading
+• Ensure your images are appropriate for a travel guide platform
+• If you believe this was an error, please contact our support team
+
+Thank you for your understanding.
+
+Best regards,
+Travel Guide Team
+"""
+        
+        # Send via SES
+        response = ses_client.send_email(
+            Source='khiem120805@gmail.com',  # Must be verified in SES
+            Destination={'ToAddresses': [user_email]},
+            Message={
+                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
+                'Body': {'Text': {'Data': body_text, 'Charset': 'UTF-8'}}
+            }
+        )
+        
+        print(f"✉️ User deletion email sent to {user_email} - Message ID: {response['MessageId']}")
+        return True
+        
+    except Exception as e:
+        print(f"Failed to send user email: {e}")
+        return False
+
+
+def send_admin_notification(article_id, key, moderation_result, owner_id=None):
     """Send notification to administrators about moderation action"""
-    if not SNS_TOPIC_ARN:
-        print("SNS topic not configured, skipping notification")
+    if not ADMIN_SNS_TOPIC_ARN:
+        print("Admin SNS topic not configured, skipping admin notification")
         return
     
     try:
@@ -252,6 +360,7 @@ def send_admin_notification(article_id, key, moderation_result):
 Content Moderation Alert
 
 Article ID: {article_id}
+Owner ID: {owner_id or 'Unknown'}
 Image: {key}
 Action Taken: {action}
 Severity: {severity}
@@ -264,7 +373,7 @@ Detected Issues:
         message += f"\n\nTimestamp: {datetime.now(timezone.utc).isoformat()}"
         
         sns_client.publish(
-            TopicArn=SNS_TOPIC_ARN,
+            TopicArn=ADMIN_SNS_TOPIC_ARN,
             Subject=f"[Content Moderation] {action.upper()} - Article {article_id}",
             Message=message
         )
@@ -272,7 +381,7 @@ Detected Issues:
         print("✉️ Admin notification sent")
         
     except Exception as e:
-        print(f"Failed to send notification: {e}")
+        print(f"Failed to send admin notification: {e}")
 
 
 def mark_article_as_approved(article_id):
@@ -378,6 +487,11 @@ def lambda_handler(event, context):
                         print("Skipping thumbnail/quarantine image")
                         continue
                     
+                    # Skip folder/prefix objects (they end with /)
+                    if key.endswith('/'):
+                        print(f"Skipping folder object: {key}")
+                        continue
+                    
                     article_id = extract_article_id_from_key(key)
                     if not article_id:
                         print("Could not extract article ID")
@@ -399,7 +513,7 @@ def lambda_handler(event, context):
                     else:
                         results['rejected'] += 1
                         
-                        action_result = handle_moderation_failure(
+                        action_result, owner_id = handle_moderation_failure(
                             bucket, key, article_id, moderation_result
                         )
                         
@@ -407,7 +521,7 @@ def lambda_handler(event, context):
                             results['actions'][action_result] += 1
                         
                         if moderation_result['maxSeverity'] in ['critical', 'high']:
-                            send_admin_notification(article_id, key, moderation_result)
+                            send_admin_notification(article_id, key, moderation_result, owner_id)
                     
                     # Forward final status to notification queue
                     final_status = {

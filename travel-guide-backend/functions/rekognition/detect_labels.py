@@ -399,6 +399,12 @@ def lambda_handler(event, context):
                         results['skipped'] += 1
                         continue
                     
+                    # Skip folder/prefix objects (they end with /)
+                    if key.endswith('/'):
+                        print(f"Skipping folder object: {key}")
+                        results['skipped'] += 1
+                        continue
+                    
                     # Extract article ID
                     article_id = extract_article_id_from_key(key)
                     if not article_id:

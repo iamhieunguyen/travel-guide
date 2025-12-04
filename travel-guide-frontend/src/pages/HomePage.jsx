@@ -114,12 +114,13 @@ export default function HomePage() {
 
       let response;
       if (tag && tag.trim()) {
-        // Nếu có tag filter, dùng galleryApi.getArticlesByTag (query từ GalleryPhotosTable)
-        // Đây là cách chính xác hơn vì GalleryPhotosTable đã lưu mapping tag -> photo_id
-        console.log('🔍 Searching with tag (via Gallery API):', tag.trim());
-        response = await galleryApi.getArticlesByTag({
-          tag: tag.trim(),
-          limit: 10
+        // Nếu có tag filter, dùng searchArticles với tags parameter
+        console.log('🔍 Searching with tag:', tag.trim());
+        response = await api.searchArticles({
+          tags: tag.trim(),
+          scope: scope,
+          limit: 3,
+          nextToken: token
         });
         console.log('📦 Tag search response:', response);
       } else if (query && query.trim()) {
@@ -199,11 +200,9 @@ export default function HomePage() {
       console.log('🔄 URL changed - tag:', tag, 'q:', q);
       
       if (tag) {
-        // Normalize tag to lowercase to match database format
-        const normalizedTag = tag.toLowerCase();
-        setTagFilter(normalizedTag);
+        setTagFilter(tag);
         setSearchQuery('');
-        loadPosts(null, '', normalizedTag);
+        loadPosts(null, '', tag);
       } else if (q) {
         setSearchQuery(q);
         setTagFilter('');
@@ -221,34 +220,64 @@ export default function HomePage() {
 
   // Check for new posts
   const checkNewPosts = useCallback(async () => {
-    if (!latestCreatedAt || posts.length === 0) return 0;
+    if (!latestCreatedAt || posts.length === 0) {
+      console.log('⚠️ Skip check: no latestCreatedAt or no posts');
+      return 0;
+    }
     
     try {
-      // Get latest posts
-      const response = await api.listArticles({
+      const startTime = Date.now();
+      console.log('🔍 Checking for new posts (no cache)...');
+      console.log('📅 Current latestCreatedAt:', latestCreatedAt);
+      
+      // ✅ Use listArticlesNoCache to bypass cache for real-time updates
+      const response = await api.listArticlesNoCache({
         scope: scope,
         limit: 20, // Check up to 20 posts
       });
       
+      const endTime = Date.now();
+      console.log(`⏱️ API call took: ${endTime - startTime}ms`);
+      
       if (response.items && response.items.length > 0) {
+        console.log(`📊 Received ${response.items.length} items from API`);
+        console.log('📅 Latest item createdAt:', response.items[0].createdAt);
+        
         // Count only posts with createdAt NEWER than our latest
         // This ignores updated old posts
         let count = 0;
         for (const post of response.items) {
+          console.log(`  🔍 Post ${post.articleId}: ${post.createdAt} vs ${latestCreatedAt}`);
+          
           if (post.createdAt > latestCreatedAt) {
             count++;
+            console.log(`    ✅ NEW (${post.createdAt} > ${latestCreatedAt})`);
           } else {
+            console.log(`    ❌ OLD (${post.createdAt} <= ${latestCreatedAt})`);
             // Stop when we reach posts we've already seen
             break;
           }
         }
         
+        if (count > 0) {
+          console.log(`✨ Found ${count} new posts`);
+        } else {
+          console.log('ℹ️ No new posts found');
+        }
+        
         return count;
+      } else {
+        console.log('⚠️ No items in response');
       }
       
       return 0;
     } catch (error) {
-      console.error('Error checking new posts:', error);
+      console.error('❌ Error checking new posts:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
       return 0;
     }
   }, [latestCreatedAt, scope, posts.length]);
@@ -296,11 +325,17 @@ export default function HomePage() {
       // Wait a bit for scroll animation
       await new Promise(resolve => setTimeout(resolve, 300));
       
+      // ✅ Invalidate cache to ensure fresh data
+      console.log('🗑️ Invalidating articles cache...');
+      api.invalidateArticlesCache();
+      
       // Reset new posts count
       resetNewPosts();
       
-      // Reload posts from beginning
+      // Reload posts from beginning (will fetch fresh data)
       await loadPosts(null, searchQuery, tagFilter);
+      
+      console.log('✅ New posts loaded');
     } catch (error) {
       console.error('Error loading new posts:', error);
     }
@@ -453,12 +488,10 @@ export default function HomePage() {
   // Handle tag click - filter posts by tag
   const handleTagClick = useCallback((tagName) => {
     console.log('🏷️ Tag clicked:', tagName);
-    // Normalize tag to lowercase to match database format
-    const normalizedTag = tagName.toLowerCase();
     setSearchQuery(''); // Clear text search
-    setTagFilter(normalizedTag);
-    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(normalizedTag)}`);
-    loadPosts(null, '', normalizedTag);
+    setTagFilter(tagName);
+    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(tagName)}`);
+    loadPosts(null, '', tagName);
   }, [loadPosts]);
 
   return (

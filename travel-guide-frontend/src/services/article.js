@@ -281,9 +281,44 @@ export function listFavoriteArticles({ limit = 10, nextToken } = {}) {
   return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: true });
 }
 
-// ===== Utils (Giữ nguyên) =====
+// ===== Utils =====
 export function clearCache() {
   requestCache.clear();
+  console.log('🗑️ All cache cleared');
+}
+
+// ✨ NEW: Clear cache cho specific endpoint
+export function clearCacheForEndpoint(path) {
+  const keysToDelete = [];
+  
+  for (const [key] of requestCache.entries()) {
+    if (key.includes(path)) {
+      keysToDelete.push(key);
+    }
+  }
+  
+  keysToDelete.forEach(key => requestCache.delete(key));
+  
+  if (keysToDelete.length > 0) {
+    console.log(`🗑️ Cleared ${keysToDelete.length} cache entries for ${path}`);
+  }
+}
+
+// ✨ NEW: Invalidate articles cache
+export function invalidateArticlesCache() {
+  clearCacheForEndpoint('/articles');
+  clearCacheForEndpoint('/search');
+}
+
+// ✨ NEW: No-cache version for polling
+export function listArticlesNoCache({ scope = "public", limit = 10, nextToken } = {}) {
+  const params = new URLSearchParams();
+  params.set("scope", scope);
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  return http("GET", `/articles?${params.toString()}`, null, { 
+    useCache: false  // ✅ NO CACHE for real-time polling
+  });
 }
 
 const articleService = {
@@ -294,9 +329,10 @@ const articleService = {
   updateArticle,
   deleteArticle,
   listArticles,
+  listArticlesNoCache,  // ✨ NEW
   searchArticles,
-  createArticleWithUpload, // Giữ để tương thích
-  createArticleWithMultipleFiles, // Hàm mới
+  createArticleWithUpload,
+  createArticleWithMultipleFiles,
   buildImageUrlFromKey,
   getDisplayImageUrl,
   getMultipleArticles,
@@ -304,6 +340,8 @@ const articleService = {
   unfavoriteArticle,
   listFavoriteArticles,
   clearCache,
+  invalidateArticlesCache,  // ✨ NEW
+  clearCacheForEndpoint,    // ✨ NEW
 };
 
 export default articleService;

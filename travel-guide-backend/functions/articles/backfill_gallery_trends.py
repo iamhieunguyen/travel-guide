@@ -91,50 +91,88 @@ def scan_all_photos():
         return []
 
 
+def get_display_key(photo):
+    """
+    Get the display key for a photo, matching frontend logic:
+    image_url || imageKeys[0] || imageKey
+    """
+    # Priority 1: image_url
+    if photo.get('image_url'):
+        return photo['image_url']
+    
+    # Priority 2: imageKeys[0]
+    image_keys = photo.get('imageKeys', [])
+    if image_keys and len(image_keys) > 0:
+        return image_keys[0]
+    
+    # Priority 3: imageKey
+    if photo.get('imageKey'):
+        return photo['imageKey']
+    
+    return None
+
+
 def aggregate_tag_counts(photos):
     """
     Aggregate tag counts from all photos
+    COUNT UNIQUE DISPLAY_KEY (not records) to avoid duplicates
+    Uses same logic as frontend: image_url || imageKeys[0] || imageKey
     
     Returns:
         dict: {
             'tag_name': {
-                'count': int,
+                'count': int (number of unique images),
                 'cover_image': str (latest image with this tag),
                 'last_updated': str
             }
         }
     """
     tag_data = defaultdict(lambda: {
-        'count': 0,
+        'display_keys': set(),  # Track unique display keys
         'cover_image': None,
         'last_updated': None
     })
     
-    print("\nAggregating tag counts...")
+    print("\nAggregating tag counts (counting unique display keys)...")
     
     for photo in photos:
         tags = photo.get('tags', [])
-        image_url = photo.get('image_url', '')
+        display_key = get_display_key(photo)
         created_at = photo.get('created_at', '')
+        
+        # Skip if no display key
+        if not display_key:
+            continue
         
         for tag in tags:
             tag_lower = tag.lower()
-            tag_data[tag_lower]['count'] += 1
+            
+            # Add to unique display key set
+            tag_data[tag_lower]['display_keys'].add(display_key)
             
             # Use the latest photo as cover image
             if not tag_data[tag_lower]['last_updated'] or created_at > tag_data[tag_lower]['last_updated']:
-                tag_data[tag_lower]['cover_image'] = image_url
+                tag_data[tag_lower]['cover_image'] = display_key
                 tag_data[tag_lower]['last_updated'] = created_at
     
-    print(f"✓ Aggregated {len(tag_data)} unique tags")
+    # Convert to final format with count of unique images
+    result = {}
+    for tag, data in tag_data.items():
+        result[tag] = {
+            'count': len(data['display_keys']),  # Count unique display keys only
+            'cover_image': data['cover_image'],
+            'last_updated': data['last_updated']
+        }
+    
+    print(f"✓ Aggregated {len(result)} unique tags")
     
     # Print top 10 tags
-    sorted_tags = sorted(tag_data.items(), key=lambda x: x[1]['count'], reverse=True)
-    print("\nTop 10 tags:")
+    sorted_tags = sorted(result.items(), key=lambda x: x[1]['count'], reverse=True)
+    print("\nTop 10 tags (by unique image count):")
     for i, (tag, data) in enumerate(sorted_tags[:10], 1):
-        print(f"  {i}. {tag}: {data['count']} photos")
+        print(f"  {i}. {tag}: {data['count']} unique photos")
     
-    return dict(tag_data)
+    return result
 
 
 def write_trends_to_table(tag_data):

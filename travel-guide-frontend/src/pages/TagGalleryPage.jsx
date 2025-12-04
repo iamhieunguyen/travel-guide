@@ -26,7 +26,21 @@ export default function TagGalleryPage() {
       });
       
       console.log('📦 Photos response:', response);
-      setPhotos(response.items || []);
+      
+      // Dedupe photos by display key (image_url || imageKeys[0] || imageKey)
+      const uniquePhotos = [];
+      const seenKeys = new Set();
+      
+      for (const photo of (response.items || [])) {
+        const displayKey = photo.image_url || photo.imageKeys?.[0] || photo.imageKey;
+        if (displayKey && !seenKeys.has(displayKey)) {
+          seenKeys.add(displayKey);
+          uniquePhotos.push(photo);
+        }
+      }
+      
+      console.log(`✅ Deduped: ${response.items?.length || 0} → ${uniquePhotos.length} unique photos`);
+      setPhotos(uniquePhotos);
     } catch (err) {
       console.error('Error loading photos:', err);
       setError('Không thể tải ảnh. Vui lòng thử lại sau.');

@@ -34,8 +34,9 @@ export default function SmartGalleryPage() {
   };
 
   const handleTagClick = (tag) => {
-    // Navigate to home page with tag filter (not text search)
-    navigate(`/home?tag=${encodeURIComponent(tag.tag_name)}`);
+    // Navigate to tag gallery page to show all photos with this tag
+    const normalizedTag = tag.tag_name.toLowerCase();
+    navigate(`/gallery/tag/${encodeURIComponent(normalizedTag)}`);
   };
 
   return (

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
+import galleryApi from '../services/galleryApi';
 import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
@@ -177,7 +178,9 @@ export default function HomePage() {
     console.log('📍 Reading URL params - tag:', tag, 'q:', q);
     
     if (tag) {
-      setTagFilter(tag);
+      // Normalize tag to lowercase to match database format
+      const normalizedTag = tag.toLowerCase();
+      setTagFilter(normalizedTag);
       setSearchQuery(''); // Clear text search when filtering by tag
     } else if (q) {
       setSearchQuery(q);

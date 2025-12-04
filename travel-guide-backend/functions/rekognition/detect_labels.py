@@ -268,10 +268,26 @@ def detect_labels_in_image(bucket, key):
 
 
 def extract_article_id_from_key(s3_key):
-    """Extract article ID from S3 key"""
+    """Extract article ID from S3 key
+    
+    Supports two formats:
+    - Old: articles/{articleId}.jpg → articleId
+    - New: articles/{articleId}_{imageId}.jpg → articleId
+    """
     try:
-        filename = s3_key.split('/')[-1]
-        article_id = filename.rsplit('.', 1)[0]
+        filename = s3_key.split('/')[-1]  # e.g., "abc123_def456.jpg" or "abc123.jpg"
+        name_without_ext = filename.rsplit('.', 1)[0]  # e.g., "abc123_def456" or "abc123"
+        
+        # Check if it's new format with underscore (articleId_imageId)
+        if '_' in name_without_ext:
+            # New format: articleId_imageId → extract articleId (first part)
+            article_id = name_without_ext.rsplit('_', 1)[0]
+            print(f"  Extracted articleId (new format): {article_id}")
+        else:
+            # Old format: just articleId
+            article_id = name_without_ext
+            print(f"  Extracted articleId (old format): {article_id}")
+        
         return article_id
     except Exception as e:
         print(f"Failed to extract article ID: {e}")

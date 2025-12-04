@@ -12,6 +12,7 @@ import HomePage from "./pages/HomePage";
 import PersonalPage from './pages/PersonalPage/PersonalPage';
 import SettingsPage from './pages/SettingsPage/SettingsPage';
 import SmartGalleryPage from './pages/SmartGalleryPage';
+import TagGalleryPage from './pages/TagGalleryPage';
 
 // Global functions
 window.showSuccessToast = null;
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/personal" element={<PersonalPage />} />
             <Route path='/settings' element={<SettingsPage />} />
             <Route path="/gallery" element={<SmartGalleryPage />} />
+            <Route path="/gallery/tag/:tagName" element={<TagGalleryPage />} />
 
           </Routes>
           <CreatePostModal />

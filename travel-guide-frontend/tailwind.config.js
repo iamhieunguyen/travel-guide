@@ -12,10 +12,15 @@ module.exports = {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        slideDown: {
+          "0%": { opacity: "0", transform: "translate(-50%, -20px)" },
+          "100%": { opacity: "1", transform: "translate(-50%, 0)" },
+        },
       },
       animation: {
         fadeOut: "fadeOut 0.9s ease-out forwards",
         fadeIn: "fadeIn 0.9s ease-out forwards",
+        'slide-down': "slideDown 0.3s ease-out forwards",
       },
     },
   },

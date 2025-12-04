@@ -8,8 +8,12 @@ import CreatePostStyleHeader from "./CreatePostStyleHeader";
 import { X } from "lucide-react";
 
 export default function CreatePostModal() {
-  const { isOpen, closeModal, step, setStep, image, handleShare, editMode, editPostData } = useCreatePostModal();
+  const { isOpen, closeModal, step, setStep, image, handleShare, editMode, editPostData, caption, setCaption, privacy, setPrivacy } = useCreatePostModal();
   const [locationData, setLocationData] = useState(null);
+  
+  // Local state để backup caption và privacy khi chuyển step
+  const [captionBackup, setCaptionBackup] = useState("");
+  const [privacyBackup, setPrivacyBackup] = useState("public");
 
   // Update location khi editPostData thay đổi
   useEffect(() => {
@@ -71,7 +75,14 @@ export default function CreatePostModal() {
                 image={image}
                 locationData={locationData}
                 onBack={() => setStep(1)}
-                onAddLocation={() => setStep(3)}
+                onAddLocation={() => {
+                  console.log('💾 Backing up caption:', caption);
+                  console.log('💾 Backing up privacy:', privacy);
+                  // Backup caption và privacy trước khi chuyển step
+                  setCaptionBackup(caption);
+                  setPrivacyBackup(privacy);
+                  setStep(3);
+                }}
                 onLocationSelect={(data) => setLocationData(data)}
                 onShare={handleShare}
               />
@@ -93,9 +104,21 @@ export default function CreatePostModal() {
             </div>
             
             <LocationSelector
-              onBack={() => setStep(2)}
+              onBack={() => {
+                console.log('🔙 Restoring caption:', captionBackup);
+                console.log('🔙 Restoring privacy:', privacyBackup);
+                // Restore caption và privacy khi quay lại
+                if (captionBackup) setCaption(captionBackup);
+                if (privacyBackup) setPrivacy(privacyBackup);
+                setStep(2);
+              }}
               onNext={(data) => {
+                console.log('➡️ Restoring caption:', captionBackup);
+                console.log('➡️ Restoring privacy:', privacyBackup);
                 setLocationData(data);
+                // Restore caption và privacy khi chọn location xong
+                if (captionBackup) setCaption(captionBackup);
+                if (privacyBackup) setPrivacy(privacyBackup);
                 setStep(2);
               }}
               initialLocation={locationData?.position}

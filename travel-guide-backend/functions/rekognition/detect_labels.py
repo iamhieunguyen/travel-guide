@@ -268,10 +268,26 @@ def detect_labels_in_image(bucket, key):
 
 
 def extract_article_id_from_key(s3_key):
-    """Extract article ID from S3 key"""
+    """Extract article ID from S3 key
+    
+    Supports two formats:
+    - Old: articles/{articleId}.jpg → articleId
+    - New: articles/{articleId}_{imageId}.jpg → articleId
+    """
     try:
-        filename = s3_key.split('/')[-1]
-        article_id = filename.rsplit('.', 1)[0]
+        filename = s3_key.split('/')[-1]  # e.g., "abc123_def456.jpg" or "abc123.jpg"
+        name_without_ext = filename.rsplit('.', 1)[0]  # e.g., "abc123_def456" or "abc123"
+        
+        # Check if it's new format with underscore (articleId_imageId)
+        if '_' in name_without_ext:
+            # New format: articleId_imageId → extract articleId (first part)
+            article_id = name_without_ext.rsplit('_', 1)[0]
+            print(f"  Extracted articleId (new format): {article_id}")
+        else:
+            # Old format: just articleId
+            article_id = name_without_ext
+            print(f"  Extracted articleId (old format): {article_id}")
+        
         return article_id
     except Exception as e:
         print(f"Failed to extract article ID: {e}")
@@ -426,6 +442,27 @@ def lambda_handler(event, context):
                     success = update_article_with_tags(article_id, labels_data)
                     if success:
                         results['succeeded'] += 1
+                        
+                        # Save to Gallery tables
+                        try:
+                            import sys
+                            import os
+                            # Add current directory to path
+                            current_dir = os.path.dirname(os.path.abspath(__file__))
+                            if current_dir not in sys.path:
+                                sys.path.insert(0, current_dir)
+                            
+                            from save_to_gallery import save_photo_to_gallery, update_trending_tags
+                            tag_names = [label['name'] for label in labels_data]
+                            image_url = key  # S3 key
+                            save_photo_to_gallery(article_id, image_url, tag_names, status='public')
+                            update_trending_tags(tag_names, image_url)
+                            print("✓ Saved to Gallery tables")
+                        except Exception as gallery_error:
+                            print(f"⚠️  Failed to save to Gallery tables: {gallery_error}")
+                            # Don't fail the whole process if gallery save fails
+                            import traceback
+                            traceback.print_exc()
                         
                         # Forward to next queue
                         forward_to_next_queue(bucket, key, article_id)

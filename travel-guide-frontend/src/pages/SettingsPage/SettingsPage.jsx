@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   User,
@@ -22,6 +22,7 @@ import BackButton from '../../components/personal/BackButton';
 import PrivacyDropdown from '../../components/settings/PrivacyDropdown';
 import LanguageDropdown from '../../components/settings/LanguageDropdown';
 import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
+import useProfile from '../../hook/useProfile';
 import './SettingsPage.css';
 
 // Translations
@@ -203,12 +204,15 @@ const DEFAULT_BIO = 'Lưu giữ những mảnh ghép của cuộc đời.';
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
+  const { profile, updateProfile: updateProfileApi, uploadAvatar } = useProfile();
   const [activeSection, setActiveSection] = useState('account');
   
   // Account Settings
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState(DEFAULT_BIO);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const fileInputRef = useRef(null);
   
   // Privacy Settings
   const [defaultPrivacy, setDefaultPrivacy] = useState('public');
@@ -245,11 +249,10 @@ export default function SettingsPage() {
       if (user) {
         const userEmail = user.email || user.attributes?.email || user.username || '';
         setEmail(userEmail);
-        // Ưu tiên giống logic hiển thị ở Home/PersonalPage: username trước, rồi đến name, cuối cùng mới fallback email
+        // Luôn lấy từ displayName đã chuẩn hóa trong AuthContext, fallback sang username/email khi cần
         const preferredName =
           user.displayName ||
           user.username ||
-          user.attributes?.name ||
           (userEmail ? userEmail.split('@')[0] : '');
         setDisplayName(preferredName || '');
         const initialBio = user.bio || DEFAULT_BIO;
@@ -265,6 +268,21 @@ export default function SettingsPage() {
       console.error('Error loading user data:', error);
     }
   }, [user]);
+
+  // Khi profile từ API sẵn sàng, override lại tên / bio / avatar từ backend
+  useEffect(() => {
+    if (profile) {
+      if (profile.username) {
+        setDisplayName(profile.username);
+      }
+      if (profile.bio !== undefined) {
+        setBio(profile.bio || DEFAULT_BIO);
+      }
+      if (profile.avatarUrl) {
+        setAvatarUrl(profile.avatarUrl);
+      }
+    }
+  }, [profile]);
 
   // Chỉ redirect khi đã check auth xong xuôi mà vẫn không có user
   useEffect(() => {
@@ -299,17 +317,21 @@ export default function SettingsPage() {
     setConfirmPassword('');
   };
 
-  const handleSaveSettings = () => {
-    // TODO: Implement save all settings
-    updateDisplayName(displayName);
-    updateProfileBio(bio);
-    console.log('Saving settings:', {
-      account: { displayName, bio },
-      privacy: { defaultPrivacy, showLocation },
-      notifications: { emailNotifications, newMemoryNotifications, shareNotifications },
-      map: { mapType, autoZoom },
-      appearance: { theme, language }
-    });
+  const handleSaveSettings = async () => {
+    try {
+      // Gọi API backend để lưu profile (username + bio)
+      await updateProfileApi({
+        username: displayName,
+        bio,
+      });
+
+      // Cập nhật lại context để đồng bộ tên hiển thị / bio trong app
+      updateDisplayName(displayName);
+      updateProfileBio(bio);
+    } catch (error) {
+      console.error('Error saving account settings:', error);
+      alert(error.message || 'Không thể lưu thông tin tài khoản');
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -346,10 +368,45 @@ export default function SettingsPage() {
       <div className="settings-content">
         <div className="avatar-section">
           <div className="avatar-container">
-            <div className="avatar-placeholder">
-              <User className="w-12 h-12" />
-            </div>
-            <button className="avatar-edit-btn">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="settings-avatar-img"
+              />
+            ) : (
+              <div className="avatar-placeholder">
+                {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const res = await uploadAvatar(file);
+                  const updated = res?.profile || res;
+                  if (updated?.avatarUrl) {
+                    setAvatarUrl(updated.avatarUrl);
+                  }
+                } catch (err) {
+                  console.error('Upload avatar error:', err);
+                  alert(err.message || 'Không thể upload avatar');
+                } finally {
+                  // Cho phép chọn lại cùng một file nếu cần
+                  e.target.value = '';
+                }
+              }}
+            />
+            <button
+              type="button"
+              className="avatar-edit-btn"
+              onClick={() => fileInputRef.current?.click()}
+            >
               <Camera className="w-4 h-4" />
             </button>
           </div>
@@ -718,7 +775,7 @@ export default function SettingsPage() {
     <div className={`settings-page ${theme === 'dark' ? 'dark-mode' : ''}`}>
       <header className="settings-header">
         <div className="header-content">
-          <BackButton onClick={() => navigate('/profile')} />
+          <BackButton onClick={() => navigate('/personal')} />
           <h1>{t.title}</h1>
         </div>
       </header>

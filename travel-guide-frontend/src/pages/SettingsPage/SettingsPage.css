@@ -331,6 +331,15 @@
   display: inline-block;
 }
 
+.settings-avatar-img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 24px var(--sp-shadow-hover);
+  border: 4px solid white;
+}
+
 .avatar-placeholder {
   width: 120px;
   height: 120px;

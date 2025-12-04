@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { getIdToken } from './cognito';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_GATEWAY_URL,
@@ -7,9 +6,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = getIdToken();
+  const token = localStorage.getItem('idToken');
   if (token) {
-    config.headers.Authorization = token;
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });

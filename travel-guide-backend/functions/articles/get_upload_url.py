@@ -37,8 +37,16 @@ def lambda_handler(event, context):
         if "." in filename:
             ext = filename.split(".")[-1].lower()
 
-        # Tạo key chuẩn hóa
-        key = f"articles/{uuid.uuid4()}.{ext or 'bin'}"
+        # Tạo UUID - sẽ được dùng làm articleId sau này
+        # Frontend có thể gửi articleId nếu muốn upload nhiều ảnh cho cùng 1 bài
+        article_id = body.get("articleId") or str(uuid.uuid4())
+        
+        # Tạo image_id riêng cho mỗi ảnh (để hỗ trợ nhiều ảnh/bài)
+        image_id = str(uuid.uuid4())
+        
+        # Key format: articles/{articleId}_{imageId}.{ext}
+        # Điều này cho phép Rekognition extract articleId đúng
+        key = f"articles/{article_id}_{image_id}.{ext or 'bin'}"
 
         # Tạo presigned URL cho PUT object
         url = s3.generate_presigned_url(
@@ -51,6 +59,12 @@ def lambda_handler(event, context):
             ExpiresIn=900  # 15 phút
         )
 
-        return _resp(200, {"uploadUrl": url, "key": key, "expiresIn": 900})
+        # Trả về articleId để frontend dùng khi tạo bài viết
+        return _resp(200, {
+            "uploadUrl": url, 
+            "key": key, 
+            "articleId": article_id,
+            "expiresIn": 900
+        })
     except Exception as e:
         return _resp(500, {"error": f"internal error: {e}"})

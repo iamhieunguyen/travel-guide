@@ -47,11 +47,25 @@ def lambda_handler(event, context):
         if not article_id:
             return error(400, "articleId is required")
 
+        # Xóa khỏi favorites table
         favorites_table.delete_item(
             Key={
                 "userId": user_id,
                 "articleId": article_id,
             }
+        )
+
+        # Giảm favoriteCount trong articles table (không cho âm)
+        articles_table = dynamodb.Table(ARTICLES_TABLE_NAME)
+        articles_table.update_item(
+            Key={"articleId": article_id},
+            UpdateExpression="SET favoriteCount = if_not_exists(favoriteCount, :zero) - :dec",
+            ExpressionAttributeValues={
+                ":zero": 0,
+                ":dec": 1
+            },
+            # Đảm bảo không âm
+            ConditionExpression="favoriteCount > :zero OR attribute_not_exists(favoriteCount)"
         )
 
         return ok(200, {

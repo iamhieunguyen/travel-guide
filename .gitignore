@@ -5,6 +5,8 @@
 .vscode/
 .idea/
 *.log
+**/package-lock.json
+**/package.json
 
 # sam env (file bạn không muốn push)
 **/sam-env
@@ -22,6 +24,12 @@
 **/dist/
 **/.next/
 **/.cache/
+.kiro
 
 # optional: ignore any node_modules anywhere
 **/node_modules/
+/package.json
+/package-lock.json
+
+
+

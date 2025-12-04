@@ -79,6 +79,14 @@ function getMapTypePref(userData) {
 function formatUser(userData) {
   if (!userData) return null;
   const sub = userData.attributes?.sub;
+  // Lưu sub vào localStorage để backend có thể nhận qua header X-User-Id
+  if (sub) {
+    try {
+      localStorage.setItem("X_USER_ID", sub);
+    } catch (e) {
+      console.warn("Không thể lưu X_USER_ID vào localStorage:", e);
+    }
+  }
   const displayName = getDisplayNameFromUser(userData);
   const bio = getProfileBioFromUser(userData);
   const showLocationPref = getShowLocationPref(userData);

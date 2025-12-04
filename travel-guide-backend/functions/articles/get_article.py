@@ -43,12 +43,14 @@ def lambda_handler(event, context):
 
         item = response['Item']
 
-        # Chuyển Decimal sang float và tạo bản sao cho response
-        processed_item = dict(item)
-        if 'lat' in processed_item:
-            processed_item['lat'] = float(processed_item['lat'])
-        if 'lng' in processed_item:
-            processed_item['lng'] = float(processed_item['lng'])
+        # Chuyển Decimal sang float/int cho response
+        processed_item = {}
+        for k, v in item.items():
+            if isinstance(v, Decimal):
+                # Chuyển Decimal sang int nếu là số nguyên, ngược lại float
+                processed_item[k] = int(v) if v % 1 == 0 else float(v)
+            else:
+                processed_item[k] = v
             
         # Đảm bảo imageKeys là list (DynamoDB có thể lưu Set/List)
         if 'imageKeys' in processed_item and not isinstance(processed_item['imageKeys'], list):

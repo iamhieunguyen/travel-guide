@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import uuid
 import base64
@@ -29,32 +30,27 @@ def _thumb_from_image_key(image_key: str) -> str:
 
 def _reverse_geocode(lat: float, lng: float) -> str | None:
     """
-    Gọi Nominatim để lấy locationName (display_name) từ lat/lng.
-    Làm ở BE để tránh CORS và dễ kiểm soát.
+    Reverse geocode using AWS Location Service with cache and fallback
+    Uses hybrid approach: Cache → AWS Location → Nominatim
     """
     try:
-        base_url = "https://nominatim.openstreetmap.org/reverse"
-        params = {
-            "format": "json",
-            "lat": str(lat),
-            "lon": str(lng),
-            "zoom": "14",
-            "addressdetails": "1",
-            "accept-language": "vi",  # ưu tiên tiếng Việt
-        }
-        url = f"{base_url}?{urllib.parse.urlencode(params)}"
-
-        req = urllib.request.Request(
-            url,
-            headers={
-                # ⚠️ BẮT BUỘC: Thay email thật của bạn cho đúng policy của Nominatim
-                "User-Agent": "travel-guide-app/1.0 (chaukiet2704@gmail.com)"
-            },
-        )
-
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data.get("display_name")
+        # Import location service utility
+        import sys
+        sys.path.insert(0, '/var/task/functions')
+        from utils.location_service import reverse_geocode
+        
+        # Auto-detect language based on coordinates (simple heuristic)
+        # Vietnam: 8-24°N, 102-110°E
+        # Japan: 24-46°N, 122-154°E
+        # Default: English for global coverage
+        language = 'en'
+        if 8 <= lat <= 24 and 102 <= lng <= 110:
+            language = 'vi'
+        elif 24 <= lat <= 46 and 122 <= lng <= 154:
+            language = 'ja'
+        
+        return reverse_geocode(lat, lng, language=language)
+        
     except Exception as e:
         print(f"reverse_geocode error for ({lat}, {lng}): {e}")
         return None
@@ -123,7 +119,11 @@ def lambda_handler(event, context):
                 location_name = auto_loc.strip()
 
         # Article ID & time
-        article_id = str(uuid.uuid4())
+        # Ưu tiên articleId từ frontend (để khớp với S3 key đã upload)
+        # Nếu không có thì tạo mới
+        article_id = (data.get("articleId") or "").strip()
+        if not article_id:
+            article_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat()
 
         # Logic Xử lý và Validate Multiple Images
@@ -185,6 +185,7 @@ def lambda_handler(event, context):
             "geohash": f"{lat_f:.6f},{lng_f:.6f}",
             "gh5": f"{lat_f:.2f},{lng_f:.2f}",
             "tags": tags,
+            "favoriteCount": 0,  # Khởi tạo counter
         }
 
         # Thêm các fields liên quan đến ảnh vào item DynamoDB
@@ -201,13 +202,44 @@ def lambda_handler(event, context):
         if display_name:
             item["username"] = display_name
 
+        # Rate limiting: Check last post time
+        # Query user's last post to prevent spam
+        try:
+            last_posts = table.query(
+                IndexName='gsi_owner_createdAt',
+                KeyConditionExpression='ownerId = :owner_id',
+                ExpressionAttributeValues={':owner_id': owner_id},
+                ScanIndexForward=False,  # Most recent first
+                Limit=1
+            )
+            
+            if last_posts.get('Items'):
+                last_post = last_posts['Items'][0]
+                last_created = datetime.fromisoformat(last_post['createdAt'])
+                now = datetime.now(timezone.utc)
+                time_diff = (now - last_created).total_seconds()
+                
+                # Rate limit: 30 seconds between posts
+                RATE_LIMIT_SECONDS = 30
+                if time_diff < RATE_LIMIT_SECONDS:
+                    wait_time = int(RATE_LIMIT_SECONDS - time_diff) + 1  # +1 để đảm bảo đủ thời gian
+                    print(f"⚠️ Rate limit triggered for user {owner_id}: {wait_time}s remaining")
+                    return error(429, f"⏱️ Vui lòng đợi {wait_time}s trước khi đăng bài tiếp")
+        except Exception as e:
+            print(f"⚠️ Rate limit check error (non-critical): {e}")
+            # Continue anyway if rate limit check fails
+        
         # Lưu vào DynamoDB
         table.put_item(Item=item)
 
-        # Chuẩn bị response (chuyển Decimal → float)
+        # Chuẩn bị response (chuyển Decimal → float/int)
         resp = {}
         for k, v in item.items():
-            resp[k] = float(v) if isinstance(v, Decimal) else v
+            if isinstance(v, Decimal):
+                # Chuyển Decimal sang float hoặc int
+                resp[k] = int(v) if v % 1 == 0 else float(v)
+            else:
+                resp[k] = v
 
         print(f"Article created: {article_id} by user {owner_id}")
         return ok(201, resp)

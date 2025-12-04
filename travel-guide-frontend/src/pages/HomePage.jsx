@@ -4,9 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MessageCircle, MapPin, Clock, Plus, Eye, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import galleryApi from '../services/galleryApi';
+import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
+import useProfile from '../hook/useProfile';
+import { useInfiniteScroll } from '../hook/useInfiniteScroll';
+import { useNewPostsPolling } from '../hook/useNewPostsPolling';
+import NewPostsBanner from '../components/NewPostsBanner';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -84,87 +89,257 @@ export default function HomePage() {
   const { user, logout, authChecked } = useAuth();
   const { openModal, openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
+  const { profile } = useProfile();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [nextToken, setNextToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [scope, setScope] = useState('public');
+  const [scope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
-  const [isSearching, setIsSearching] = useState(false);
+  const [tagFilter, setTagFilter] = useState(''); // Tag filter from URL
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const searchInputRef = useRef(null); // Ref for search input
+  const mapType = user?.mapTypePref || 'roadmap';
+  
+  // New posts detection state - store the latest createdAt timestamp
+  const [latestCreatedAt, setLatestCreatedAt] = useState(null);
 
-  // Fetch location name
-  const fetchLocationName = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-        { headers: { 'Accept-Language': 'vi' } }
-      );
-      const data = await response.json();
-      return data.display_name || `${lat}, ${lng}`;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const loadPosts = useCallback(async (token = null, query = '') => {
+  // Define loadPosts BEFORE any useEffect that uses it
+  const loadPosts = useCallback(async (token = null, query = '', tag = '') => {
     try {
       if (!token) setLoading(true);
       else setLoadingMore(true);
 
       let response;
-      if (query && query.trim()) {
-        // Nếu có search query, dùng searchArticles
+      if (tag && tag.trim()) {
+        // Nếu có tag filter, dùng searchArticles với tags parameter
+        console.log('🔍 Searching with tag:', tag.trim());
+        response = await api.searchArticles({
+          tags: tag.trim(),
+          scope: scope,
+          limit: 3,
+          nextToken: token
+        });
+        console.log('📦 Tag search response:', response);
+      } else if (query && query.trim()) {
+        // Nếu có search query, dùng searchArticles với q parameter
+        console.log('🔍 Searching with query:', query.trim());
         response = await api.searchArticles({
           q: query.trim(),
           scope: scope,
-          limit: 10,
+          limit: 3,
           nextToken: token
         });
-        setIsSearching(true);
+        console.log('📦 Query search response:', response);
       } else {
-        // Nếu không có query, dùng listArticles bình thường
+        // Nếu không có query hoặc tag, dùng listArticles bình thường
         response = await api.listArticles({
           scope: scope,
-          limit: 10,
+          limit: 3,
           nextToken: token
         });
-        setIsSearching(false);
       }
 
-      const postsWithLocation = await Promise.all(
-        response.items.map(async (post) => {
-          if (post.lat && post.lng && !post.location) {
-            const locationName = await fetchLocationName(post.lat, post.lng);
-            return { ...post, location: locationName };
-          }
-          return post;
-        })
-      );
+      // Backend already has locationName, no need to fetch from Nominatim
+      const posts = response.items;
+      console.log('📊 Posts received:', posts.length, 'posts');
+      if (tag && posts.length > 0) {
+        console.log('🏷️ First post tags:', posts[0].tags, 'autoTags:', posts[0].autoTags);
+      }
 
       if (token) {
-        setPosts(prev => [...prev, ...postsWithLocation]);
+        setPosts(prev => [...prev, ...posts]);
       } else {
-        setPosts(postsWithLocation);
+        setPosts(posts);
+        // Set latest createdAt timestamp for new posts detection
+        if (posts.length > 0) {
+          setLatestCreatedAt(posts[0].createdAt);
+        }
       }
       setNextToken(response.nextToken);
     } catch (error) {
-      setError(error.message);
+      console.error('Lỗi khi tải bài viết:', error);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
   }, [scope]);
+  
+  // Read tag from URL on mount
+  const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tag = params.get('tag');
+    const q = params.get('q');
+    
+    console.log('📍 Reading URL params - tag:', tag, 'q:', q);
+    
+    if (tag) {
+      // Normalize tag to lowercase to match database format
+      const normalizedTag = tag.toLowerCase();
+      setTagFilter(normalizedTag);
+      setSearchQuery(''); // Clear text search when filtering by tag
+    } else if (q) {
+      setSearchQuery(q);
+      setTagFilter(''); // Clear tag filter when searching
+    }
+    
+    setUrlParamsLoaded(true);
+  }, []);
+
+  // Sync URL changes (browser back/forward)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tag = params.get('tag');
+      const q = params.get('q');
+      
+      console.log('🔄 URL changed - tag:', tag, 'q:', q);
+      
+      if (tag) {
+        setTagFilter(tag);
+        setSearchQuery('');
+        loadPosts(null, '', tag);
+      } else if (q) {
+        setSearchQuery(q);
+        setTagFilter('');
+        loadPosts(null, q, '');
+      } else {
+        setTagFilter('');
+        setSearchQuery('');
+        loadPosts(null, '', '');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [loadPosts]);
+
+  // Check for new posts
+  const checkNewPosts = useCallback(async () => {
+    if (!latestCreatedAt || posts.length === 0) {
+      console.log('⚠️ Skip check: no latestCreatedAt or no posts');
+      return 0;
+    }
+    
+    try {
+      const startTime = Date.now();
+      console.log('🔍 Checking for new posts (no cache)...');
+      console.log('📅 Current latestCreatedAt:', latestCreatedAt);
+      
+      // ✅ Use listArticlesNoCache to bypass cache for real-time updates
+      const response = await api.listArticlesNoCache({
+        scope: scope,
+        limit: 20, // Check up to 20 posts
+      });
+      
+      const endTime = Date.now();
+      console.log(`⏱️ API call took: ${endTime - startTime}ms`);
+      
+      if (response.items && response.items.length > 0) {
+        console.log(`📊 Received ${response.items.length} items from API`);
+        console.log('📅 Latest item createdAt:', response.items[0].createdAt);
+        
+        // Count only posts with createdAt NEWER than our latest
+        // This ignores updated old posts
+        let count = 0;
+        for (const post of response.items) {
+          console.log(`  🔍 Post ${post.articleId}: ${post.createdAt} vs ${latestCreatedAt}`);
+          
+          if (post.createdAt > latestCreatedAt) {
+            count++;
+            console.log(`    ✅ NEW (${post.createdAt} > ${latestCreatedAt})`);
+          } else {
+            console.log(`    ❌ OLD (${post.createdAt} <= ${latestCreatedAt})`);
+            // Stop when we reach posts we've already seen
+            break;
+          }
+        }
+        
+        if (count > 0) {
+          console.log(`✨ Found ${count} new posts`);
+        } else {
+          console.log('ℹ️ No new posts found');
+        }
+        
+        return count;
+      } else {
+        console.log('⚠️ No items in response');
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error('❌ Error checking new posts:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      return 0;
+    }
+  }, [latestCreatedAt, scope, posts.length]);
+
+  // Use new posts polling hook
+  const { newPostsCount, resetNewPosts } = useNewPostsPolling({
+    checkNewPosts,
+    interval: 10000, // 5 seconds (for testing - change back to 30000 for production)
+    enabled: posts.length > 0 && !loading && !searchQuery, // Disable when searching
+  });
+
+  // Use infinite scroll hook
+  const { sentinelRef } = useInfiniteScroll({
+    loadMore: () => {
+      if (nextToken && !loadingMore) {
+        loadPosts(nextToken, searchQuery);
+      }
+    },
+    hasMore: !!nextToken,
+    isLoading: loadingMore,
+  });
 
   const handleSearch = (e) => {
     if (e.key === 'Enter' || e.type === 'click') {
-      loadPosts(null, searchQuery);
+      console.log('🔍 Search triggered:', searchQuery);
+      setTagFilter(''); // Clear tag filter when searching
+      
+      // Update URL with search query
+      if (searchQuery.trim()) {
+        window.history.pushState({}, '', `/home?q=${encodeURIComponent(searchQuery)}`);
+      } else {
+        window.history.pushState({}, '', '/home');
+      }
+      
+      loadPosts(null, searchQuery, '');
     }
   };
+
+  // Load new posts when banner is clicked
+  const loadNewPosts = useCallback(async () => {
+    try {
+      // Smooth scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      // Wait a bit for scroll animation
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // ✅ Invalidate cache to ensure fresh data
+      console.log('🗑️ Invalidating articles cache...');
+      api.invalidateArticlesCache();
+      
+      // Reset new posts count
+      resetNewPosts();
+      
+      // Reload posts from beginning (will fetch fresh data)
+      await loadPosts(null, searchQuery, tagFilter);
+      
+      console.log('✅ New posts loaded');
+    } catch (error) {
+      console.error('Error loading new posts:', error);
+    }
+  }, [resetNewPosts, loadPosts, searchQuery, tagFilter]);
 
   // Load user's favorite articles
   const loadFavorites = useCallback(async () => {
@@ -186,17 +361,20 @@ export default function HomePage() {
   }, [user]);
 
   useEffect(() => {
-    if (!authChecked) return;
+    if (!authChecked || !urlParamsLoaded) return;
     if (scope === 'mine' && !user) {
       navigate('/auth');
       return;
     }
-    loadPosts();
+    // Only load on initial mount or when scope/auth changes
+    // Tag and search changes are handled by their own handlers
+    console.log('🚀 Initial load with tagFilter:', tagFilter, 'searchQuery:', searchQuery);
+    loadPosts(null, searchQuery, tagFilter);
     loadFavorites(); // Load favorites when component mounts
-  }, [scope, loadPosts, loadFavorites, user, navigate, authChecked]);
+  }, [scope, user, navigate, authChecked, urlParamsLoaded]); // Wait for URL params to be loaded, but don't re-run on tag/query changes
 
   const loadMore = () => {
-    if (nextToken) loadPosts(nextToken);
+    if (nextToken) loadPosts(nextToken, searchQuery, tagFilter);
   };
 
   const handleLike = async (postId) => {
@@ -217,10 +395,10 @@ export default function HomePage() {
           return newSet;
         });
         
-        // Update like count
+        // Update favoriteCount (backend tự động giảm)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: Math.max(0, (post.likeCount || 0) - 1) }
+            ? { ...post, favoriteCount: Math.max(0, (post.favoriteCount || 0) - 1), likeCount: Math.max(0, (post.likeCount || post.favoriteCount || 0) - 1) }
             : post
         ));
         
@@ -235,10 +413,10 @@ export default function HomePage() {
         
         setLikedPosts(prev => new Set([...prev, postId]));
         
-        // Update like count
+        // Update favoriteCount (backend tự động tăng)
         setPosts(prev => prev.map(post => 
           post.articleId === postId 
-            ? { ...post, likeCount: (post.likeCount || 0) + 1 }
+            ? { ...post, favoriteCount: (post.favoriteCount || 0) + 1, likeCount: (post.likeCount || post.favoriteCount || 0) + 1 }
             : post
         ));
         
@@ -263,10 +441,6 @@ export default function HomePage() {
         window.showSuccessToast(errorMsg);
       }
     }
-  };
-
-  const handleComment = (postId) => {
-    console.log('Comment on post:', postId);
   };
 
   const handleEditPost = (post) => {
@@ -311,14 +485,14 @@ export default function HomePage() {
     return 'Vừa xong';
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  // Handle tag click - filter posts by tag
+  const handleTagClick = useCallback((tagName) => {
+    console.log('🏷️ Tag clicked:', tagName);
+    setSearchQuery(''); // Clear text search
+    setTagFilter(tagName);
+    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(tagName)}`);
+    loadPosts(null, '', tagName);
+  }, [loadPosts]);
 
   return (
     <div className="min-h-screen bg-[#2d2d2d]">
@@ -341,8 +515,9 @@ export default function HomePage() {
                 <button 
                   onClick={() => {
                     setSearchQuery('');
-                    setIsSearching(false);
-                    loadPosts(null, '');
+                    setTagFilter('');
+                    window.history.replaceState({}, '', '/home');
+                    loadPosts(null, '', '');
                   }}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
                 >
@@ -383,13 +558,31 @@ export default function HomePage() {
                 </button>
 
                 <button 
+                  onClick={() => navigate('/gallery')}
+                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                >
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  <span className="font-medium text-base">Trending Tags</span>
+                </button>
+
+                <button 
                   onClick={() => navigate('/personal')}
                   className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
                 >
-                  <div className="w-7 h-7 bg-[#92ADA4] rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">
-                      {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                    {profile?.avatarUrl ? (
+                      <img
+                        src={profile.avatarUrl}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white font-bold text-xs">
+                        {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
+                    )}
                   </div>
                   <span className="font-medium text-base">Trang cá nhân</span>
                 </button>
@@ -420,7 +613,7 @@ export default function HomePage() {
                 <div className="flex items-center">
                   {/* Greeting */}
                   <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
-                    Hello, <span className="text-[#92ADA4]">{user?.username || user?.email?.split('@')[0] || 'User'}</span>
+                    Hello, <span className="text-[#92ADA4]">{user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}</span>
                   </h2>
 
                   {/* Search Bar - Same row as greeting */}
@@ -460,20 +653,28 @@ export default function HomePage() {
 
                   {/* User Avatar and Name */}
                   <button 
-                    onClick={() => navigate('/profile')}
+                    onClick={() => navigate('/personal')}
                     className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
                   >
-                    <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">
-                        {user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                      </span>
-                    </div>
+                <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden">
+                  {profile?.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white font-bold text-sm">
+                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
                     <div className="text-left">
                       <p className="font-semibold text-gray-900 text-sm">
-                        {user?.username || user?.email?.split('@')[0] || 'User'}
+                        {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        @{user?.username || user?.email?.split('@')[0] || 'user'}
+                        @{user?.displayName || user?.username || user?.email?.split('@')[0] || 'user'}
                       </p>
                     </div>
                   </button>
@@ -485,9 +686,87 @@ export default function HomePage() {
             <div className="py-6 overflow-y-auto flex-1">
 
             <div className="px-8">
+              {/* New Posts Banner */}
+              <NewPostsBanner count={newPostsCount} onLoadNew={loadNewPosts} />
+              
+              {/* Tag Filter Banner - Improved with Animation */}
+              {tagFilter && (
+                <div className="mb-6 bg-gradient-to-r from-[#92ADA4]/10 to-[#92ADA4]/5 border border-[#92ADA4]/30 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-slideDown">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-[#92ADA4]/20 rounded-lg">
+                      <svg className="w-5 h-5 text-[#92ADA4]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Đang lọc theo tag</p>
+                      <p className="font-bold text-gray-900 text-base lowercase flex items-center gap-1">
+                        <span className="text-[#92ADA4]">#</span>{tagFilter}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      console.log('🗑️ Clearing tag filter');
+                      setTagFilter('');
+                      window.history.pushState({}, '', '/home');
+                      loadPosts(null, '', '');
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-all text-sm shadow-sm hover:shadow active:scale-95 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Xóa bộ lọc
+                  </button>
+                </div>
+              )}
+              
+              {/* Search Query Banner */}
+              {searchQuery && !tagFilter && (
+                <div className="mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-4 flex items-center justify-between shadow-sm animate-slideDown">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 rounded-lg">
+                      <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/>
+                        <path d="M21 21l-4.35-4.35"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Kết quả tìm kiếm cho</p>
+                      <p className="font-bold text-gray-900 text-base">"{searchQuery}"</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      console.log('🗑️ Clearing search query');
+                      setSearchQuery('');
+                      window.history.pushState({}, '', '/home');
+                      loadPosts(null, '', '');
+                    }}
+                    className="px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-medium transition-all text-sm shadow-sm hover:shadow active:scale-95 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Xóa tìm kiếm
+                  </button>
+                </div>
+              )}
+              
+              {/* Loading State for Filters */}
+              {loading && (tagFilter || searchQuery) && posts.length === 0 && (
+                <div className="text-center py-8 bg-white rounded-2xl shadow-sm">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#92ADA4] mb-3"></div>
+                  <p className="text-gray-600 font-medium">
+                    {tagFilter ? `Đang tìm bài viết với tag #${tagFilter}...` : `Đang tìm kiếm "${searchQuery}"...`}
+                  </p>
+                </div>
+              )}
+              
               {/* Main Feed */}
               <div className="space-y-8">
-            {loading && posts.length === 0 ? (
+            {loading && posts.length === 0 && !tagFilter && !searchQuery ? (
               [...Array(3)].map((_, i) => (
                 <div key={i} className="bg-white rounded-3xl shadow-sm p-5 animate-pulse">
                   <div className="flex items-center space-x-3 mb-4">
@@ -522,20 +801,32 @@ export default function HomePage() {
                     post.ownerId === user.username ||
                     post.ownerId === user['cognito:username']
                   );
+                  const authorDisplayName = isOwner
+                    ? (user?.displayName || user?.username || post.username || `User_${post.ownerId?.substring(0, 6)}`)
+                    : (post.username || `User_${post.ownerId?.substring(0, 6)}`);
+                  const authorInitial = authorDisplayName?.charAt(0)?.toUpperCase() || 'U';
                   
                   return (
                     <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
                       {/* User Info - Inside white container */}
                       <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4]">
-                            <span className="text-white font-bold text-base">
-                              {post.username?.charAt(0)?.toUpperCase() || 'U'}
-                            </span>
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                            {isOwner && profile?.avatarUrl ? (
+                              <img
+                                src={profile.avatarUrl}
+                                alt={authorDisplayName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-white font-bold text-base">
+                                {authorInitial}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <p className="font-bold text-gray-800 text-base">
-                              {post.username || `User_${post.ownerId?.substring(0, 6)}`}
+                              {authorDisplayName}
                             </p>
                             {(post.location?.name || post.location || post.locationName) && (
                               <div className="flex items-center text-sm group relative text-gray-500">
@@ -611,6 +902,7 @@ export default function HomePage() {
                                         : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`)
                                     : null
                               }
+                              mapType={mapType}
                             />
 
                             {/* Action Buttons Below Map */}
@@ -719,17 +1011,25 @@ export default function HomePage() {
                               <div className="mt-3 p-3">
                                 <div className="flex items-start gap-3 mb-3">
                                   {/* Avatar */}
-                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0">
-                                    <span className="text-white font-bold text-sm">
-                                      {post.username?.charAt(0)?.toUpperCase() || 'U'}
-                                    </span>
+                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0 overflow-hidden">
+                                    {isOwner && profile?.avatarUrl ? (
+                                      <img
+                                        src={profile.avatarUrl}
+                                        alt={authorDisplayName}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <span className="text-white font-bold text-sm">
+                                        {authorInitial}
+                                      </span>
+                                    )}
                                   </div>
                                   
                                   {/* Content */}
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="font-semibold text-gray-900 text-sm">
-                                        {post.username || `User_${post.ownerId?.substring(0, 6)}`}
+                                        {authorDisplayName}
                                       </span>
                                       <span className="text-gray-400 text-xs">
                                         {getTimeAgo(post.createdAt)}
@@ -739,10 +1039,11 @@ export default function HomePage() {
                                       {post.content || post.title}
                                     </p>
                                     
-                                    {/* Tags Display */}
-                                    {post.tags && post.tags.length > 0 && (
+                                    {/* Tags Display - Clickable (User Tags + AI Auto Tags) */}
+                                    {((post.tags && post.tags.length > 0) || (post.autoTags && post.autoTags.length > 0)) && (
                                       <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {post.tags.map((tagId, index) => {
+                                        {/* User-selected tags */}
+                                        {post.tags && post.tags.map((tagId, index) => {
                                           const tagLabels = {
                                             'beach': '🏖️ Biển',
                                             'mountain': '⛰️ Núi',
@@ -754,12 +1055,31 @@ export default function HomePage() {
                                             'sunny': '☀️ Nắng'
                                           };
                                           return (
-                                            <span
-                                              key={index}
-                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20"
+                                            <button
+                                              key={`user-tag-${index}`}
+                                              onClick={() => handleTagClick(tagId)}
+                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20 hover:bg-[#92ADA4]/20 hover:border-[#92ADA4]/40 transition-all cursor-pointer active:scale-95"
+                                              title={`Lọc theo tag: ${tagLabels[tagId] || tagId}`}
                                             >
                                               {tagLabels[tagId] || tagId}
-                                            </span>
+                                            </button>
+                                          );
+                                        })}
+                                        
+                                        {/* AI Auto Tags - Different color with AI icon */}
+                                        {post.autoTags && post.autoTags.map((tagId, index) => {
+                                          return (
+                                            <button
+                                              key={`auto-tag-${index}`}
+                                              onClick={() => handleTagClick(tagId)}
+                                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 transition-all cursor-pointer active:scale-95"
+                                              title={`AI Tag: ${tagId} (click để lọc)`}
+                                            >
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 22.5l-.394-1.933a2.25 2.25 0 00-1.423-1.423L12.75 18.75l1.933-.394a2.25 2.25 0 001.423-1.423l.394-1.933.394 1.933a2.25 2.25 0 001.423 1.423l1.933.394-1.933.394a2.25 2.25 0 00-1.423 1.423z"/>
+                                              </svg>
+                                              <span className="lowercase">{tagId}</span>
+                                            </button>
                                           );
                                         })}
                                       </div>
@@ -771,7 +1091,7 @@ export default function HomePage() {
                                 <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
-                                    {post.likeCount || 0} lượt quan tâm
+                                    {post.favoriteCount || post.likeCount || 0} lượt quan tâm
                                   </span>
                                 </div>
                               </div>
@@ -783,16 +1103,21 @@ export default function HomePage() {
                   );
                 })}
 
-                {nextToken && (
-                  <div className="text-center py-4">
-                    <button
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      className="bg-white text-gray-700 px-6 py-3 rounded-full hover:shadow-md transition disabled:opacity-50 font-medium"
-                      style={{ border: '2px solid rgba(0,0,0,0.1)' }}
-                    >
-                      {loadingMore ? 'Đang tải...' : 'Tải thêm'}
-                    </button>
+                {/* Sentinel element for infinite scroll */}
+                <div ref={sentinelRef} className="h-4" />
+                
+                {/* Loading indicator */}
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#92ADA4]"></div>
+                    <p className="text-gray-600 mt-2">Đang tải thêm bài viết...</p>
+                  </div>
+                )}
+                
+                {/* End of feed message */}
+                {!nextToken && !loadingMore && posts.length > 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">🎉 Bạn đã xem hết tất cả bài viết</p>
                   </div>
                 )}
               </>

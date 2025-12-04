@@ -329,7 +329,7 @@ Travel Guide Team
         
         # Send via SES
         response = ses_client.send_email(
-            Source='khiem120805@gmail.com',  # Must be verified in SES
+            Source='hieunxse180069@fpt.edu.vn',  # Must be verified in SES
             Destination={'ToAddresses': [user_email]},
             Message={
                 'Subject': {'Data': subject, 'Charset': 'UTF-8'},

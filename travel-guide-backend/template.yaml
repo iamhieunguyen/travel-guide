@@ -252,9 +252,8 @@ Resources:
         RestrictPublicBuckets: true
       NotificationConfiguration:
         QueueConfigurations:
-          # BYPASS ImageValidator (PIL issue) - Send directly to DetectLabels
           - Event: s3:ObjectCreated:*
-            Queue: !GetAtt DetectLabelsQueue.Arn
+            Queue: !GetAtt ImageValidatorQueue.Arn
             Filter:
               S3Key:
                 Rules:
@@ -1295,7 +1294,7 @@ Resources:
           TABLE_NAME: !Ref ArticlesTable
           USER_PROFILES_TABLE: !Ref UserProfilesTable
           CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-          SENDER_EMAIL: khiem120805@gmail.com  # CHANGE THIS to your verified SES email
+          SENDER_EMAIL: hieunxse180069@fpt.edu.vn  # CHANGE THIS to your verified SES email
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable

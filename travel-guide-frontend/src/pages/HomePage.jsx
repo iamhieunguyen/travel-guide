@@ -220,34 +220,64 @@ export default function HomePage() {
 
   // Check for new posts
   const checkNewPosts = useCallback(async () => {
-    if (!latestCreatedAt || posts.length === 0) return 0;
+    if (!latestCreatedAt || posts.length === 0) {
+      console.log('⚠️ Skip check: no latestCreatedAt or no posts');
+      return 0;
+    }
     
     try {
-      // Get latest posts
-      const response = await api.listArticles({
+      const startTime = Date.now();
+      console.log('🔍 Checking for new posts (no cache)...');
+      console.log('📅 Current latestCreatedAt:', latestCreatedAt);
+      
+      // ✅ Use listArticlesNoCache to bypass cache for real-time updates
+      const response = await api.listArticlesNoCache({
         scope: scope,
         limit: 20, // Check up to 20 posts
       });
       
+      const endTime = Date.now();
+      console.log(`⏱️ API call took: ${endTime - startTime}ms`);
+      
       if (response.items && response.items.length > 0) {
+        console.log(`📊 Received ${response.items.length} items from API`);
+        console.log('📅 Latest item createdAt:', response.items[0].createdAt);
+        
         // Count only posts with createdAt NEWER than our latest
         // This ignores updated old posts
         let count = 0;
         for (const post of response.items) {
+          console.log(`  🔍 Post ${post.articleId}: ${post.createdAt} vs ${latestCreatedAt}`);
+          
           if (post.createdAt > latestCreatedAt) {
             count++;
+            console.log(`    ✅ NEW (${post.createdAt} > ${latestCreatedAt})`);
           } else {
+            console.log(`    ❌ OLD (${post.createdAt} <= ${latestCreatedAt})`);
             // Stop when we reach posts we've already seen
             break;
           }
         }
         
+        if (count > 0) {
+          console.log(`✨ Found ${count} new posts`);
+        } else {
+          console.log('ℹ️ No new posts found');
+        }
+        
         return count;
+      } else {
+        console.log('⚠️ No items in response');
       }
       
       return 0;
     } catch (error) {
-      console.error('Error checking new posts:', error);
+      console.error('❌ Error checking new posts:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
       return 0;
     }
   }, [latestCreatedAt, scope, posts.length]);
@@ -295,11 +325,17 @@ export default function HomePage() {
       // Wait a bit for scroll animation
       await new Promise(resolve => setTimeout(resolve, 300));
       
+      // ✅ Invalidate cache to ensure fresh data
+      console.log('🗑️ Invalidating articles cache...');
+      api.invalidateArticlesCache();
+      
       // Reset new posts count
       resetNewPosts();
       
-      // Reload posts from beginning
+      // Reload posts from beginning (will fetch fresh data)
       await loadPosts(null, searchQuery, tagFilter);
+      
+      console.log('✅ New posts loaded');
     } catch (error) {
       console.error('Error loading new posts:', error);
     }

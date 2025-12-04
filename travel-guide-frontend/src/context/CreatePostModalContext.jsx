@@ -195,6 +195,11 @@ export function CreatePostModalProvider({ children }) {
         
         const result = await api.updateArticle(editPostData.articleId, updateData);
         console.log('✅ Update success:', result);
+        
+        // ✅ Invalidate cache để user thấy bài đã update ngay
+        console.log('🗑️ Invalidating cache after update...');
+        api.invalidateArticlesCache();
+        
         return result;
       }
       
@@ -233,6 +238,11 @@ export function CreatePostModalProvider({ children }) {
           tags: []
         });
         console.log('✅ Upload success:', result);
+        
+        // ✅ Invalidate cache để user thấy bài mới ngay lập tức
+        console.log('🗑️ Invalidating cache after creating new post...');
+        api.invalidateArticlesCache();
+        
         return result;
       } else {
         console.error('❌ Images are not valid data URLs!');

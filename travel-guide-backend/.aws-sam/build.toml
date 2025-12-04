@@ -16,7 +16,7 @@ architecture = "x86_64"
 handler = "create_article.lambda_handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["GetTrendingTagsFunction", "GetArticlesByTagFunction", "CreateArticleFunction", "GetArticleFunction", "ListArticlesFunction", "UpdateArticleFunction", "DeleteArticleFunction", "SearchArticlesFunction", "GetUploadUrlFunction", "FavoriteArticleFunction", "UnfavoriteArticleFunction", "ListFavoriteArticlesFunction"]
+functions = ["GetTrendingTagsFunction", "GetArticlesByTagFunction", "BackfillGalleryTrendsFunction", "CreateArticleFunction", "GetArticleFunction", "ListArticlesFunction", "UpdateArticleFunction", "DeleteArticleFunction", "SearchArticlesFunction", "GetUploadUrlFunction", "FavoriteArticleFunction", "UnfavoriteArticleFunction", "ListFavoriteArticlesFunction"]
 
 [function_build_definitions.929bef57-24e8-4fc0-90a6-f89b747e1875]
 codeuri = "D:\\code\\travel-guide\\travel-guide-backend\\functions\\image_processing"

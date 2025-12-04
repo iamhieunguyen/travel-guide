@@ -59,6 +59,9 @@ export default function SmartGalleryPage() {
             <p className="text-white/70 text-base">
               Khám phá các chủ đề đang được quan tâm nhất • {trendingTags.length} tags
             </p>
+            <p className="text-white/50 text-sm mt-2">
+              💡 Hover vào tag để xem số lượng ảnh
+            </p>
           </div>
         </div>
 

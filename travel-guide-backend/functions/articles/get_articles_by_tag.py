@@ -58,6 +58,7 @@ def lambda_handler(event, context):
                     photo = {
                         'photo_id': item.get('photo_id'),
                         'image_url': item.get('image_url'),  # S3 key
+                        'article_id': item.get('article_id'),  # Article ID for reference
                         'tags': item.get('tags', []),
                         'autoTags': item.get('tags', []),  # Alias for frontend compatibility
                         'status': item.get('status', 'public'),
@@ -65,7 +66,7 @@ def lambda_handler(event, context):
                         'createdAt': item.get('created_at'),  # Alias for frontend
                     }
                     matching_photos.append(decimal_to_native(photo))
-                    print(f"  ✅ Found photo: {item.get('photo_id')[:30]}... with image: {item.get('image_url', 'N/A')[:50]}...")
+                    print(f"  ✅ Found photo: {item.get('photo_id')[:50]}... (article: {item.get('article_id', 'N/A')})")
             
             if 'LastEvaluatedKey' not in response:
                 break

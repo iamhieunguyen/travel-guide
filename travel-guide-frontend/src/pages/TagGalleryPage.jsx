@@ -81,7 +81,10 @@ export default function TagGalleryPage() {
                 #{tagName}
               </h1>
               <p className="text-white/70 text-base">
-                {photos.length} ảnh được gắn tag này
+                {photos.length} {photos.length === 1 ? 'ảnh' : 'ảnh'} được gắn tag này
+              </p>
+              <p className="text-white/50 text-sm mt-1">
+                Tất cả ảnh có chứa tag "{tagName}"
               </p>
             </div>
           </div>

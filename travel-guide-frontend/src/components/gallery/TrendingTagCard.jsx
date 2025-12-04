@@ -3,8 +3,14 @@ import React from 'react';
 
 /**
  * Trending Tag Card Component
- * Displays a tag with its count and cover image
- * Features: Hover effects with zoom and brightness
+ * Displays a tag with its photo count and cover image
+ * 
+ * @param {Object} tag - Tag object with tag_name, count (number of photos), and cover_image
+ * @param {Function} onClick - Callback when card is clicked
+ * 
+ * Features: 
+ * - Hover effects with zoom and brightness
+ * - Shows number of photos containing this tag on hover
  */
 export default function TrendingTagCard({ tag, onClick }) {
   const { tag_name, count, cover_image } = tag;
@@ -43,9 +49,9 @@ export default function TrendingTagCard({ tag, onClick }) {
           {tag_name}
         </h3>
 
-        {/* Count - Only show on hover or larger screens */}
+        {/* Count - Show number of photos with this tag */}
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-1">
-          <span className="text-white/90 text-xs font-medium">{count}</span>
+          <span className="text-white/90 text-xs font-medium">{count} ảnh</span>
         </div>
       </div>
     </div>

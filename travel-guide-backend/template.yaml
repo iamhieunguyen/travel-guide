@@ -620,6 +620,23 @@ Resources:
             Path: /gallery/articles
             Method: GET
 
+  BackfillGalleryTrendsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: backfill_gallery_trends.lambda_handler
+      Timeout: 300  # 5 minutes for large datasets
+      MemorySize: 1024
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
+
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################

@@ -16,10 +16,12 @@ sys.path.insert(0, '/var/task/functions')
 ses_client = boto3.client('ses')
 dynamodb = boto3.resource('dynamodb')
 cloudwatch = boto3.client('logs')
+cognito_client = boto3.client('cognito-idp')
 
 # Environment variables
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
 USER_PROFILES_TABLE = os.environ.get('USER_PROFILES_TABLE', '')
+USER_POOL_ID = os.environ.get('USER_POOL_ID', '')
 CLOUDFRONT_DOMAIN = os.environ.get('CLOUDFRONT_DOMAIN', '')
 SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'khiem120805@gmail.com')
 
@@ -33,10 +35,26 @@ class NotificationError(Exception):
 
 
 def extract_article_id_from_key(s3_key):
-    """Extract article ID from S3 key"""
+    """Extract article ID from S3 key
+    
+    Supports two formats:
+    - Old: articles/{articleId}.jpg → articleId
+    - New: articles/{articleId}_{imageId}.jpg → articleId (before first underscore)
+    """
     try:
-        filename = s3_key.split('/')[-1]
-        article_id = filename.rsplit('.', 1)[0]
+        filename = s3_key.split('/')[-1]  # Get filename
+        name_without_ext = filename.rsplit('.', 1)[0]  # Remove extension
+        
+        # Check if it's new format with underscore (articleId_imageId)
+        if '_' in name_without_ext:
+            # New format: extract articleId (before first underscore)
+            article_id = name_without_ext.split('_')[0]
+            print(f"  Extracted articleId (new format): {article_id}")
+        else:
+            # Old format: just articleId
+            article_id = name_without_ext
+            print(f"  Extracted articleId (old format): {article_id}")
+        
         return article_id
     except Exception as e:
         print(f"Failed to extract article ID: {e}")
@@ -55,18 +73,36 @@ def get_article_details(article_id):
         print(f"Failed to retrieve article {article_id}: {e}")
         return None
 
-
 def get_user_email(owner_id):
-    """Get user email from user profiles table"""
-    if not user_profiles_table or not owner_id:
+    """Get user email from AWS Cognito"""
+    if not USER_POOL_ID or not owner_id:
+        print(f"Missing USER_POOL_ID or owner_id")
         return None
     
     try:
-        response = user_profiles_table.get_item(Key={'userId': owner_id})
-        user_data = response.get('Item')
-        return user_data.get('email') if user_data else None
+        # Get user from Cognito
+        response = cognito_client.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=owner_id
+        )
+        
+        # Extract email from user attributes
+        user_attributes = response.get('UserAttributes', [])
+        for attr in user_attributes:
+            if attr['Name'] == 'email':
+                email = attr['Value']
+                print(f"✓ Found email for user {owner_id}: {email}")
+                return email
+        
+        print(f"⚠️ No email attribute found for user {owner_id}")
+        return None
+    except cognito_client.exceptions.UserNotFoundException:
+        print(f"⚠️ User {owner_id} not found in Cognito")
+        return None
     except Exception as e:
-        print(f"Failed to get user email: {e}")
+        print(f"Failed to get user email from Cognito: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

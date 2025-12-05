@@ -51,6 +51,12 @@ def lambda_handler(event, context):
             response = photos_table.scan(**scan_kwargs)
             
             for item in response.get("Items", []):
+                # NEW: Skip photos with non-approved status
+                photo_status = item.get("status", "approved")  # Default to approved for backward compatibility
+                if photo_status != "approved":
+                    print(f"  ⏭️ Skipping photo with status: {photo_status}")
+                    continue
+                
                 # Lấy tags (ưu tiên tags, fallback autoTags nếu có)
                 raw_tags = item.get("tags") or item.get("autoTags") or []
                 photo_tags = [t.lower() for t in raw_tags]

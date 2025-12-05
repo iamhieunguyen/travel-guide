@@ -352,18 +352,28 @@ export async function createArticleWithMultipleUploads({
   if (!files || files.length === 0) throw new Error("files array is required");
   
   const imageKeys = [];
+  let articleId = null;  // Track articleId across uploads
   
   for (const file of files) {
     const contentType = file.type || "application/octet-stream";
-    const { uploadUrl, key } = await getUploadUrl({ 
+    const uploadResponse = await getUploadUrl({ 
       filename: file.name || "image.png", 
-      contentType 
+      contentType,
+      articleId: articleId  // Use same articleId for all images
     });
-    await uploadToS3(uploadUrl, file, contentType);
-    imageKeys.push(key);
+    
+    // Save articleId from first upload
+    if (!articleId && uploadResponse.articleId) {
+      articleId = uploadResponse.articleId;
+      console.log(`🆔 Got articleId from backend: ${articleId}`);
+    }
+    
+    await uploadToS3(uploadResponse.uploadUrl, file, contentType);
+    imageKeys.push(uploadResponse.key);
   }
   
   return createArticle({ 
+    articleId: articleId,  // Use same articleId for article creation
     title, 
     content, 
     visibility, 

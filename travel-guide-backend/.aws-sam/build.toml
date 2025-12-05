@@ -7,7 +7,7 @@ architecture = "x86_64"
 handler = "login.lambda_handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["LoginFunction", "RegisterFunction", "ConfirmUserFunction", "GetProfileFunction", "UpdateProfileFunction", "GetAvatarUploadUrlFunction", "ChangePasswordFunction"]
+functions = ["AutoVerifySESEmailFunction", "LoginFunction", "RegisterFunction", "ConfirmUserFunction", "GetProfileFunction", "UpdateProfileFunction", "GetAvatarUploadUrlFunction", "ChangePasswordFunction"]
 
 [function_build_definitions.664efe24-189a-41b5-ae47-01cd26ffb6dc]
 codeuri = "D:\\code\\travel-guide\\travel-guide-backend\\functions\\articles"

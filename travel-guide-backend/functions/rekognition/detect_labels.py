@@ -280,8 +280,8 @@ def extract_article_id_from_key(s3_key):
         
         # Check if it's new format with underscore (articleId_imageId)
         if '_' in name_without_ext:
-            # New format: articleId_imageId → extract articleId (first part)
-            article_id = name_without_ext.rsplit('_', 1)[0]
+            # New format: articleId_imageId → extract articleId (FIRST part before first underscore)
+            article_id = name_without_ext.split('_')[0]
             print(f"  Extracted articleId (new format): {article_id}")
         else:
             # Old format: just articleId

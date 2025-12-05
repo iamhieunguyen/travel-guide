@@ -316,6 +316,16 @@ export default function PersonalPage() {
                                 <Lock size={14} />
                               )}
                             </span>
+                            {/* Status Badge */}
+                            {memory.status && memory.status !== 'approved' && (
+                              <span className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${
+                                memory.status === 'pending' 
+                                  ? 'bg-yellow-500/90 text-white' 
+                                  : 'bg-red-500/90 text-white'
+                              }`}>
+                                {memory.status === 'pending' ? '⏳ Đang xử lý' : '❌ Bị từ chối'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       )}

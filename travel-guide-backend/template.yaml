@@ -273,6 +273,8 @@ Resources:
           AttributeType: S
         - AttributeName: ownerId
           AttributeType: S
+        - AttributeName: status
+          AttributeType: S
       KeySchema:
         - AttributeName: articleId
           KeyType: HASH
@@ -288,6 +290,14 @@ Resources:
         - IndexName: gsi_owner_createdAt
           KeySchema:
             - AttributeName: ownerId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gsi_status_createdAt
+          KeySchema:
+            - AttributeName: status
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE
@@ -378,6 +388,21 @@ Resources:
   ##############################
   # AUTH (COGNITO)
   ##############################
+  AutoVerifySESEmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: auto_verify_ses_email.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:VerifyEmailIdentity
+              Resource: '*'
+
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -398,6 +423,18 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
+      LambdaConfig:
+        PostConfirmation: !GetAtt AutoVerifySESEmailFunction.Arn
+  
+  # Permission for Cognito to invoke the Lambda
+  CognitoInvokeAutoVerifyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoVerifySESEmailFunction
+      Principal: cognito-idp.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt UserPool.Arn
+
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -407,6 +444,7 @@ Resources:
       GenerateSecret: false
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
+
 
   ##############################
   # AUTH FUNCTIONS
@@ -816,6 +854,8 @@ Resources:
           Properties:
             Path: /upload-url
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   ##############################
   # FAVORITES FUNCTIONS
@@ -1064,6 +1104,7 @@ Resources:
           DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
           ADMIN_SNS_TOPIC_ARN: !Ref AdminNotificationTopic
           USER_PROFILES_TABLE: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -1091,7 +1132,13 @@ Resources:
               Action:
                 - ses:SendEmail
                 - ses:SendRawEmail
+                - ses:GetIdentityVerificationAttributes
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+              Resource: !GetAtt UserPool.Arn
       Events:
         ContentModerationSQSEvent:
           Type: SQS
@@ -1309,6 +1356,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
           USER_PROFILES_TABLE: !Ref UserProfilesTable
           CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
           SENDER_EMAIL: hieunxse180069@fpt.edu.vn  # CHANGE THIS to your verified SES email
@@ -1332,6 +1380,10 @@ Resources:
               Action:
                 - logs:GetLogEvents
               Resource: 'arn:aws:logs:*:*:*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         NotificationSQSEvent:
           Type: SQS

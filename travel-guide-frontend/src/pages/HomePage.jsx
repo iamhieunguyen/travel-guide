@@ -11,6 +11,7 @@ import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
 import { useInfiniteScroll } from '../hook/useInfiniteScroll';
 import { useNewPostsPolling } from '../hook/useNewPostsPolling';
+import { usePendingPostsPolling } from '../hook/usePendingPostsPolling';
 import NewPostsBanner from '../components/NewPostsBanner';
 
 // Component carousel để lướt qua nhiều ảnh
@@ -95,7 +96,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [nextToken, setNextToken] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [scope] = useState('public');
+  // HomePage always shows public feed (approved posts from everyone)
+  // Owner can still see their own pending/rejected posts mixed in
+  const scope = 'public';
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
   const [tagFilter, setTagFilter] = useState(''); // Tag filter from URL
@@ -137,7 +140,7 @@ export default function HomePage() {
         // Nếu không có query hoặc tag, dùng listArticles bình thường
         response = await api.listArticles({
           scope: scope,
-          limit: 3,
+          limit: 20,  // Increased to handle filtering
           nextToken: token
         });
       }
@@ -243,15 +246,23 @@ export default function HomePage() {
         console.log(`📊 Received ${response.items.length} items from API`);
         console.log('📅 Latest item createdAt:', response.items[0].createdAt);
         
-        // Count only posts with createdAt NEWER than our latest
-        // This ignores updated old posts
+        // Count only posts with createdAt NEWER than our latest AND status="approved"
+        // This ignores updated old posts and pending posts from others
         let count = 0;
         for (const post of response.items) {
-          console.log(`  🔍 Post ${post.articleId}: ${post.createdAt} vs ${latestCreatedAt}`);
+          console.log(`  🔍 Post ${post.articleId}: ${post.createdAt} vs ${latestCreatedAt}, status=${post.status}`);
           
           if (post.createdAt > latestCreatedAt) {
-            count++;
-            console.log(`    ✅ NEW (${post.createdAt} > ${latestCreatedAt})`);
+            // Only count approved posts (or owner's own posts)
+            const isOwn = user && post.ownerId === user.sub;
+            const isApproved = post.status === 'approved' || !post.status; // Backward compat
+            
+            if (isApproved || isOwn) {
+              count++;
+              console.log(`    ✅ NEW (${post.createdAt} > ${latestCreatedAt}, approved or own)`);
+            } else {
+              console.log(`    ⏭️ SKIP (pending post from other user)`);
+            }
           } else {
             console.log(`    ❌ OLD (${post.createdAt} <= ${latestCreatedAt})`);
             // Stop when we reach posts we've already seen
@@ -288,6 +299,38 @@ export default function HomePage() {
     interval: 10000, // 5 seconds (for testing - change back to 30000 for production)
     enabled: posts.length > 0 && !loading && !searchQuery, // Disable when searching
   });
+
+  // Use pending posts polling hook to auto-update status
+  usePendingPostsPolling(
+    posts,
+    (updatedPost) => {
+      console.log('📝 Post status updated:', updatedPost.articleId, updatedPost.status);
+      
+      // Update post in state
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.articleId === updatedPost.articleId 
+            ? { ...post, ...updatedPost }
+            : post
+        )
+      );
+
+      // Show success toast
+      if (window.showSuccessToast) {
+        const message = updatedPost.status === 'approved' 
+          ? '✅ Bài viết đã được duyệt!'
+          : updatedPost.status === 'rejected'
+          ? '❌ Bài viết bị từ chối'
+          : `📝 Trạng thái: ${updatedPost.status}`;
+        window.showSuccessToast(message);
+      }
+    },
+    {
+      interval: 10000,      // Poll every 10 seconds (reduced frequency to save API calls)
+      maxDuration: 200000,  // Stop after 180 seconds (3 minutes - enough for full pipeline)
+      enabled: user && !loading  // Only poll when logged in
+    }
+  );
 
   // Use infinite scroll hook
   const { sentinelRef } = useInfiniteScroll({
@@ -809,7 +852,7 @@ export default function HomePage() {
                   return (
                     <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
                       {/* User Info - Inside white container */}
-                      <div className="flex items-center mb-4">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
                             {isOwner && profile?.avatarUrl ? (
@@ -843,6 +886,35 @@ export default function HomePage() {
                             )}
                           </div>
                         </div>
+                        
+                        {/* Status Badge - Only show for owner */}
+                        {isOwner && post.status && post.status !== 'approved' && (
+                          <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
+                            post.status === 'pending' 
+                              ? 'bg-yellow-100 text-yellow-700' 
+                              : post.status === 'rejected'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {post.status === 'pending' && (
+                              <>
+                                <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Đang xử lý...
+                              </>
+                            )}
+                            {post.status === 'rejected' && (
+                              <>
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                </svg>
+                                Bị từ chối
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* 2-Column Layout: Image Left, Map Right */}

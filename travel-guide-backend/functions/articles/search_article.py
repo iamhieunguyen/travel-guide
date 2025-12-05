@@ -104,6 +104,15 @@ def lambda_handler(event, context):
         # ------------------------------
         filter_parts = []
 
+        # NEW: Filter by status for public searches (not for "mine" scope)
+        if scope != "mine" or not user_id:
+            expression_attribute_names["#status"] = "status"
+            expression_attribute_values[":approved"] = "approved"
+            # Use OR to include legacy articles without status field
+            filter_parts.append(
+                "(#status = :approved OR attribute_not_exists(#status))"
+            )
+
         # Tìm theo text: title / content / locationName (case-insensitive)
         if q:
             q_lower = q.lower()

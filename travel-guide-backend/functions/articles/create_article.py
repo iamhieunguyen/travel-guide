@@ -179,6 +179,7 @@ def lambda_handler(event, context):
             "contentLower": content.lower(),  # For case-insensitive search
             "createdAt": created_at,
             "visibility": visibility,
+            "status": "pending",  # Set to pending, will be approved after content moderation passes
             # Chuyển float sang Decimal cho DynamoDB
             "lat": Decimal(str(lat_f)),
             "lng": Decimal(str(lng_f)),

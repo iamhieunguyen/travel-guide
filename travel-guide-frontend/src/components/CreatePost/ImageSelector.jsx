@@ -11,6 +11,37 @@ import {
 import { useCreatePostModal } from "../../context/CreatePostModalContext";
 import CreatePostStyleHeader from "./CreatePostStyleHeader";
 
+const TEXT = {
+  vi: {
+    dragDrop: 'Kéo ảnh hoặc video vào đây',
+    supportedFormats: 'Hỗ trợ JPG, PNG, GIF • Tối đa 10MB',
+    selectFromComputer: 'Chọn từ máy tính',
+    next: 'Tiếp theo',
+    aspectRatio: 'Tỷ lệ',
+    original: 'Gốc',
+    square: 'Vuông',
+    portrait: 'Dọc',
+    landscape: 'Ngang',
+    back: '← Quay lại',
+    addImage: 'Thêm ảnh',
+    ratio: 'Tỉ lệ',
+  },
+  en: {
+    dragDrop: 'Drag photo or video here',
+    supportedFormats: 'Supports JPG, PNG, GIF • Max 10MB',
+    selectFromComputer: 'Select from computer',
+    next: 'Next',
+    aspectRatio: 'Ratio',
+    original: 'Original',
+    square: 'Square',
+    portrait: 'Portrait',
+    landscape: 'Landscape',
+    back: '← Back',
+    addImage: 'Add image',
+    ratio: 'Ratio',
+  },
+};
+
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
   const [images, setImages] = useState([]);
@@ -21,6 +52,12 @@ export default function ImageSelector({ onNext }) {
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
   const dropZoneRef = useRef(null);
+  const [language] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    return localStorage.getItem('appLanguage') || 'vi';
+  });
+  
+  const L = TEXT[language] || TEXT.vi;
 
   // Load ảnh từ context khi quay lại
   useEffect(() => {
@@ -160,7 +197,7 @@ export default function ImageSelector({ onNext }) {
   };
 
   const aspectRatios = [
-    { label: "Gốc", value: "original" },
+    { label: L.original, value: "original" },
     { label: "1:1", value: "1:1" },
     { label: "4:5", value: "4:5" },
     { label: "16:9", value: "16:9" },
@@ -225,15 +262,15 @@ export default function ImageSelector({ onNext }) {
                   
                   <div className="text-center space-y-3">
                     <p className="text-gray-800 text-xl font-semibold">
-                      Kéo ảnh hoặc video vào đây
+                      {L.dragDrop}
                     </p>
                     <p className="text-gray-500 text-sm">
-                      Hỗ trợ JPG, PNG, GIF • Tối đa 10MB
+                      {L.supportedFormats}
                     </p>
                   </div>
                   
                   <button className="bg-[#92ADA4] hover:bg-[#7d9a91] text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
-                    Chọn từ máy tính
+                    {L.selectFromComputer}
                   </button>
                 </div>
                 
@@ -288,7 +325,7 @@ export default function ImageSelector({ onNext }) {
                   className="bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
                 >
                   <Crop size={18} />
-                  <span className="text-sm font-medium">Tỉ lệ</span>
+                  <span className="text-sm font-medium">{L.ratio}</span>
                 </button>
 
                 {showAspectMenu && (
@@ -373,7 +410,7 @@ export default function ImageSelector({ onNext }) {
                 className="absolute top-4 right-4 bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
               >
                 <Plus size={18} />
-                <span className="text-sm font-medium">Thêm ảnh</span>
+                <span className="text-sm font-medium">{L.addImage}</span>
               </button>
               
               {/* Hidden file input for adding more images */}
@@ -394,13 +431,13 @@ export default function ImageSelector({ onNext }) {
               onClick={handleBack}
               className="px-7 py-2.5 bg-white text-gray-700 rounded-full hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold text-sm border border-gray-200 hover:scale-105"
             >
-              ← Quay lại
+              {L.back}
             </button>
             <button
               onClick={handleNext}
               className="px-10 py-2.5 bg-[#92ADA4] hover:bg-[#7d9a91] text-white rounded-full hover:shadow-2xl transition-all duration-300 hover:scale-110 font-bold text-sm shadow-xl"
             >
-              Tiếp tục →
+              {L.next} →
             </button>
           </div>
         )}

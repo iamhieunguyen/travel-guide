@@ -16,7 +16,7 @@ const TEXT = {
     privacy: 'Quyền riêng tư',
     public: 'Public',
     private: 'Private',
-    back: 'Quay lại',
+    back: '← Quay lại',
     post: 'Đăng bài',
     update: 'Cập nhật',
     posting: 'Đang đăng...',
@@ -34,7 +34,7 @@ const TEXT = {
     privacy: 'Privacy',
     public: 'Public',
     private: 'Private',
-    back: 'Back',
+    back: '← Back',
     post: 'Post',
     update: 'Update',
     posting: 'Posting...',
@@ -400,7 +400,7 @@ export default function PostDetails({
         {reorderedImages.length > 1 && (
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-2">
-               Chọn ảnh thumbnail
+               {L.selectThumbnail}
             </label>
             <div className="flex flex-wrap gap-2">
               {reorderedImages.map((src, idx) => (
@@ -436,7 +436,7 @@ export default function PostDetails({
         {/* Location Input with Map Icon */}
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">
-            Vị trí
+            {L.location}
           </label>
           <div className="relative">
             <input
@@ -447,7 +447,7 @@ export default function PostDetails({
                 setShowLocationSuggestions(true);
               }}
               onFocus={() => setShowLocationSuggestions(true)}
-              placeholder="Nhập địa chỉ..."
+              placeholder={L.locationPlaceholder}
               className="w-full p-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none"
             />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -458,7 +458,7 @@ export default function PostDetails({
               type="button"
               onClick={onAddLocation}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Mở bản đồ"
+              title={L.openMap}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -490,7 +490,7 @@ export default function PostDetails({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Đang tìm kiếm...</span>
+                    <span>{language === 'vi' ? 'Đang tìm kiếm...' : 'Searching...'}</span>
                   </div>
                 ) : locationSuggestions.length > 0 ? (
                   locationSuggestions.map((loc) => (
@@ -517,7 +517,7 @@ export default function PostDetails({
                   ))
                 ) : (
                   <div className="px-4 py-3 text-sm text-gray-500">
-                    Không tìm thấy vị trí
+                    {language === 'vi' ? 'Không tìm thấy vị trí' : 'No location found'}
                   </div>
                 )}
               </div>
@@ -528,7 +528,7 @@ export default function PostDetails({
         {/* Privacy Toggle */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-2">
-            Quyền riêng tư
+            {L.privacy}
           </label>
           <button
             onClick={() => {
@@ -563,7 +563,7 @@ export default function PostDetails({
                 ? "ml-16 text-white" 
                 : "ml-4 text-gray-900"
             }`}>
-              {privacy === "public" ? "Public" : "Private"}
+              {privacy === "public" ? L.public : L.private}
             </span>
           </button>
         </div>
@@ -574,7 +574,7 @@ export default function PostDetails({
             onClick={onBack}
             className="px-7 py-2.5 bg-white text-gray-700 rounded-full hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold text-sm border border-gray-200 hover:scale-105"
           >
-            ← Quay lại
+            {L.back}
           </button>
           <button
             onClick={handleSharePost}
@@ -591,14 +591,14 @@ export default function PostDetails({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Đang đăng...
+                {L.posting}
               </span>
             ) : cooldownTime > 0 ? (
-              `Đợi ${cooldownTime}s`
+              `${L.wait} ${cooldownTime}s`
             ) : editMode ? (
-              "Cập nhật"
+              L.update
             ) : (
-              "Đăng bài"
+              L.post
             )}
           </button>
         </div>

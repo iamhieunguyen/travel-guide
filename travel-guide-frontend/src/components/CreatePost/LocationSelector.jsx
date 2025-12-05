@@ -46,6 +46,30 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [language] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    const stored = localStorage.getItem('appLanguage');
+    return stored || 'vi';
+  });
+
+  const TEXT = {
+    vi: {
+      searchPlaceholder: 'Tìm kiếm vị trí...',
+      searching: 'Đang tìm kiếm...',
+      noResults: 'Không tìm thấy vị trí',
+      back: '← Quay lại',
+      confirm: 'Xác nhận',
+    },
+    en: {
+      searchPlaceholder: 'Search location...',
+      searching: 'Searching...',
+      noResults: 'No location found',
+      back: '← Back',
+      confirm: 'Confirm',
+    },
+  };
+
+  const L = TEXT[language] || TEXT.vi;
 
   // Update position khi initialLocation thay đổi (khi mở edit modal)
   useEffect(() => {
@@ -168,7 +192,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
               setShowLocationSuggestions(true);
             }}
             onFocus={() => setShowLocationSuggestions(true)}
-            placeholder="Tìm kiếm vị trí..."
+            placeholder={L.searchPlaceholder}
             className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none"
           />
           <svg className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -191,7 +215,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span>Đang tìm kiếm...</span>
+                  <span>{L.searching}</span>
                 </div>
               ) : locationSuggestions.length > 0 ? (
                 locationSuggestions.map((loc) => (
@@ -216,7 +240,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
                 ))
               ) : (
                 <div className="px-4 py-3 text-sm text-gray-500">
-                  Không tìm thấy vị trí
+                  {L.noResults}
                 </div>
               )}
             </div>
@@ -256,7 +280,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
           onClick={onBack}
           className="px-6 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
         >
-          ← Quay lại
+          {L.back}
         </button>
         <button
           onClick={handleNext}
@@ -267,7 +291,7 @@ export default function LocationSelector({ onBack, onNext, initialLocation, init
               : "bg-[#92ADA4] hover:bg-[#7d9a91]"
           }`}
         >
-          Xác nhận
+          {L.confirm}
         </button>
       </div>
     </div>

@@ -135,6 +135,25 @@ export default function HomePage() {
       darkMode: 'Chế độ tối',
       lightMode: 'Chế độ sáng',
       languageToggle: 'Ngôn ngữ',
+      trendingTags: 'Trending Tags',
+      filteringByTag: 'Đang lọc theo tag',
+      clearFilter: 'Xóa bộ lọc',
+      searchResultsFor: 'Kết quả tìm kiếm cho',
+      clearSearch: 'Xóa tìm kiếm',
+      searchingWithTag: 'Đang tìm bài viết với tag',
+      searching: 'Đang tìm kiếm',
+      loadingMorePosts: 'Đang tải thêm bài viết...',
+      endOfFeed: 'Bạn đã xem hết tất cả bài viết',
+      edit: 'Chỉnh sửa',
+      delete: 'Xóa',
+      hidePost: 'Ẩn bài viết',
+      deleteConfirm: 'Bạn có chắc chắn muốn xóa bài viết này?',
+      deleteSuccess: 'Xóa bài viết thành công!',
+      deleteError: 'Lỗi khi xóa bài viết',
+      unlikeSuccess: 'Đã bỏ quan tâm bài viết',
+      likeSuccess: 'Đã quan tâm bài viết',
+      apiNotFound: 'API endpoint không tồn tại. Vui lòng deploy backend.',
+      loginRequired: 'Bạn cần đăng nhập để thực hiện thao tác này',
     },
     en: {
       hello: 'Hello,',
@@ -156,6 +175,25 @@ export default function HomePage() {
       darkMode: 'Dark Mode',
       lightMode: 'Light Mode',
       languageToggle: 'Language',
+      trendingTags: 'Trending Tags',
+      filteringByTag: 'Filtering by tag',
+      clearFilter: 'Clear filter',
+      searchResultsFor: 'Search results for',
+      clearSearch: 'Clear search',
+      searchingWithTag: 'Searching posts with tag',
+      searching: 'Searching',
+      loadingMorePosts: 'Loading more posts...',
+      endOfFeed: 'You\'ve seen all posts',
+      edit: 'Edit',
+      delete: 'Delete',
+      hidePost: 'Hide post',
+      deleteConfirm: 'Are you sure you want to delete this post?',
+      deleteSuccess: 'Post deleted successfully!',
+      deleteError: 'Error deleting post',
+      unlikeSuccess: 'Post unliked',
+      likeSuccess: 'Post liked',
+      apiNotFound: 'API endpoint not found. Please deploy backend.',
+      loginRequired: 'You need to login to perform this action',
     },
   };
 
@@ -622,7 +660,7 @@ export default function HomePage() {
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                  <span className="font-medium text-base">{language === 'vi' ? 'Trending Tags' : 'Trending Tags'}</span>
+                  <span className="font-medium text-base">{L.trendingTags}</span>
                 </button>
 
                 <button 
@@ -823,7 +861,7 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium">Đang lọc theo tag</p>
+                      <p className="text-xs text-gray-500 font-medium">{L.filteringByTag}</p>
                       <p className="font-bold text-gray-900 text-base lowercase flex items-center gap-1">
                         <span className="text-[#92ADA4]">#</span>{tagFilter}
                       </p>
@@ -841,7 +879,7 @@ export default function HomePage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Xóa bộ lọc
+                    {L.clearFilter}
                   </button>
                 </div>
               )}
@@ -857,7 +895,7 @@ export default function HomePage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500 font-medium">Kết quả tìm kiếm cho</p>
+                      <p className="text-xs text-gray-500 font-medium">{L.searchResultsFor}</p>
                       <p className="font-bold text-gray-900 text-base">"{searchQuery}"</p>
                     </div>
                   </div>
@@ -873,7 +911,7 @@ export default function HomePage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Xóa tìm kiếm
+                    {L.clearSearch}
                   </button>
                 </div>
               )}

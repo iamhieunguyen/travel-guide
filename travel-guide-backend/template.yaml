@@ -1,0 +1,1554 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Backend - Full Stack (CRUD + AI)
+
+Globals:
+  Api:
+    Cors:
+      AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+      AllowOrigin: "'*'"
+    Auth:
+      Authorizers:
+        CognitoAuthorizer:
+          UserPoolArn: !GetAtt UserPool.Arn
+          IdentitySource: "method.request.header.Authorization"
+  Function:
+    Runtime: python3.11
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        # Bạn có thể đặt lại CORS_ORIGIN sau, nếu đã có domain CloudFront
+        CORS_ORIGIN: "*"
+        PYTHONPATH: /var/task/functions
+        LOG_LEVEL: INFO
+    Layers:
+      - !Ref PythonDependenciesLayer
+
+Resources:
+  ##############################
+  # LAMBDA LAYER (Shared Dependencies)
+  ##############################
+  PythonDependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: travel-guide-dependencies
+      Description: Shared Python dependencies for all Lambdas
+      ContentUri: layers/python-dependencies/
+      CompatibleRuntimes:
+        - python3.11
+    Metadata:
+      BuildMethod: python3.11
+  
+  ##############################
+  # SQS QUEUES
+  ##############################
+  
+  # Dead Letter Queue for failed image processing
+
+  ImageProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-processing-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      VisibilityTimeout: 300
+
+  # Main Queue for image processing events
+  
+  DetectLabelsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-detect-labels-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ThumbnailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-thumbnail-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ContentModerationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-content-moderation-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+  
+  ImageAnalyzerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-analyzer-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ImageValidatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-image-validator-queue'
+      VisibilityTimeout: 180  # 3 minutes (should be >= Lambda timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-notification-queue'
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  # Queue Policy to allow S3 to send messages
+  
+  DetectLabelsQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref DetectLabelsQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt DetectLabelsQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+
+  ContentModerationQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ContentModerationQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ContentModerationQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ThumbnailQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ThumbnailQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ThumbnailQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ImageAnalyzerQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageAnalyzerQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageAnalyzerQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  
+  ImageValidatorQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageValidatorQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageValidatorQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !Sub 'arn:aws:s3:::${AWS::StackName}-images-${AWS::AccountId}'
+  ##############################
+  # DATA LAYER
+  ##############################
+
+  # SNS Topic for admin notifications only (for critical moderation alerts)
+  AdminNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${AWS::StackName}-admin-notifications'
+      DisplayName: Admin Notifications for Critical Content
+
+  # SNS subscription for admin email
+  AdminNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AdminNotificationTopic
+      Endpoint: khiem120805@gmail.com  # Admin email for critical alerts
+
+  ArticleImagesBucket:
+    Type: AWS::S3::Bucket
+    DependsOn:
+      - ImageValidatorQueuePolicy
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-images-${AWS::AccountId}'
+      VersioningConfiguration:
+        Status: Enabled
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        QueueConfigurations:
+          - Event: s3:ObjectCreated:*
+            Queue: !GetAtt ImageValidatorQueue.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: articles/
+
+  ArticlesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: articleId
+          AttributeType: S
+        - AttributeName: visibility
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: ownerId
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: articleId
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: gsi_visibility_createdAt
+          KeySchema:
+            - AttributeName: visibility
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gsi_owner_createdAt
+          KeySchema:
+            - AttributeName: ownerId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gsi_status_createdAt
+          KeySchema:
+            - AttributeName: status
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  UserFavoritesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: articleId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: articleId
+          KeyType: RANGE
+
+  GalleryPhotosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: photo_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: photo_id
+          KeyType: HASH
+
+  GalleryTrendsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: tag_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tag_name
+          KeyType: HASH
+
+  UserProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+  # Location Cache Table for reverse geocoding results
+  LocationCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: geohash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Purpose
+          Value: ReverseGeocodingCache
+
+  ##############################
+  # AWS LOCATION SERVICE
+  ##############################
+  
+  # Place Index for global geocoding (using Esri provider for best global coverage)
+  TravelGuidePlaceIndex:
+    Type: AWS::Location::PlaceIndex
+    Properties:
+      IndexName: TravelGuidePlaceIndex
+      DataSource: Esri  # Best for global coverage
+      DataSourceConfiguration:
+        IntendedUse: SingleUse  # For geocoding only
+      Description: Place index for reverse geocoding with global coverage
+      PricingPlan: RequestBasedUsage
+
+  ##############################
+  # AUTH (COGNITO)
+  ##############################
+  AutoVerifySESEmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: auto_verify_ses_email.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:VerifyEmailIdentity
+              Resource: '*'
+
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: TravelGuideUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: false
+          Required: true
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      LambdaConfig:
+        PostConfirmation: !GetAtt AutoVerifySESEmailFunction.Arn
+  
+  # Permission for Cognito to invoke the Lambda
+  CognitoInvokeAutoVerifyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoVerifySESEmailFunction
+      Principal: cognito-idp.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt UserPool.Arn
+
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: web-client
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - USER_PASSWORD_AUTH
+
+
+  ##############################
+  # AUTH FUNCTIONS
+  ##############################
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: login.lambda_handler
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:InitiateAuth
+                - cognito-idp:AdminInitiateAuth
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        LoginApi:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+
+  RegisterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: register.lambda_handler
+      Environment:
+        Variables:
+          CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:SignUp
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        RegisterApi:
+          Type: Api
+          Properties:
+            Path: /auth/register
+            Method: POST
+
+  ConfirmUserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: confirm_user.lambda_handler
+      Environment:
+        Variables:
+          CLIENT_ID: !Ref UserPoolClient
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ConfirmSignUp
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        ConfirmApi:
+          Type: Api
+          Properties:
+            Path: /auth/confirm
+            Method: POST
+
+  ##############################
+  # USER PROFILE FUNCTIONS
+  ##############################
+  GetProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: get_profile.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  UpdateProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: update_profile.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserProfilesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminUpdateUserAttributes
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        UpdateProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  GetAvatarUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: get_avatar_upload_url.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetAvatarUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /profile/avatar-upload-url
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ChangePasswordFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: change_password.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:ChangePassword
+              Resource: '*'
+      Events:
+        ChangePasswordApi:
+          Type: Api
+          Properties:
+            Path: /auth/change-password
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ##############################
+  # GALLERY & TRENDING FUNCTIONS
+  ##############################
+  GetTrendingTagsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_trending_tags.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryTrendsTable
+      Events:
+        GetTrendingTagsApi:
+          Type: Api
+          Properties:
+            Path: /gallery/trending
+            Method: GET
+
+  GetArticlesByTagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_articles_by_tag.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryPhotosTable
+      Events:
+        GetArticlesByTagApi:
+          Type: Api
+          Properties:
+            Path: /gallery/articles
+            Method: GET
+
+  BackfillGalleryTrendsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: backfill_gallery_trends.lambda_handler
+      Timeout: 300  # 5 minutes for large datasets
+      MemorySize: 1024
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
+
+  ##############################
+  # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
+  ##############################
+  CreateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: create_article.lambda_handler
+      Timeout: 20
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
+      Events:
+        CreateArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  GetArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_article.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          RETURN_403_ON_PRIVATE: "false"
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: GET
+
+  ListArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: list_articles.lambda_handler
+      Timeout: 10
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+      Events:
+        ListArticlesApi:
+          Type: Api
+          Properties:
+            Path: /articles
+            Method: GET
+            Auth:
+             Authorizer: CognitoAuthorizer  
+
+  UpdateArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: update_article.lambda_handler
+      Timeout: 20
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
+      Events:
+        UpdateArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: PATCH
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  DeleteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: delete_article.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+      Events:
+        DeleteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  SearchArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: search_article.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+      Events:
+        SearchArticlesApi:
+          Type: Api
+          Properties:
+            Path: /search
+            Method: GET
+
+  GetUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_upload_url.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /upload-url
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ##############################
+  # FAVORITES FUNCTIONS
+  ##############################
+  FavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: favorite_article.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable               # Bảng bài viết
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        FavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  UnfavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: unfavorite_article.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        UnfavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: DELETE
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  ListFavoriteArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: list_favorite_articles.lambda_handler
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          FAVORITES_TABLE_NAME: !Ref UserFavoritesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserFavoritesTable
+      Events:
+        ListFavoriteArticlesApi:
+          Type: Api
+          Properties:
+            Path: /me/favorites
+            Method: GET
+            Auth:
+              Authorizer: CognitoAuthorizer
+  
+##############################
+  # IMAGE PROCESSING FUNCTIONS (SQS Triggered)
+  ##############################
+
+  ImageValidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/image_processing/
+      Handler: image_validator.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          MAX_FILE_SIZE: "10485760"      # 10MB
+          MIN_FILE_SIZE: "10240"         # 10KB
+          MAX_WIDTH: "8192"
+          MAX_HEIGHT: "8192"
+          MIN_WIDTH: "200"
+          MIN_HEIGHT: "200"
+          IMAGE_ANALYZER_QUEUE_URL: !Ref ImageAnalyzerQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ImageValidatorQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ImageAnalyzerQueue.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ImageValidatorQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ImageAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/image_processing/
+      Handler: image_analyzer.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          CONTENT_MODERATION_QUEUE_URL: !Ref ContentModerationQueue
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ImageAnalyzerQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ContentModerationQueue.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ImageAnalyzerQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ThumbnailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/image_processing/
+      Handler: thumbnail_generator.lambda_handler
+      Timeout: 90
+      MemorySize: 1024
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          NOTIFY_WORKER_QUEUE_URL: !Ref NotificationQueue
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ThumbnailQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt NotificationQueue.Arn
+      Events:
+        ThumbnailSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ThumbnailQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ##############################
+  # REKOGNITION FUNCTIONS (SQS Triggered)
+  ##############################
+
+  DetectLabelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/rekognition/
+      Handler: detect_labels.lambda_handler
+      Timeout: 90
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          CONFIG_BUCKET: !Ref ArticleImagesBucket
+          CONFIG_KEY: 'config/label_priority_config.json'
+          MIN_CONFIDENCE: "70.0"
+          MAX_LABELS: "5"
+          THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt DetectLabelsQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectLabels
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt ThumbnailQueue.Arn
+      Events:
+        DetectLabelsSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DetectLabelsQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ContentModerationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/rekognition/
+      Handler: content_moderation.lambda_handler
+      Timeout: 90
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          MODERATION_CONFIDENCE: "75.0"
+          DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
+          ADMIN_SNS_TOPIC_ARN: !Ref AdminNotificationTopic
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt ContentModerationQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - rekognition:DetectModerationLabels
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource: !GetAtt DetectLabelsQueue.Arn
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref AdminNotificationTopic
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+                - ses:GetIdentityVerificationAttributes
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        ContentModerationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt ContentModerationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ##############################
+  # CONFIG FILE UPLOADER (Custom Resource)
+  ##############################
+
+  ConfigUploaderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3UploadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArticleImagesBucket.Arn}/config/*'
+
+  ConfigUploaderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-config-uploader'
+      Runtime: python3.11
+      Role: !GetAtt ConfigUploaderRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import cfnresponse
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  key = event['ResourceProperties']['ConfigKey']
+                  
+                  # The config content
+                  config = {
+                    "label_priorities": {
+                      "main": {
+                        "score_boost": 100,
+                        "keywords": [
+                          "beach", "mountain", "waterfall", "temple", "pagoda",
+                          "river", "lake", "cave", "forest", "rice terraces",
+                          "island", "sand dunes", "ancient town", "imperial city",
+                          "bridge", "fishing village", "night market", "street food",
+                          "coffee culture", "motorbike", "floating market",
+                          "hiking", "camping", "cycling", "kayaking", "diving",
+                          "swimming", "boating", "fishing",
+                          "traditional performance", "festival", "handicraft making",
+                          "cooking local cuisine", "tea plantation",
+                          "sunrise", "sunset", "monument", "landmark",
+                          "architecture", "palace"
+                        ]
+                      },
+                      "others": {
+                        "score_boost": 0,
+                        "keywords": []
+                      }
+                    },
+                    "penalties": {
+                      "penalty_score": -50,
+                      "keywords": [
+                        "mammal", "vertebrate", "human face", "adult", "animal",
+                        "indoors", "indoor", "pet", "dog", "cat", "baby", "child",
+                        "man", "woman", "people", "accessory", "footwear",
+                        "clothing", "vehicle", "electronics"
+                      ]
+                    },
+                    "custom_boosts": {
+                      "comment": "Add your specific use cases here",
+                      "examples": []
+                    },
+                    "excluded_labels": {
+                      "comment": "Labels to completely ignore",
+                      "keywords": []
+                    },
+                    "min_confidence_overrides": {
+                      "comment": "Require higher confidence for certain labels",
+                      "rules": [
+                        {
+                          "keyword": "temple",
+                          "min_confidence": 70,
+                          "reason": "Include temples even with lower confidence"
+                        }
+                      ]
+                    }
+                  }
+                  
+                  # Upload to S3
+                  s3.put_object(
+                      Bucket=bucket,
+                      Key=key,
+                      Body=json.dumps(config, indent=2),
+                      ContentType='application/json'
+                  )
+                  
+                  print(f"✓ Uploaded config to s3://{bucket}/{key}")
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'ConfigUploaded': True})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  ConfigUploadCustomResource:
+    Type: Custom::ConfigUploader
+    Properties:
+      ServiceToken: !GetAtt ConfigUploaderFunction.Arn
+      BucketName: !Ref ArticleImagesBucket
+      ConfigKey: 'config/label_priority_config.json'
+
+  ##############################
+  # FOLDER STRUCTURE CREATOR (Custom Resource)
+  ##############################
+
+  FolderCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3FolderCreationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArticleImagesBucket.Arn}/*'
+
+  FolderCreatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-folder-creator'
+      Runtime: python3.11
+      Role: !GetAtt FolderCreatorRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  folders = event['ResourceProperties']['Folders']
+                  
+                  # Create folder structure
+                  for folder in folders:
+                      # Ensure folder ends with /
+                      if not folder.endswith('/'):
+                          folder += '/'
+                      
+                      # Create empty object to represent folder
+                      s3.put_object(
+                          Bucket=bucket,
+                          Key=folder,
+                          Body=b''
+                      )
+                      print(f"✓ Created folder: {folder}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'FoldersCreated': True})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  FolderCreationCustomResource:
+    Type: Custom::FolderCreator
+    Properties:
+      ServiceToken: !GetAtt FolderCreatorFunction.Arn
+      BucketName: !Ref ArticleImagesBucket
+      Folders:
+        - 'articles/'
+        - 'thumbnails/'
+        - 'avatars/'
+        - 'config/'
+
+  ##############################
+  # NOTIFICATION FUNCTION
+  ##############################
+
+  NotifyWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/notifications/
+      Handler: notify_worker.lambda_handler
+      Timeout: 60
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          USER_POOL_ID: !Ref UserPool
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
+          CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+          SENDER_EMAIL: hieunxse180069@fpt.edu.vn  # CHANGE THIS to your verified SES email
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ArticlesTable
+        - SQSPollerPolicy:
+            QueueName: !GetAtt NotificationQueue.QueueName
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - logs:GetLogEvents
+              Resource: 'arn:aws:logs:*:*:*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        NotificationSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt NotificationQueue.Arn
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ##############################
+  # CLOUDWATCH ALARMS
+  ##############################
+
+  DLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${AWS::StackName}-dlq-messages'
+      AlarmDescription: Alert when messages appear in DLQ
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ImageProcessingDLQ.QueueName
+
+  ##############################
+  # STATIC SITE + CLOUDFRONT (OAI)
+  ##############################
+  StaticSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CloudFrontOAI:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${AWS::StackName}"
+
+  StaticSiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref StaticSiteBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAIReadOnly
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${StaticSiteBucket.Arn}/*"
+
+  ArticleImagesBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArticleImagesBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowCloudFrontOAIReadImages
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOAI}"
+            Action: "s3:GetObject"
+            Resource: !Sub "${ArticleImagesBucket.Arn}/*"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 300
+        Origins:
+          - Id: S3OriginStatic
+            DomainName: !GetAtt StaticSiteBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+          - Id: S3OriginImages
+            DomainName: !GetAtt ArticleImagesBucket.RegionalDomainName
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOAI}"
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3OriginStatic
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachedMethods: [GET, HEAD]
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+          Compress: true
+        CacheBehaviors:
+          - PathPattern: "articles/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
+          - PathPattern: "thumbnails/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
+          - PathPattern: "avatars/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
+        PriceClass: PriceClass_100
+        HttpVersion: http2
+        IPV6Enabled: true
+
+Outputs:
+  ApiUrl:
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
+  ArticleImagesBucketName:
+    Value: !Ref ArticleImagesBucket
+  StaticSiteBucketName:
+    Value: !Ref StaticSiteBucket
+  CloudFrontDomain:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+  ImageProcessingDLQUrl:
+    Description: Dead Letter Queue URL
+    Value: !Ref ImageProcessingDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-ImageProcessingDLQUrl'
+  CloudFrontDomainForImages:
+    Value: !GetAtt CloudFrontDistribution.DomainName
+    Description: Use this domain for serving images via CloudFront for better performance
+  UserProfilesTableName:
+    Value: !Ref UserProfilesTable
+    Description: DynamoDB table for user profiles

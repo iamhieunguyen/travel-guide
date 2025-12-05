@@ -1,17 +1,14 @@
-# 1. Bỏ qua tất cả các file và thư mục trong thư mục gốc
-*
+# Bỏ qua node_modules và build
+**/node_modules/
+**/build/
+**/.aws-sam/
 
-# 2. Quy tắc ngoại lệ (Exceptions)
-# Dùng dấu '!' để nói với Git "ĐỪNG bỏ qua file/thư mục này"
+# Không bỏ qua BE & FE
+!/travel-guide-backend/**
+!/travel-guide-frontend/**
 
-# KHÔNG bỏ qua thư mục .git (là bắt buộc)
-!.git/
-
-# KHÔNG bỏ qua file .gitignore (là bắt buộc)
-!/.gitignore
-
-# KHÔNG bỏ qua thư mục travel-guide-backend (BE)
-!/travel-guide-backend/
-
-# KHÔNG bỏ qua thư mục travel-guide-frontend (FE)
-!/travel-guide-frontend/
+# Bỏ qua mọi thứ khác trong root
+/*
+!.gitignore
+!/travel-guide-backend
+!/travel-guide-frontend

@@ -11,6 +11,10 @@ Parameters:
     Type: String
     Default: "*"
     Description: CORS origin for API Gateway
+  AdminEmail:
+    Type: String
+    Default: "admin@example.com"
+    Description: Admin email for notifications (must be verified in SES)
 Conditions:
   IsProd: !Equals [!Ref Environment, prod]
 Resources:
@@ -116,6 +120,57 @@ Resources:
           KeyType: HASH
         - AttributeName: articleId
           KeyType: RANGE
+
+  GalleryPhotosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub gallery-photos-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: photo_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: photo_id
+          KeyType: HASH
+
+  GalleryTrendsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub gallery-trends-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: tag_name
+          AttributeType: S
+      KeySchema:
+        - AttributeName: tag_name
+          KeyType: HASH
+
+  UserProfilesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub user-profiles-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
+  LocationCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub location-cache-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: geohash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
   
   ##############################
   # COGNITO USER POOL
@@ -252,6 +307,35 @@ Resources:
         ViewerCertificate:
           CloudFrontDefaultCertificate: true
           MinimumProtocolVersion: TLSv1.2_2021
+
+  ##############################
+  # AWS LOCATION SERVICE
+  ##############################
+  TravelGuidePlaceIndex:
+    Type: AWS::Location::PlaceIndex
+    Properties:
+      IndexName: !Sub TravelGuidePlaceIndex-${Environment}
+      DataSource: Esri
+      DataSourceConfiguration:
+        IntendedUse: SingleUse
+      Description: Place index for reverse geocoding with global coverage
+      PricingPlan: RequestBasedUsage
+
+  ##############################
+  # SNS TOPIC FOR ADMIN NOTIFICATIONS
+  ##############################
+  AdminNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub travel-guide-${Environment}-admin-notifications
+      DisplayName: Admin Notifications for Critical Content
+
+  AdminNotificationEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Protocol: email
+      TopicArn: !Ref AdminNotificationTopic
+      Endpoint: !Ref AdminEmail
           
   ##############################
   # SQS QUEUES FOR IMAGE PROCESSING
@@ -289,6 +373,50 @@ Resources:
       QueueName: !Sub travel-guide-${Environment}-image-processing-queue
       VisibilityTimeout: 300
       MessageRetentionPeriod: 345600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ThumbnailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-thumbnail-queue
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ImageValidatorQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-image-validator-queue
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  ImageAnalyzerQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-image-analyzer-queue
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
+        maxReceiveCount: 3
+
+  NotificationQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub travel-guide-${Environment}-notification-queue
+      VisibilityTimeout: 180
+      MessageRetentionPeriod: 345600
+      ReceiveMessageWaitTimeSeconds: 20
       RedrivePolicy:
         deadLetterTargetArn: !GetAtt ImageProcessingDLQ.Arn
         maxReceiveCount: 3
@@ -349,6 +477,79 @@ Resources:
             Condition:
               ArnLike:
                 aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ThumbnailQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ThumbnailQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ThumbnailQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ImageValidatorQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageValidatorQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageValidatorQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ImageAnalyzerQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref ImageAnalyzerQueue
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt ImageAnalyzerQueue.Arn
+            Condition:
+              ArnLike:
+                aws:SourceArn: !GetAtt ArticleImagesBucket.Arn
+
+  ##############################
+  # CLOUDWATCH ALARMS
+  ##############################
+  DLQAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub travel-guide-${Environment}-dlq-messages
+      AlarmDescription: Alert when messages appear in DLQ
+      MetricName: ApproximateNumberOfMessagesVisible
+      Namespace: AWS/SQS
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt ImageProcessingDLQ.QueueName
 
 Outputs:
   # Article Service needs these outputs
@@ -422,3 +623,107 @@ Outputs:
     Value: !GetAtt ImageProcessingQueue.Arn
     Export:
       Name: !Sub "${AWS::StackName}-ImageProcessingQueueArn"
+  
+  # Thumbnail Queue
+  ThumbnailQueueUrl:
+    Value: !Ref ThumbnailQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-ThumbnailQueueUrl"
+  ThumbnailQueueArn:
+    Value: !GetAtt ThumbnailQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ThumbnailQueueArn"
+  
+  # Image Validator Queue
+  ImageValidatorQueueUrl:
+    Value: !Ref ImageValidatorQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageValidatorQueueUrl"
+  ImageValidatorQueueArn:
+    Value: !GetAtt ImageValidatorQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageValidatorQueueArn"
+  
+  # Image Analyzer Queue
+  ImageAnalyzerQueueUrl:
+    Value: !Ref ImageAnalyzerQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageAnalyzerQueueUrl"
+  ImageAnalyzerQueueArn:
+    Value: !GetAtt ImageAnalyzerQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-ImageAnalyzerQueueArn"
+  
+  # Notification Queue
+  NotificationQueueUrl:
+    Value: !Ref NotificationQueue
+    Export:
+      Name: !Sub "${AWS::StackName}-NotificationQueueUrl"
+  NotificationQueueArn:
+    Value: !GetAtt NotificationQueue.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-NotificationQueueArn"
+  NotificationQueueName:
+    Value: !GetAtt NotificationQueue.QueueName
+    Export:
+      Name: !Sub "${AWS::StackName}-NotificationQueueName"
+  
+  # Gallery Tables
+  GalleryPhotosTableName:
+    Value: !Ref GalleryPhotosTable
+    Export:
+      Name: !Sub "${AWS::StackName}-GalleryPhotosTableName"
+  GalleryPhotosTableArn:
+    Value: !GetAtt GalleryPhotosTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GalleryPhotosTableArn"
+  GalleryTrendsTableName:
+    Value: !Ref GalleryTrendsTable
+    Export:
+      Name: !Sub "${AWS::StackName}-GalleryTrendsTableName"
+  GalleryTrendsTableArn:
+    Value: !GetAtt GalleryTrendsTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GalleryTrendsTableArn"
+  
+  # User Profiles Table
+  UserProfilesTableName:
+    Value: !Ref UserProfilesTable
+    Export:
+      Name: !Sub "${AWS::StackName}-UserProfilesTableName"
+  UserProfilesTableArn:
+    Value: !GetAtt UserProfilesTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-UserProfilesTableArn"
+  
+  # Location Cache Table
+  LocationCacheTableName:
+    Value: !Ref LocationCacheTable
+    Export:
+      Name: !Sub "${AWS::StackName}-LocationCacheTableName"
+  LocationCacheTableArn:
+    Value: !GetAtt LocationCacheTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-LocationCacheTableArn"
+  
+  # AWS Location Service
+  PlaceIndexName:
+    Value: !Ref TravelGuidePlaceIndex
+    Export:
+      Name: !Sub "${AWS::StackName}-PlaceIndexName"
+  PlaceIndexArn:
+    Value: !GetAtt TravelGuidePlaceIndex.IndexArn
+    Export:
+      Name: !Sub "${AWS::StackName}-PlaceIndexArn"
+  
+  # SNS Topic
+  AdminSNSTopicArn:
+    Value: !Ref AdminNotificationTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-AdminSNSTopicArn"
+  
+  # User Favorites Table Arn (for policies)
+  UserFavoritesTableArn:
+    Value: !GetAtt UserFavoritesTable.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-UserFavoritesTableArn"

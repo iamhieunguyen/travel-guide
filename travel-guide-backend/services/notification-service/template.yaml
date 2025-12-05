@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Notification Service - Email notifications for image processing
+
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues: [staging, prod]
+    Description: Environment name
+  SenderEmail:
+    Type: String
+    Default: "noreply@travelguide.com"
+    Description: Sender email for notifications (must be verified in SES)
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub notification-service-common-${Environment}
+      Description: Shared dependencies for notification service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  ##############################
+  # LAMBDA FUNCTIONS
+  ##############################
+  NotifyWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: notify_worker.lambda_handler
+      Runtime: python3.11
+      Timeout: 60
+      MemorySize: 256
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          USER_PROFILES_TABLE: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+          CLOUDFRONT_DOMAIN: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-CloudFrontDomain'
+          SENDER_EMAIL: !Ref SenderEmail
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+        - SQSPollerPolicy:
+            QueueName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-NotificationQueueName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-NotificationQueueArn'
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+Outputs:
+  NotifyWorkerFunctionArn:
+    Value: !GetAtt NotifyWorkerFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-NotifyWorkerFunctionArn"

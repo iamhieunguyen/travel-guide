@@ -40,6 +40,141 @@ Resources:
   ##############################
   # LAMBDA FUNCTIONS
   ##############################
+  
+  ImageValidatorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: image_validator.lambda_handler
+      Runtime: python3.11
+      Timeout: 60
+      MemorySize: 512
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticlesTableName"
+          BUCKET_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+          MAX_FILE_SIZE: "10485760"
+          MIN_FILE_SIZE: "10240"
+          MAX_WIDTH: "8192"
+          MAX_HEIGHT: "8192"
+          MIN_WIDTH: "200"
+          MIN_HEIGHT: "200"
+          IMAGE_ANALYZER_QUEUE_URL:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ImageAnalyzerQueueUrl"
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticlesTableName"
+        - S3CrudPolicy:
+            BucketName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ImageValidatorQueueArn"
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ImageAnalyzerQueueArn"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ImageValidatorSQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ImageValidatorQueueArn"
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
+  ImageAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: image_analyzer.lambda_handler
+      Runtime: python3.11
+      Timeout: 60
+      MemorySize: 512
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticlesTableName"
+          BUCKET_NAME:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+          CONTENT_MODERATION_QUEUE_URL:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-ContentModerationQueueUrl"
+          ENVIRONMENT: !Ref Environment
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticlesTableName"
+        - S3ReadPolicy:
+            BucketName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ImageAnalyzerQueueArn"
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ContentModerationQueueArn"
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        ImageAnalyzerSQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ImageAnalyzerQueueArn"
+            BatchSize: 5
+            MaximumBatchingWindowInSeconds: 10
+            Enabled: true
+
   ThumbnailFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -55,13 +190,13 @@ Resources:
           BUCKET_NAME:
             Fn::ImportValue:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
-          DETECT_LABELS_QUEUE_URL:
+          NOTIFY_WORKER_QUEUE_URL:
             Fn::ImportValue:
-              Fn::Sub: "${CoreStackName}-DetectLabelsQueueUrl"
+              Fn::Sub: "${CoreStackName}-NotificationQueueUrl"
+          ENVIRONMENT: !Ref Environment
       Policies:
         - Version: "2012-10-17"
           Statement:
-            # Read/write objects in article images bucket
             - Effect: Allow
               Action:
                 - s3:GetObject
@@ -71,8 +206,6 @@ Resources:
                 - BucketName:
                     Fn::ImportValue:
                       Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
-
-            # List bucket
             - Effect: Allow
               Action: s3:ListBucket
               Resource: !Sub
@@ -80,8 +213,20 @@ Resources:
                 - BucketName:
                     Fn::ImportValue:
                       Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
-
-            # CloudWatch Logs
+            - Effect: Allow
+              Action:
+                - sqs:ReceiveMessage
+                - sqs:DeleteMessage
+                - sqs:GetQueueAttributes
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-ThumbnailQueueArn"
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-NotificationQueueArn"
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
@@ -92,112 +237,19 @@ Resources:
         ThumbnailSQSEvent:
           Type: SQS
           Properties:
-            Queue: !GetAtt ThumbnailQueue.Arn
+            Queue:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-ThumbnailQueueArn"
             BatchSize: 5
             MaximumBatchingWindowInSeconds: 10
             Enabled: true
 
-  ##############################
-  # SQS QUEUES + DLQ
-  ##############################
-  ImageValidatorQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-image-validator-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn:
-          Fn::ImportValue:
-            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
-        maxReceiveCount: 3
-
-  ImageAnalyzerQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-image-analyzer-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn:
-          Fn::ImportValue:
-            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
-        maxReceiveCount: 3
-
-  ThumbnailQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Sub "${AWS::StackName}-thumbnail-queue"
-      VisibilityTimeout: 180
-      MessageRetentionPeriod: 345600
-      ReceiveMessageWaitTimeSeconds: 20
-      RedrivePolicy:
-        deadLetterTargetArn:
-          Fn::ImportValue:
-            Fn::Sub: "${CoreStackName}-ImageProcessingDLQArn"
-        maxReceiveCount: 3
-
-  ##############################
-  # QUEUE POLICIES (ALLOW S3 TO SEND)
-  ##############################
-  ImageValidatorQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref ImageValidatorQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt ImageValidatorQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn:
-                  Fn::ImportValue:
-                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"
-
-  ImageAnalyzerQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref ImageAnalyzerQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt ImageAnalyzerQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn:
-                  Fn::ImportValue:
-                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"
-
-  ThumbnailQueuePolicy:
-    Type: AWS::SQS::QueuePolicy
-    Properties:
-      Queues:
-        - !Ref ThumbnailQueue
-      PolicyDocument:
-        Version: "2012-10-17"
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: s3.amazonaws.com
-            Action:
-              - sqs:SendMessage
-            Resource: !GetAtt ThumbnailQueue.Arn
-            Condition:
-              ArnLike:
-                aws:SourceArn:
-                  Fn::ImportValue:
-                    Fn::Sub: "${CoreStackName}-ArticleImagesBucketArn"
+Outputs:
+  MediaServiceOutputs:
+    Value: "Media Service deployed successfully"
+  ImageValidatorFunctionArn:
+    Value: !GetAtt ImageValidatorFunction.Arn
+  ImageAnalyzerFunctionArn:
+    Value: !GetAtt ImageAnalyzerFunction.Arn
+  ThumbnailFunctionArn:
+    Value: !GetAtt ThumbnailFunction.Arn

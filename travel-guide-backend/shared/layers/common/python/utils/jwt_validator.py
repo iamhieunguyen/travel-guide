@@ -8,8 +8,8 @@ _JWKS_CACHE = None
 _JWKS_LAST_REFRESH = 0
 _JWKS_CACHE_DURATION = 3600  # 1 hour
 
-def _get_user_id_from_jwt(token, user_pool_id, client_id, region):
-    """Lấy username từ JWT token với cache JWKS"""
+def _get_user_info_from_jwt(token, user_pool_id, client_id, region):
+    """Lấy user info từ JWT token với cache JWKS. Trả về dict với sub, username, email."""
     global _JWKS_CACHE, _JWKS_LAST_REFRESH
     
     try:
@@ -50,7 +50,11 @@ def _get_user_id_from_jwt(token, user_pool_id, client_id, region):
                 "verify_iss": True
             }
         )
-        return user_info.get('cognito:username') or user_info.get('username')
+        return {
+            'sub': user_info.get('sub'),
+            'username': user_info.get('cognito:username') or user_info.get('username'),
+            'email': user_info.get('email')
+        }
     except jwt.ExpiredSignatureError:
         print("Token has expired")
         return None
@@ -64,8 +68,29 @@ def _get_user_id_from_jwt(token, user_pool_id, client_id, region):
         print(f"JWT verification error: {e}")
         return None
 
+def _get_user_id_from_jwt(token, user_pool_id, client_id, region):
+    """Backward compatible - returns username only"""
+    info = _get_user_info_from_jwt(token, user_pool_id, client_id, region)
+    return info.get('username') if info else None
+
+def get_user_info_from_event(event, user_pool_id=None, client_id=None, region=None):
+    """Lấy full user info (sub, username, email) từ JWT token."""
+    headers = event.get("headers") or {}
+    
+    auth_header = headers.get("Authorization") or headers.get("authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.replace("Bearer ", "")
+        user_pool_id = user_pool_id or os.environ.get("USER_POOL_ID")
+        client_id = client_id or os.environ.get("CLIENT_ID")
+        region = region or os.environ.get("AWS_REGION", "us-east-1")
+
+        if user_pool_id and client_id and region:
+            return _get_user_info_from_jwt(token, user_pool_id, client_id, region)
+    
+    return None
+
 def get_user_id_from_event(event, user_pool_id=None, client_id=None, region=None):
-    """Hỗ trợ cả X-User-Id header và JWT token. Ưu tiên JWT."""
+    """Hỗ trợ cả X-User-Id header và JWT token. Ưu tiên JWT. Returns username."""
     headers = event.get("headers") or {}
     
     # 1. Thử Authorization header (JWT) - ƯU TIÊN HƠN
@@ -84,7 +109,6 @@ def get_user_id_from_event(event, user_pool_id=None, client_id=None, region=None
     # 2. Thử X-User-Id header - Dành cho debug/testing
     x_user_id = headers.get("X-User-Id") or headers.get("x-user-id")
     if x_user_id:
-        # Log lại để audit
         print(f"WARNING: Using X-User-Id header for user ID: {x_user_id}. This should only be used for debugging.")
         return x_user_id
 

@@ -37,6 +37,8 @@ echo "2. Auth Service (User registration, login, confirmation)"
 echo "3. Article Service (CRUD operations, search, upload URLs)"
 echo "4. Media Service (Thumbnail generation)"
 echo "5. AI Service (Image analysis, content moderation)"
+echo "6. Gallery Service (Trending tags, photo gallery)"
+echo "7. Notification Service (Email notifications)"
 echo ""
 read -p "Do you want to continue? (y/n): " confirm
 if [[ ! "$confirm" =~ [yY](es)*$ ]]; then
@@ -170,6 +172,20 @@ echo "  🚀   DEPLOYING AI SERVICE"
 echo "========================================"
 ./scripts/deploy-ai.sh $ENV $REGION $PROFILE $DEPLOY_BUCKET  
 
+# Step 6: Deploy Gallery Service
+echo ""
+echo "========================================"
+echo "  🚀   DEPLOYING GALLERY SERVICE"
+echo "========================================"
+./scripts/deploy-gallery.sh $ENV $REGION $PROFILE $DEPLOY_BUCKET  
+
+# Step 7: Deploy Notification Service
+echo ""
+echo "========================================"
+echo "  🚀   DEPLOYING NOTIFICATION SERVICE"
+echo "========================================"
+./scripts/deploy-notification.sh $ENV $REGION $PROFILE $DEPLOY_BUCKET  
+
 echo ""
 echo "========================================"
 echo "  ✅    DEPLOYMENT COMPLETED SUCCESSFULLY!"
@@ -182,6 +198,8 @@ AUTH_STACK_NAME="travel-guide-auth-service-$ENV"
 ARTICLE_STACK_NAME="travel-guide-article-service-$ENV"
 MEDIA_STACK_NAME="travel-guide-media-service-$ENV"
 AI_STACK_NAME="travel-guide-ai-service-$ENV"
+GALLERY_STACK_NAME="travel-guide-gallery-$ENV"
+NOTIFICATION_STACK_NAME="travel-guide-notification-$ENV"
 
 AUTH_API_URL=$(aws cloudformation describe-stacks \
     --stack-name $AUTH_STACK_NAME \
@@ -195,9 +213,16 @@ ARTICLE_API_URL=$(aws cloudformation describe-stacks \
     --output text \
     --region $REGION \
     --profile $PROFILE 2>/dev/null || echo "Not Found")
+GALLERY_API_URL=$(aws cloudformation describe-stacks \
+    --stack-name $GALLERY_STACK_NAME \
+    --query "Stacks[0].Outputs[?OutputKey=='GalleryApiUrl'].OutputValue" \
+    --output text \
+    --region $REGION \
+    --profile $PROFILE 2>/dev/null || echo "Not Found")
 
 echo "Auth API: $AUTH_API_URL"
 echo "Article API: $ARTICLE_API_URL"
+echo "Gallery API: $GALLERY_API_URL"
 echo ""
 echo " 🌐   CloudFront Domain:"
 echo "$CLOUDFRONT_DOMAIN"

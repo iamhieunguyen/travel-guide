@@ -1,4 +1,5 @@
 {
   "Environment": "staging",
-  "CorsOrigin": "*"
+  "CorsOrigin": "*",
+  "AdminEmail": "hieunxse180069@fpt.edu.vn"
 }

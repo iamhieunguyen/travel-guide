@@ -149,6 +149,116 @@ Resources:
             Path: /auth/login
             Method: POST
             RestApiId: !Ref AuthApi
+
+  ##############################
+  # USER PROFILE FUNCTIONS
+  ##############################
+  GetProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_profile.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+        - S3ReadPolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+      Events:
+        GetProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: GET
+            RestApiId: !Ref AuthApi
+
+  UpdateProfileFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: update_profile.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserProfilesTableName'
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminUpdateUserAttributes
+              Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/*"
+      Events:
+        UpdateProfileApi:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: PATCH
+            RestApiId: !Ref AuthApi
+
+  GetAvatarUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_avatar_upload_url.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          BUCKET_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+          USER_POOL_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolId'
+          CLIENT_ID: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserPoolClientId'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - S3WritePolicy:
+            BucketName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticleImagesBucketName'
+      Events:
+        GetAvatarUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /profile/avatar-upload-url
+            Method: POST
+            RestApiId: !Ref AuthApi
   ##############################
   # API GATEWAY
   ##############################
@@ -158,6 +268,11 @@ Resources:
       StageName: !Ref Environment
       Name: !Sub TravelGuide-AuthAPI-${Environment}
       EndpointConfiguration: REGIONAL
+      Cors:
+        AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+        AllowOrigin: "'*'"
+        MaxAge: "'7200'"
       # Cors:
       #   AllowMethods: "'POST,OPTIONS'"
       #   AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"

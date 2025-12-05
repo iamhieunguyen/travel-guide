@@ -58,15 +58,21 @@ Resources:
           BUCKET_NAME:
             Fn::ImportValue:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
-          MIN_CONFIDENCE: "75.0"
+          MIN_CONFIDENCE: "70.0"
           MAX_LABELS: "5"
-          CONTENT_MODERATION_QUEUE_URL:
+          THUMBNAIL_QUEUE_URL:
             Fn::ImportValue:
-              Fn::Sub: "${CoreStackName}-ContentModerationQueueUrl"
+              Fn::Sub: "${CoreStackName}-ThumbnailQueueUrl"
           CONFIG_BUCKET:
             Fn::ImportValue:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           CONFIG_KEY: "config/label_priority_config.json"
+          GALLERY_PHOTOS_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-GalleryPhotosTableName"
+          GALLERY_TRENDS_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-GalleryTrendsTableName"
           ENVIRONMENT: !Ref Environment
       Policies:
         - S3ReadPolicy:
@@ -77,6 +83,14 @@ Resources:
             TableName:
               Fn::ImportValue:
                 Fn::Sub: "${CoreStackName}-ArticlesTableName"
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-GalleryPhotosTableName"
+        - DynamoDBCrudPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-GalleryTrendsTableName"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -98,7 +112,7 @@ Resources:
                 - sqs:SendMessage
               Resource:
                 Fn::ImportValue:
-                  Fn::Sub: "${CoreStackName}-ContentModerationQueueArn"
+                  Fn::Sub: "${CoreStackName}-ThumbnailQueueArn"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -140,6 +154,15 @@ Resources:
             Fn::ImportValue:
               Fn::Sub: "${CoreStackName}-ArticleImagesBucketName"
           MODERATION_CONFIDENCE: "75.0"
+          DETECT_LABELS_QUEUE_URL:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-DetectLabelsQueueUrl"
+          ADMIN_SNS_TOPIC_ARN:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-AdminSNSTopicArn"
+          USER_PROFILES_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-UserProfilesTableName"
           ENVIRONMENT: !Ref Environment
       Policies:
         - S3CrudPolicy:
@@ -150,6 +173,10 @@ Resources:
             TableName:
               Fn::ImportValue:
                 Fn::Sub: "${CoreStackName}-ArticlesTableName"
+        - DynamoDBReadPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-UserProfilesTableName"
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
@@ -165,6 +192,23 @@ Resources:
             - Effect: Allow
               Action:
                 - rekognition:DetectModerationLabels
+              Resource: "*"
+            - Effect: Allow
+              Action:
+                - sqs:SendMessage
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-DetectLabelsQueueArn"
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource:
+                Fn::ImportValue:
+                  Fn::Sub: "${CoreStackName}-AdminSNSTopicArn"
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
               Resource: "*"
         - Version: "2012-10-17"
           Statement:

@@ -1,0 +1,36 @@
+/* src/App.css */
+
+/* Custom font & smooth transitions */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+}
+
+/* Optional: global focus outline for accessibility */
+:focus {
+  outline: 2px solid #4f46e5; /* indigo-600 */
+  outline-offset: 2px;
+}
+
+/* Optional: smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Optional: remove default button styles in some cases */
+button {
+  font-family: inherit;
+}
+
+/* Nếu bạn dùng bản đồ thật sau này */
+.map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}

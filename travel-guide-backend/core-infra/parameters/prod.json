@@ -1,4 +1,5 @@
 {
   "Environment": "prod",
-  "CorsOrigin": "https://your-production-domain.com"
+  "CorsOrigin": "https://your-production-domain.com",
+  "AdminEmail": "hieunxse180069@fpt.edu.vn"
 }

@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Travel Guide Gallery Service - Trending tags and photo gallery
+
+Parameters:
+  CoreStackName:
+    Type: String
+    Description: Name of the core infrastructure stack
+
+  Environment:
+    Type: String
+    Default: staging
+    AllowedValues:
+      - staging
+      - prod
+    Description: Environment name
+
+  CorsOrigin:
+    Type: String
+    Default: "*"
+    Description: CORS origin for API Gateway
+
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+
+Resources:
+  ################################
+  # SHARED LAYER
+  ################################
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub gallery-service-common-${Environment}
+      Description: Shared dependencies for gallery service
+      ContentUri: ../../shared/layers/common/
+      CompatibleRuntimes:
+        - python3.11
+      RetentionPolicy: Retain
+
+  ##############################
+  # LAMBDA FUNCTIONS
+  ##############################
+  GetTrendingTagsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_trending_tags.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 512
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          GALLERY_TRENDS_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-GalleryTrendsTableName"
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-GalleryTrendsTableName"
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        GetTrendingTagsApi:
+          Type: Api
+          Properties:
+            Path: /gallery/trending
+            Method: GET
+            RestApiId: !Ref GalleryApi
+
+  GetArticlesByTagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: get_articles_by_tag.lambda_handler
+      Runtime: python3.11
+      Timeout: 30
+      MemorySize: 512
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE:
+            Fn::ImportValue:
+              Fn::Sub: "${CoreStackName}-GalleryPhotosTableName"
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName:
+              Fn::ImportValue:
+                Fn::Sub: "${CoreStackName}-GalleryPhotosTableName"
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: "*"
+      Events:
+        GetArticlesByTagApi:
+          Type: Api
+          Properties:
+            Path: /gallery/articles
+            Method: GET
+            RestApiId: !Ref GalleryApi
+
+  ##############################
+  # API GATEWAY
+  ##############################
+  GalleryApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Name: !Sub TravelGuide-GalleryAPI-${Environment}
+      EndpointConfiguration: REGIONAL
+      Cors:
+        AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+        AllowOrigin: "'*'"
+        MaxAge: "'7200'"
+      Auth:
+        ApiKeyRequired: false
+        ResourcePolicy:
+          CustomStatements:
+            - Effect: Allow
+              Principal: "*"
+              Action: execute-api:Invoke
+              Resource: execute-api:/*
+
+Outputs:
+  GalleryApiUrl:
+    Value: !Sub "https://${GalleryApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/"
+    Export:
+      Name: !Sub "${AWS::StackName}-GalleryApiUrl"
+  GetTrendingTagsFunctionArn:
+    Value: !GetAtt GetTrendingTagsFunction.Arn
+  GetArticlesByTagFunctionArn:
+    Value: !GetAtt GetArticlesByTagFunction.Arn

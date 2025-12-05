@@ -1,0 +1,18 @@
+{
+  "QueueConfigurations": [
+    {
+      "QueueArn": "arn:aws:sqs:us-east-1:336468391794:travel-guide-staging-content-moderation-queue",
+      "Events": ["s3:ObjectCreated:*"],
+      "Filter": {
+        "Key": {
+          "FilterRules": [
+            {
+              "Name": "prefix",
+              "Value": "articles/"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

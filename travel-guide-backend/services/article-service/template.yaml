@@ -316,6 +316,108 @@ Resources:
             Path: /upload-url
             Method: POST
             RestApiId: !Ref ArticleApi
+
+  ##############################
+  # FAVORITES FUNCTIONS
+  ##############################
+  FavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: favorite_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          FAVORITES_TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+      Events:
+        FavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: POST
+            RestApiId: !Ref ArticleApi
+
+  UnfavoriteArticleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: unfavorite_article.lambda_handler
+      Runtime: python3.11
+      Timeout: 10
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          FAVORITES_TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - DynamoDBCrudPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+      Events:
+        UnfavoriteArticleApi:
+          Type: Api
+          Properties:
+            Path: /articles/{articleId}/favorite
+            Method: DELETE
+            RestApiId: !Ref ArticleApi
+
+  ListFavoriteArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/
+      Handler: list_favorite_articles.lambda_handler
+      Runtime: python3.11
+      Timeout: 15
+      MemorySize: 128
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+          FAVORITES_TABLE_NAME: !ImportValue 
+            'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+          ENVIRONMENT: !Ref Environment
+          CORS_ORIGIN: !Ref CorsOrigin
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-ArticlesTableName'
+        - DynamoDBReadPolicy:
+            TableName: !ImportValue 
+              'Fn::Sub': '${CoreStackName}-UserFavoritesTableName'
+      Events:
+        ListFavoriteArticlesApi:
+          Type: Api
+          Properties:
+            Path: /me/favorites
+            Method: GET
+            RestApiId: !Ref ArticleApi
   
   ##############################
   # API GATEWAY
@@ -326,11 +428,11 @@ Resources:
       StageName: !Ref Environment
       Name: !Sub TravelGuide-ArticleAPI-${Environment}
       EndpointConfiguration: REGIONAL
-      # Cors:
-      #   AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
-      #   AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
-      #   AllowOrigin: !Ref CorsOrigin
-      #   MaxAge: "'7200'"
+      Cors:
+        AllowMethods: "'POST,OPTIONS,GET,DELETE,PUT,PATCH'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-User-Id'"
+        AllowOrigin: "'*'"
+        MaxAge: "'7200'"
       Auth:
         ApiKeyRequired: false
         ResourcePolicy:

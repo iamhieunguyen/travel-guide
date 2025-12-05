@@ -101,7 +101,11 @@ export default function HomePage() {
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set()); // Track hidden posts
   const [tagFilter, setTagFilter] = useState(''); // Tag filter state
-  const [language, setLanguage] = useState('vi'); // Language state (default Vietnamese)
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    const stored = localStorage.getItem('appLanguage');
+    return stored || 'vi';
+  });
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
   const [themeMode, setThemeMode] = useState(() => {
@@ -119,7 +123,7 @@ export default function HomePage() {
       create: 'Tạo',
       personal: 'Trang cá nhân',
       logout: 'Đăng xuất',
-      searchPlaceholder: 'Tìm kiếm theo vị trí, caption',
+      searchPlaceholder: 'Tìm kiếm theo vị trí, mô tả',
       loadingMore: 'Đang tải...',
       loadMore: 'Tải thêm',
       noPostsTitle: 'Chưa có bài viết nào',
@@ -562,7 +566,7 @@ export default function HomePage() {
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/>
                   </svg>
-                  <span className="font-medium text-base">Trang chủ</span>
+                  <span className="font-medium text-base">{L.home}</span>
                 </button>
 
                 <button 
@@ -588,7 +592,7 @@ export default function HomePage() {
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                   </svg>
-                  <span className="font-medium text-base">Yêu thích</span>
+                  <span className="font-medium text-base">{L.favorite}</span>
                 </button>
 
                 <button 
@@ -604,7 +608,7 @@ export default function HomePage() {
                     <line x1="12" y1="8" x2="12" y2="16"/>
                     <line x1="8" y1="12" x2="16" y2="12"/>
                   </svg>
-                  <span className="font-medium text-base">Tạo</span>
+                  <span className="font-medium text-base">{L.create}</span>
                 </button>
 
                 <button 
@@ -618,7 +622,7 @@ export default function HomePage() {
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                   </svg>
-                  <span className="font-medium text-base">Trending Tags</span>
+                  <span className="font-medium text-base">{language === 'vi' ? 'Trending Tags' : 'Trending Tags'}</span>
                 </button>
 
                 <button 
@@ -642,7 +646,7 @@ export default function HomePage() {
                       </span>
                     )}
                   </div>
-                  <span className="font-medium text-base">Trang cá nhân</span>
+                  <span className="font-medium text-base">{L.personal}</span>
                 </button>
               </div>
 
@@ -657,7 +661,7 @@ export default function HomePage() {
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
                 </svg>
-                <span className="font-medium text-base">Đăng xuất</span>
+                <span className="font-medium text-base">{L.logout}</span>
               </button>
             </div>
         </aside>
@@ -687,7 +691,7 @@ export default function HomePage() {
                       <input
                         ref={searchInputRef}
                         type="text"
-                        placeholder="Tìm kiếm theo vị trí, caption"
+                        placeholder={L.searchPlaceholder}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
@@ -739,7 +743,11 @@ export default function HomePage() {
                     {/* Language toggle */}
                     <button
                       type="button"
-                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                      onClick={() => {
+                        const newLang = language === 'vi' ? 'en' : 'vi';
+                        setLanguage(newLang);
+                        localStorage.setItem('appLanguage', newLang);
+                      }}
                       className={`flex items-center gap-1 px-4 h-12 rounded-full text-xs font-medium shadow-sm transition
                                  ${isDarkMode 
                                    ? 'bg-slate-900/70 border border-gray-600 text-white hover:bg-slate-800' 
@@ -1159,52 +1167,6 @@ export default function HomePage() {
                                     <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
                                       {post.content || post.title}
                                     </p>
-                                    
-                                    {/* Tags Display - Clickable (User Tags + AI Auto Tags) */}
-                                    {((post.tags && post.tags.length > 0) || (post.autoTags && post.autoTags.length > 0)) && (
-                                      <div className="flex flex-wrap gap-1.5 mt-2">
-                                        {/* User-selected tags */}
-                                        {post.tags && post.tags.map((tagId, index) => {
-                                          const tagLabels = {
-                                            'beach': '🏖️ Biển',
-                                            'mountain': '⛰️ Núi',
-                                            'river': '🏞️ Sông',
-                                            'forest': '🌲 Rừng',
-                                            'cold': '❄️ Lạnh',
-                                            'hot': '🌡️ Nóng',
-                                            'rain': '🌧️ Mưa',
-                                            'sunny': '☀️ Nắng'
-                                          };
-                                          return (
-                                            <button
-                                              key={`user-tag-${index}`}
-                                              onClick={() => handleTagClick(tagId)}
-                                              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#92ADA4]/10 text-[#92ADA4] border border-[#92ADA4]/20 hover:bg-[#92ADA4]/20 hover:border-[#92ADA4]/40 transition-all cursor-pointer active:scale-95"
-                                              title={`Lọc theo tag: ${tagLabels[tagId] || tagId}`}
-                                            >
-                                              {tagLabels[tagId] || tagId}
-                                            </button>
-                                          );
-                                        })}
-                                        
-                                        {/* AI Auto Tags - Different color with AI icon */}
-                                        {post.autoTags && post.autoTags.map((tagId, index) => {
-                                          return (
-                                            <button
-                                              key={`auto-tag-${index}`}
-                                              onClick={() => handleTagClick(tagId)}
-                                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 hover:border-purple-300 transition-all cursor-pointer active:scale-95"
-                                              title={`AI Tag: ${tagId} (click để lọc)`}
-                                            >
-                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 22.5l-.394-1.933a2.25 2.25 0 00-1.423-1.423L12.75 18.75l1.933-.394a2.25 2.25 0 001.423-1.423l.394-1.933.394 1.933a2.25 2.25 0 001.423 1.423l1.933.394-1.933.394a2.25 2.25 0 00-1.423 1.423z"/>
-                                              </svg>
-                                              <span className="lowercase">{tagId}</span>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
                                 
@@ -1212,7 +1174,7 @@ export default function HomePage() {
                                 <div className={`flex items-center gap-1.5 pl-[52px] ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
-                                    {post.favoriteCount || post.likeCount || 0} lượt quan tâm
+                                    {post.favoriteCount || post.likeCount || 0} {L.likeCount}
                                   </span>
                                 </div>
                               </div>

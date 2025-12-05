@@ -17,7 +17,7 @@
         "island",
         "desert",
         "forbidden city",
-        "My Son Sanctuary - Vietnam",
+        "my son sanctuary - vietnam",
         "bridge",
         "road trip",
         "animal",
@@ -89,6 +89,8 @@
     "penalties": {
       "score_boost": -50,
       "keywords": [
+        "jewelry",
+        "necklace",
         "tennis",
         "ball",
         "football",

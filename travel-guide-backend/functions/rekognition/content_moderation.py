@@ -17,6 +17,7 @@ dynamodb = boto3.resource('dynamodb')
 sns_client = boto3.client('sns')
 sqs_client = boto3.client('sqs')
 ses_client = boto3.client('ses')
+cognito_client = boto3.client('cognito-idp')
 
 TABLE_NAME = os.environ.get('TABLE_NAME', '')
 BUCKET_NAME = os.environ.get('BUCKET_NAME', '')
@@ -24,6 +25,7 @@ MIN_CONFIDENCE = float(os.environ.get('MODERATION_CONFIDENCE', '75.0'))
 ADMIN_SNS_TOPIC_ARN = os.environ.get('ADMIN_SNS_TOPIC_ARN', '')
 DETECT_LABELS_QUEUE_URL = os.environ.get('DETECT_LABELS_QUEUE_URL', '')
 USER_PROFILES_TABLE = os.environ.get('USER_PROFILES_TABLE', '')
+USER_POOL_ID = os.environ.get('USER_POOL_ID', '')
 
 SEVERITY_LEVELS = {
     'Explicit Nudity': 'critical',
@@ -35,7 +37,8 @@ SEVERITY_LEVELS = {
     'Tobacco': 'low',
     'Alcohol': 'low',
     'Gambling': 'medium',
-    'Hate Symbols': 'critical'
+    'Hate Symbols': 'critical',
+    'Blood & Gore': 'critical'
 }
 
 SEVERITY_ACTIONS = {
@@ -137,44 +140,98 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
         # Get article owner ID for user notification
         if table and article_id:
             try:
+                print(f"🔍 Looking up article in DynamoDB: {article_id}")
                 article_response = table.get_item(Key={'articleId': article_id})
                 article_data = article_response.get('Item')
-                owner_id = article_data.get('ownerId') if article_data else None
+                
+                if not article_data:
+                    print(f"⚠️ Article not found in DynamoDB: {article_id}")
+                else:
+                    owner_id = article_data.get('ownerId')
+                    print(f"📋 Article owner ID: {owner_id}")
+                    
+                    # Debug: Print all article fields to see what's available
+                    print(f"📊 Article fields: {list(article_data.keys())}")
+                    
+                    if not owner_id:
+                        print(f"⚠️ Article exists but has no ownerId field!")
+                        print(f"   Article data: {json.dumps({k: str(v) for k, v in article_data.items()}, indent=2)}")
             except Exception as e:
-                print(f"Failed to get article owner: {e}")
+                print(f"❌ Failed to get article owner: {e}")
+                import traceback
+                traceback.print_exc()
         
         if action == 'delete':
             print(f"🗑️ Deleting inappropriate image: {key}")
             
+            # Try to get owner_id from S3 metadata if not found in DynamoDB
+            if not owner_id:
+                try:
+                    print(f"🔍 Trying to get owner from S3 metadata...")
+                    s3_metadata = s3_client.head_object(Bucket=bucket, Key=key)
+                    metadata = s3_metadata.get('Metadata', {})
+                    owner_id = metadata.get('owner-id') or metadata.get('ownerid') or metadata.get('user-id')
+                    if owner_id:
+                        print(f"✅ Found owner ID in S3 metadata: {owner_id}")
+                    else:
+                        print(f"⚠️ No owner ID in S3 metadata either")
+                except Exception as e:
+                    print(f"⚠️ Could not get S3 metadata: {e}")
+            
+            # Send email to user BEFORE deletion (in case we need article data)
+            email_sent = False
+            if owner_id:
+                print(f"🔍 Looking up email for user: {owner_id}")
+                user_email = get_user_email(owner_id)
+                if user_email:
+                    print(f"📧 Sending deletion notification to: {user_email}")
+                    email_sent = send_user_deletion_email(user_email, article_id, moderation_result)
+                    if email_sent:
+                        print(f"✅ User notification email sent successfully")
+                    else:
+                        print(f"❌ Failed to send user notification email")
+                else:
+                    print(f"⚠️ No email found for user: {owner_id}")
+            else:
+                print(f"⚠️ No owner ID found for article: {article_id}")
+                print(f"   Cannot send user notification without owner ID")
+            
+            # Delete the image from S3
             s3_client.delete_object(Bucket=bucket, Key=key)
+            print(f"✓ Deleted main image: {key}")
             
-            thumb_key = key.replace('articles/', 'thumbnails/').rsplit('.', 1)[0] + '_256.webp'
-            try:
-                s3_client.delete_object(Bucket=bucket, Key=thumb_key)
-            except:
-                pass
+            # Delete all thumbnail sizes (256, 512, 1024)
+            base_thumb_key = key.replace('articles/', 'thumbnails/').rsplit('.', 1)[0]
+            for size in ['256', '512', '1024']:
+                thumb_key = f"{base_thumb_key}_{size}.webp"
+                try:
+                    s3_client.delete_object(Bucket=bucket, Key=thumb_key)
+                    print(f"✓ Deleted thumbnail: {thumb_key}")
+                except Exception as e:
+                    print(f"⚠️ Could not delete thumbnail {thumb_key}: {e}")
             
+            # Update article status in DynamoDB
+            # Clear ALL image-related fields so frontend knows image is gone
             if table and article_id:
                 table.update_item(
                     Key={'articleId': article_id},
-                    UpdateExpression='SET moderationStatus = :status, imageKey = :null, moderationDetails = :details',
+                    UpdateExpression='SET moderationStatus = :status, imageKey = :null, thumbnailKey = :null, imageKeys = :empty_list, moderationDetails = :details, userNotified = :notified',
                     ExpressionAttributeValues={
                         ':status': 'rejected',
                         ':null': None,
+                        ':empty_list': [],
                         ':details': {
                             'action': action,
                             'reason': 'Critical content violation',
                             'labels': moderation_result['labels'],
-                            'timestamp': datetime.now(timezone.utc).isoformat()
-                        }
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
+                            'emailSent': email_sent
+                        },
+                        ':notified': email_sent
                     }
                 )
-            
-            # Send email to user about deletion
-            if owner_id:
-                user_email = get_user_email(owner_id)
-                if user_email:
-                    send_user_deletion_email(user_email, article_id, moderation_result)
+                print(f"✓ Updated article status to rejected")
+                print(f"✓ Cleared imageKey, thumbnailKey, and imageKeys from article")
             
             return 'deleted', owner_id
         
@@ -257,26 +314,48 @@ def handle_moderation_failure(bucket, key, article_id, moderation_result):
 
 
 def get_user_email(owner_id):
-    """Get user email from user profiles table"""
-    if not user_profiles_table or not owner_id:
+    """Get user email from AWS Cognito"""
+    if not USER_POOL_ID or not owner_id:
+        print(f"⚠️ Missing USER_POOL_ID or owner_id")
         return None
     
     try:
-        response = user_profiles_table.get_item(Key={'userId': owner_id})
-        user_data = response.get('Item')
-        return user_data.get('email') if user_data else None
+        print(f"🔍 Fetching email from Cognito for user: {owner_id}")
+        
+        # Get user from Cognito
+        response = cognito_client.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=owner_id
+        )
+        
+        # Extract email from user attributes
+        user_attributes = response.get('UserAttributes', [])
+        for attr in user_attributes:
+            if attr['Name'] == 'email':
+                email = attr['Value']
+                print(f"✅ Found email for user {owner_id}: {email}")
+                return email
+        
+        print(f"⚠️ No email attribute found for user {owner_id}")
+        return None
+    except cognito_client.exceptions.UserNotFoundException:
+        print(f"⚠️ User {owner_id} not found in Cognito")
+        return None
     except Exception as e:
-        print(f"Failed to get user email: {e}")
+        print(f"❌ Failed to get user email from Cognito: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
 def send_user_deletion_email(user_email, article_id, moderation_result):
     """Send email to user notifying them of image deletion"""
     if not user_email:
-        print("No user email provided, skipping user notification")
+        print("❌ No user email provided, skipping user notification")
         return False
     
     try:
+        print(f"📧 Preparing deletion email for: {user_email}")
         labels = moderation_result.get('labels', [])
         severity = moderation_result.get('maxSeverity', 'unknown')
         
@@ -327,6 +406,11 @@ Best regards,
 Travel Guide Team
 """
         
+        print(f"📤 Sending email via SES...")
+        print(f"   From: khiem120805@gmail.com")
+        print(f"   To: {user_email}")
+        print(f"   Subject: {subject}")
+        
         # Send via SES
         response = ses_client.send_email(
             Source='khiem120805@gmail.com',  # Must be verified in SES
@@ -337,51 +421,89 @@ Travel Guide Team
             }
         )
         
-        print(f"✉️ User deletion email sent to {user_email} - Message ID: {response['MessageId']}")
+        message_id = response.get('MessageId', 'unknown')
+        print(f"✅ User deletion email sent successfully!")
+        print(f"   Message ID: {message_id}")
+        print(f"   Recipient: {user_email}")
         return True
         
+    except ses_client.exceptions.MessageRejected as e:
+        print(f"❌ SES rejected the email: {e}")
+        print(f"   This usually means the email address is not verified in SES sandbox mode")
+        return False
+    except ses_client.exceptions.MailFromDomainNotVerifiedException as e:
+        print(f"❌ Sender email not verified: {e}")
+        return False
     except Exception as e:
-        print(f"Failed to send user email: {e}")
+        print(f"❌ Failed to send user email: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
 def send_admin_notification(article_id, key, moderation_result, owner_id=None):
     """Send notification to administrators about moderation action"""
     if not ADMIN_SNS_TOPIC_ARN:
-        print("Admin SNS topic not configured, skipping admin notification")
-        return
+        print("⚠️ Admin SNS topic not configured, skipping admin notification")
+        return False
     
     try:
         severity = moderation_result.get('maxSeverity', 'unknown')
         action = moderation_result.get('action', 'unknown')
         labels = moderation_result.get('labels', [])
         
+        # Truncate article_id for subject line (SNS subject max 100 chars)
+        short_article_id = article_id[:30] if len(article_id) > 30 else article_id
+        
         message = f"""
-Content Moderation Alert
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 CONTENT MODERATION ALERT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Article ID: {article_id}
 Owner ID: {owner_id or 'Unknown'}
 Image: {key}
-Action Taken: {action}
-Severity: {severity}
+Action Taken: {action.upper()}
+Severity: {severity.upper()}
 
-Detected Issues:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 DETECTED ISSUES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
         for label in labels:
-            message += f"\n- {label['category']} > {label['label']} ({label['confidence']}%)"
+            message += f"\n• {label['category']} > {label['label']} ({label['confidence']}%)"
         
-        message += f"\n\nTimestamp: {datetime.now(timezone.utc).isoformat()}"
+        message += f"""
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Timestamp: {datetime.now(timezone.utc).isoformat()}
+
+This is an automated alert from the Travel Guide content moderation system.
+"""
         
-        sns_client.publish(
+        # Create short subject (SNS subject max is 100 characters)
+        subject = f"[Moderation] {action.upper()} - {short_article_id}"
+        
+        print(f"📤 Sending admin notification via SNS...")
+        print(f"   Topic: {ADMIN_SNS_TOPIC_ARN}")
+        print(f"   Subject: {subject}")
+        
+        response = sns_client.publish(
             TopicArn=ADMIN_SNS_TOPIC_ARN,
-            Subject=f"[Content Moderation] {action.upper()} - Article {article_id}",
+            Subject=subject,
             Message=message
         )
         
-        print("✉️ Admin notification sent")
+        message_id = response.get('MessageId', 'unknown')
+        print(f"✅ Admin notification sent successfully!")
+        print(f"   Message ID: {message_id}")
+        return True
         
     except Exception as e:
-        print(f"Failed to send admin notification: {e}")
+        print(f"❌ Failed to send admin notification: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
 
 
 def mark_article_as_approved(article_id):
@@ -520,7 +642,12 @@ def lambda_handler(event, context):
                         if action_result in results['actions']:
                             results['actions'][action_result] += 1
                         
-                        if moderation_result['maxSeverity'] in ['critical', 'high']:
+                        # Always send admin notification for deleted/quarantined content
+                        if action_result in ['deleted', 'quarantined']:
+                            print(f"📧 Sending admin notification for {action_result} content")
+                            send_admin_notification(article_id, key, moderation_result, owner_id)
+                        elif moderation_result['maxSeverity'] in ['critical', 'high']:
+                            print(f"📧 Sending admin notification for {moderation_result['maxSeverity']} severity")
                             send_admin_notification(article_id, key, moderation_result, owner_id)
                     
                     # Forward final status to notification queue

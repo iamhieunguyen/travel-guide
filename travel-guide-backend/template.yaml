@@ -252,9 +252,8 @@ Resources:
         RestrictPublicBuckets: true
       NotificationConfiguration:
         QueueConfigurations:
-          # BYPASS ImageValidator (PIL issue) - Send directly to DetectLabels
           - Event: s3:ObjectCreated:*
-            Queue: !GetAtt DetectLabelsQueue.Arn
+            Queue: !GetAtt ImageValidatorQueue.Arn
             Filter:
               S3Key:
                 Rules:
@@ -379,6 +378,21 @@ Resources:
   ##############################
   # AUTH (COGNITO)
   ##############################
+
+  AutoVerifySESEmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: auto_verify_ses_email.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:VerifyEmailIdentity
+              Resource: '*'
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -399,6 +413,17 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
+      LambdaConfig:
+        PostConfirmation: !GetAtt AutoVerifySESEmailFunction.Arn
+  
+  # Permission for Cognito to invoke the Lambda
+  CognitoInvokeAutoVerifyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoVerifySESEmailFunction
+      Principal: cognito-idp.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt UserPool.Arn
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -412,6 +437,7 @@ Resources:
   ##############################
   # AUTH FUNCTIONS
   ##############################
+
   LoginFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -1048,6 +1074,7 @@ Resources:
           DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
           ADMIN_SNS_TOPIC_ARN: !Ref AdminNotificationTopic
           USER_PROFILES_TABLE: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -1076,6 +1103,10 @@ Resources:
                 - ses:SendEmail
                 - ses:SendRawEmail
               Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         ContentModerationSQSEvent:
           Type: SQS
@@ -1294,6 +1325,7 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           USER_PROFILES_TABLE: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
           CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
           SENDER_EMAIL: khiem120805@gmail.com  # CHANGE THIS to your verified SES email
       Policies:
@@ -1316,6 +1348,10 @@ Resources:
               Action:
                 - logs:GetLogEvents
               Resource: 'arn:aws:logs:*:*:*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         NotificationSQSEvent:
           Type: SQS

@@ -3,6 +3,45 @@ import { useState, useEffect } from "react";
 import { useCreatePostModal } from "../../../context/CreatePostModalContext";
 import { EMOJI_LIST } from "../../../assets/emojis";
 
+const TEXT = {
+  vi: {
+    caption: 'Caption',
+    captionPlaceholder: 'Viết caption của bạn...',
+    addEmoji: 'Thêm emoji',
+    emoji: 'Emoji',
+    selectThumbnail: 'Chọn ảnh thumbnail',
+    location: 'Vị trí',
+    locationPlaceholder: 'Nhập địa chỉ...',
+    openMap: 'Mở bản đồ',
+    privacy: 'Quyền riêng tư',
+    public: 'Public',
+    private: 'Private',
+    back: '← Quay lại',
+    post: 'Đăng bài',
+    update: 'Cập nhật',
+    posting: 'Đang đăng...',
+    wait: 'Đợi',
+  },
+  en: {
+    caption: 'Caption',
+    captionPlaceholder: 'Write your caption...',
+    addEmoji: 'Add emoji',
+    emoji: 'Emoji',
+    selectThumbnail: 'Select thumbnail',
+    location: 'Location',
+    locationPlaceholder: 'Enter address...',
+    openMap: 'Open map',
+    privacy: 'Privacy',
+    public: 'Public',
+    private: 'Private',
+    back: '← Back',
+    post: 'Post',
+    update: 'Update',
+    posting: 'Posting...',
+    wait: 'Wait',
+  },
+};
+
 export default function PostDetails({ 
   image = [], 
   locationData, 
@@ -15,13 +54,26 @@ export default function PostDetails({
   const { editMode, editPostData, closeModal, handleShare, caption, setCaption, privacy, setPrivacy, isPosting, cooldownTime } = useCreatePostModal();
   
   const [activeIndex, setActiveIndex] = useState(0);
+  const [thumbnailIndex, setThumbnailIndex] = useState(0);
+  const [reorderedImages, setReorderedImages] = useState(Array.isArray(image) ? image : [image]); // Track reordered images
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [language] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    return localStorage.getItem('appLanguage') || 'vi';
+  });
+  
+  const L = TEXT[language] || TEXT.vi;
   const [locationSearch, setLocationSearch] = useState(locationData?.locationName || "");
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [hasLoadedEditData, setHasLoadedEditData] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
+  
+  // Update reorderedImages when image prop changes
+  useEffect(() => {
+    setReorderedImages(Array.isArray(image) ? image : [image]);
+  }, [image]);
   
   // Danh sách tags
   const availableTags = [
@@ -111,7 +163,7 @@ export default function PostDetails({
     return () => clearTimeout(timeoutId);
   }, [locationSearch]);
 
-  const currentImage = Array.isArray(image) ? image[activeIndex] : image;
+  const currentImage = reorderedImages[activeIndex] || reorderedImages[0];
 
   // Get aspect ratio from context
   const { aspect } = useCreatePostModal();
@@ -135,9 +187,9 @@ export default function PostDetails({
         return;
       }
 
-      // Chuẩn bị dữ liệu để gửi
+      // Chuẩn bị dữ liệu để gửi - use reordered images
       const postData = {
-        image: image,
+        image: reorderedImages,
         caption: caption.trim(),
         location: {
           name: locationData.locationName,
@@ -206,11 +258,11 @@ export default function PostDetails({
         )}
 
         {/* Navigation buttons - chỉ hiện khi có nhiều ảnh */}
-        {Array.isArray(image) && image.length > 1 && (
+        {reorderedImages.length > 1 && (
           <>
             <button
               onClick={() =>
-                setActiveIndex((prev) => (prev === 0 ? image.length - 1 : prev - 1))
+                setActiveIndex((prev) => (prev === 0 ? reorderedImages.length - 1 : prev - 1))
               }
               className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
             >
@@ -220,7 +272,7 @@ export default function PostDetails({
             </button>
             <button
               onClick={() =>
-                setActiveIndex((prev) => (prev === image.length - 1 ? 0 : prev + 1))
+                setActiveIndex((prev) => (prev === reorderedImages.length - 1 ? 0 : prev + 1))
               }
               className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-3 shadow-lg z-10 transition-all hover:scale-110"
             >
@@ -231,12 +283,12 @@ export default function PostDetails({
             
             {/* Counter badge */}
             <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm">
-              {activeIndex + 1} / {image.length}
+              {activeIndex + 1} / {reorderedImages.length}
             </div>
             
             {/* Indicators dots */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-              {image.map((_, idx) => (
+              {reorderedImages.map((_, idx) => (
                 <button
                   key={idx}
                   onClick={() => setActiveIndex(idx)}
@@ -252,9 +304,9 @@ export default function PostDetails({
         )}
 
         {/* Thumbnails - hiện ở dưới cùng khi có nhiều ảnh */}
-        {Array.isArray(image) && image.length > 1 && (
+        {reorderedImages.length > 1 && (
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-full">
-            {image.map((src, idx) => (
+            {reorderedImages.map((src, idx) => (
               <button
                 key={idx}
                 onClick={() => setActiveIndex(idx)}
@@ -278,74 +330,113 @@ export default function PostDetails({
       {/* --- Caption + Map --- */}
       <div className="md:w-1/2 w-full flex flex-col space-y-5">
         {/* Caption */}
-        <div className="relative">
+        <div>
           <label className="block text-sm font-medium text-gray-600 mb-1">
-            Caption
+            {L.caption}
           </label>
-          <textarea
-            value={caption}
-            onChange={(e) => {
-              const newValue = e.target.value;
-              setCaption(newValue);
-            }}
-            placeholder="Viết caption của bạn..."
-            className="w-full h-32 p-3 pb-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none resize-none"
-          />
-          <button
-            type="button"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            className="absolute bottom-2 left-2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
-            title="Thêm emoji"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          
-          {showEmojiPicker && (
-            <>
-              <div 
-                className="fixed inset-0 z-[9998]" 
-                onClick={() => setShowEmojiPicker(false)}
-              />
-              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 bg-white rounded-xl shadow-2xl z-[9999] w-64 max-h-80 overflow-hidden border border-gray-200">
-                <div className="px-2 py-1.5 border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-800">Emoji</span>
-                  <button
-                    onClick={() => setShowEmojiPicker(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-2 overflow-y-auto max-h-72">
-                  <div className="grid grid-cols-8 gap-1">
-                    {EMOJI_LIST.map((emoji, index) => (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => {
-                          setCaption(caption + emoji);
-                          setShowEmojiPicker(false);
-                        }}
-                        className="text-2xl hover:bg-gray-100 rounded-lg p-1.5 transition-colors duration-150"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+          <div className="relative">
+            <textarea
+              value={caption}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setCaption(newValue);
+              }}
+              placeholder={L.captionPlaceholder}
+              className="w-full h-32 p-3 pb-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none resize-none"
+            />
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="absolute bottom-2 left-2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+              title={L.addEmoji}
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            
+            {showEmojiPicker && (
+              <>
+                <div 
+                  className="fixed inset-0 z-[9998]" 
+                  onClick={() => setShowEmojiPicker(false)}
+                />
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/4 bg-white rounded-xl shadow-2xl z-[9999] w-64 max-h-80 overflow-hidden border border-gray-200">
+                  <div className="px-2 py-1.5 border-b border-gray-200 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-800">Emoji</span>
+                    <button
+                      onClick={() => setShowEmojiPicker(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="p-2 overflow-y-auto max-h-72">
+                    <div className="grid grid-cols-8 gap-1">
+                      {EMOJI_LIST.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setCaption(caption + emoji);
+                            setShowEmojiPicker(false);
+                          }}
+                          className="text-2xl hover:bg-gray-100 rounded-lg p-1.5 transition-colors duration-150"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
+        
+        {/* Thumbnail Selector - Only show if multiple images */}
+        {reorderedImages.length > 1 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+               {L.selectThumbnail}
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {reorderedImages.map((src, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    // Reorder array: move selected image to first position
+                    const newOrder = [...reorderedImages];
+                    const selectedImage = newOrder.splice(idx, 1)[0];
+                    newOrder.unshift(selectedImage);
+                    setReorderedImages(newOrder);
+                    setThumbnailIndex(0); // Thumbnail is now at index 0
+                    setActiveIndex(0); // Show the first image
+                  }}
+                  className={`relative rounded-lg overflow-hidden transition-all duration-200 ${
+                    idx === thumbnailIndex
+                      ? "ring-4 ring-gray-400 shadow-lg scale-105"
+                      : "ring-2 ring-gray-200 hover:ring-gray-400 hover:scale-105"
+                  }`}
+                >
+                  <img
+                    src={src}
+                    alt={`Thumbnail ${idx + 1}`}
+                    className="w-20 h-20 object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Location Input with Map Icon */}
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">
-            Vị trí
+            {L.location}
           </label>
           <div className="relative">
             <input
@@ -356,7 +447,7 @@ export default function PostDetails({
                 setShowLocationSuggestions(true);
               }}
               onFocus={() => setShowLocationSuggestions(true)}
-              placeholder="Nhập địa chỉ..."
+              placeholder={L.locationPlaceholder}
               className="w-full p-3 pl-10 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-400 focus:outline-none"
             />
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -367,7 +458,7 @@ export default function PostDetails({
               type="button"
               onClick={onAddLocation}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Mở bản đồ"
+              title={L.openMap}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -385,29 +476,6 @@ export default function PostDetails({
               </span>
             </div>
           )}
-          
-          {/* Tags Selection */}
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-gray-500 mb-2">
-              Đặc điểm địa điểm
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {availableTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                    selectedTags.includes(tag.id)
-                      ? 'bg-[#92ADA4] text-white shadow-md'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {tag.label}
-                </button>
-              ))}
-            </div>
-          </div>
 
           {showLocationSuggestions && locationSearch && (
             <>
@@ -422,7 +490,7 @@ export default function PostDetails({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span>Đang tìm kiếm...</span>
+                    <span>{language === 'vi' ? 'Đang tìm kiếm...' : 'Searching...'}</span>
                   </div>
                 ) : locationSuggestions.length > 0 ? (
                   locationSuggestions.map((loc) => (
@@ -449,7 +517,7 @@ export default function PostDetails({
                   ))
                 ) : (
                   <div className="px-4 py-3 text-sm text-gray-500">
-                    Không tìm thấy vị trí
+                    {language === 'vi' ? 'Không tìm thấy vị trí' : 'No location found'}
                   </div>
                 )}
               </div>
@@ -460,7 +528,7 @@ export default function PostDetails({
         {/* Privacy Toggle */}
         <div>
           <label className="block text-sm font-medium text-gray-600 mb-2">
-            Quyền riêng tư
+            {L.privacy}
           </label>
           <button
             onClick={() => {
@@ -495,7 +563,7 @@ export default function PostDetails({
                 ? "ml-16 text-white" 
                 : "ml-4 text-gray-900"
             }`}>
-              {privacy === "public" ? "Public" : "Private"}
+              {privacy === "public" ? L.public : L.private}
             </span>
           </button>
         </div>
@@ -506,7 +574,7 @@ export default function PostDetails({
             onClick={onBack}
             className="px-7 py-2.5 bg-white text-gray-700 rounded-full hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold text-sm border border-gray-200 hover:scale-105"
           >
-            ← Quay lại
+            {L.back}
           </button>
           <button
             onClick={handleSharePost}
@@ -523,14 +591,14 @@ export default function PostDetails({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                Đang đăng...
+                {L.posting}
               </span>
             ) : cooldownTime > 0 ? (
-              `Đợi ${cooldownTime}s`
+              `${L.wait} ${cooldownTime}s`
             ) : editMode ? (
-              "Cập nhật"
+              L.update
             ) : (
-              "Đăng bài"
+              L.post
             )}
           </button>
         </div>

@@ -112,12 +112,19 @@ export function CreatePostModalProvider({ children }) {
     setStep(2); // Skip to PostDetails step
     setEditMode(true);
     setEditPostData(post);
-    // Set image from post
-    if (post.imageKey) {
+    // Set images from post - support both single and multiple images
+    if (post.imageKeys && post.imageKeys.length > 0) {
+      // Multiple images
+      const imageUrls = post.imageKeys.map(key => 
+        key.startsWith('http') ? key : `https://${process.env.REACT_APP_CF_DOMAIN}/${key}`
+      );
+      setImage(imageUrls);
+    } else if (post.imageKey) {
+      // Single image (backward compatibility)
       const imageUrl = post.imageKey.startsWith('http') 
         ? post.imageKey 
         : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`;
-      setImage(imageUrl);
+      setImage([imageUrl]); // Wrap in array for consistency
     }
   }, [getIdToken]);
 
@@ -192,6 +199,20 @@ export function CreatePostModalProvider({ children }) {
           lng: postData.location.lng,
           locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
         };
+        
+        // If images are provided (reordered), extract the keys and send them
+        if (postData.image && Array.isArray(postData.image) && postData.image.length > 0) {
+          // Extract image keys from URLs (remove CloudFront domain)
+          const imageKeys = postData.image.map(url => {
+            if (url.includes(process.env.REACT_APP_CF_DOMAIN)) {
+              // Extract key from CloudFront URL
+              return url.split(`${process.env.REACT_APP_CF_DOMAIN}/`)[1];
+            }
+            return url; // If already a key, use as is
+          });
+          updateData.imageKeys = imageKeys;
+          console.log('📸 Updating image order:', imageKeys);
+        }
         
         const result = await api.updateArticle(editPostData.articleId, updateData);
         console.log('✅ Update success:', result);

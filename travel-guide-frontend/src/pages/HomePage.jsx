@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
 import galleryApi from '../services/galleryApi';
-import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Eye, Moon, Sun, Globe } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
@@ -98,10 +98,70 @@ export default function HomePage() {
   const [scope] = useState('public');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [searchQuery, setSearchQuery] = useState(''); // Khởi tạo với string rỗng thay vì undefined
-  const [tagFilter, setTagFilter] = useState(''); // Tag filter from URL
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
+  const [hiddenPostIds, setHiddenPostIds] = useState(new Set()); // Track hidden posts
+  const [tagFilter, setTagFilter] = useState(''); // Tag filter state
+  const [language, setLanguage] = useState('vi'); // Language state (default Vietnamese)
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof window === 'undefined') return 'dark';
+    const stored = localStorage.getItem('homeThemeMode');
+    return stored === 'light' ? 'light' : 'dark';
+  });
+
+  const TEXT = {
+    vi: {
+      hello: 'Hello,',
+      home: 'Trang chủ',
+      search: 'Tìm kiếm',
+      favorite: 'Yêu thích',
+      create: 'Tạo',
+      personal: 'Trang cá nhân',
+      logout: 'Đăng xuất',
+      searchPlaceholder: 'Tìm kiếm theo vị trí, caption',
+      loadingMore: 'Đang tải...',
+      loadMore: 'Tải thêm',
+      noPostsTitle: 'Chưa có bài viết nào',
+      noPostsDesc: 'Hãy tạo bài viết đầu tiên của bạn!',
+      createFirstPost: 'Tạo bài viết mới',
+      likeCount: 'lượt quan tâm',
+      like: 'Quan tâm bài đăng',
+      liked: 'Đã quan tâm',
+      darkMode: 'Chế độ tối',
+      lightMode: 'Chế độ sáng',
+      languageToggle: 'Ngôn ngữ',
+    },
+    en: {
+      hello: 'Hello,',
+      home: 'Home',
+      search: 'Search',
+      favorite: 'Favorites',
+      create: 'Create',
+      personal: 'Profile',
+      logout: 'Logout',
+      searchPlaceholder: 'Search by location, caption',
+      loadingMore: 'Loading...',
+      loadMore: 'Load more',
+      noPostsTitle: 'No posts yet',
+      noPostsDesc: 'Create your first post!',
+      createFirstPost: 'Create new post',
+      likeCount: 'likes',
+      like: 'Like post',
+      liked: 'Liked',
+      darkMode: 'Dark Mode',
+      lightMode: 'Light Mode',
+      languageToggle: 'Language',
+    },
+  };
+
+  const L = TEXT[language] || TEXT.vi;
+
+  const isDarkMode = themeMode === 'dark';
+
+  // Classes cho chế độ sáng / tối
+  const pageBgClass = isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]';
+  const mainCardBgClass = isDarkMode ? 'bg-gradient-to-br from-[#022F56]/60 via-[#033A6A]/55 via-[#04457E]/50 to-[#488DB4]/45 backdrop-blur-lg' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg'; // nền khung lớn (nền phía trong)
   
   // New posts detection state - store the latest createdAt timestamp
   const [latestCreatedAt, setLatestCreatedAt] = useState(null);
@@ -444,6 +504,13 @@ export default function HomePage() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
+        if (language === 'en') {
+      if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      if (diffMinutes > 0) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+      return 'Just now';
+    }
+
     if (diffDays > 0) return `${diffDays} ngày trước`;
     if (diffHours > 0) return `${diffHours} giờ trước`;
     if (diffMinutes > 0) return `${diffMinutes} phút trước`;
@@ -462,18 +529,18 @@ export default function HomePage() {
   }, [loadPosts]);
 
   return (
-    <div className="min-h-screen bg-[#2d2d2d]">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]'}`}>
       {/* Christmas Effects Overlay */}
       <ChristmasEffects />
       
       <div className="flex p-3 h-screen overflow-hidden">
         {/* Left Sidebar - Icon only with hover expand - Fixed to left edge */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="fixed left-3 top-24 bottom-6 w-64 px-4 flex flex-col">
+          <div className="fixed left-3 top-24 bottom-6 w-64 px-4 flex flex-col rounded-3xl">
               {/* Logo/Title */}
               <div className="mb-6 px-3">
-                <h1 className="text-2xl font-bold text-white">
-                  TRAVEL <span className="text-[#92ADA4]">GUIDE</span>
+                <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-[#F5E6D3]' : 'text-white'}`}>
+                  TRAVEL <span className={isDarkMode ? 'text-[#F5E6D3]/90' : 'text-white/90'}>JOURNAL</span>
                 </h1>
               </div>
 
@@ -486,7 +553,11 @@ export default function HomePage() {
                     window.history.replaceState({}, '', '/home');
                     loadPosts(null, '', '');
                   }}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                 className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/>
@@ -496,16 +567,24 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => searchInputRef.current?.focus()}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="M21 21l-4.35-4.35"/>
                   </svg>
-                  <span className="font-medium text-base">Tìm kiếm</span>
+                  <span className="font-medium text-base">{L.search}</span>
                 </button>
 
-                <button className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group">
+                <button className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                                   transition-all duration-150 ease-out
+                                   ${isDarkMode 
+                                      ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                      : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}>
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                   </svg>
@@ -514,7 +593,11 @@ export default function HomePage() {
 
                 <button 
                   onClick={openModal}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -526,7 +609,11 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => navigate('/gallery')}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -536,7 +623,11 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => navigate('/personal')}
-                  className="w-full flex items-center space-x-4 p-3 text-white hover:bg-gray-700 rounded-xl transition group"
+                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
+                             transition-all duration-150 ease-out
+                             ${isDarkMode 
+                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
+                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
                 >
                   <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
                     {profile?.avatarUrl ? (
@@ -561,7 +652,7 @@ export default function HomePage() {
               {/* Logout Button - At Bottom */}
               <button 
                 onClick={logout}
-                className="w-full flex items-center space-x-4 p-3 text-white hover:bg-red-600 rounded-xl transition group border-t border-gray-700 mt-4 pt-4"
+                className="w-full flex items-center space-x-4 p-3 rounded-xl border-t border-white/30 mt-4 pt-4 transition-all duration-200 ease-out hover:bg-gradient-to-r hover:from-red-600 hover:to-red-400 hover:text-white hover:shadow-lg text-white"
               >
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
@@ -573,14 +664,21 @@ export default function HomePage() {
 
         {/* Main Content Area with cream background */}
         <div className="flex-1">
-          <div className="bg-[#faf8f3] rounded-[32px] h-full shadow-2xl overflow-hidden flex flex-col">
+          <div className={`${isDarkMode ? 'bg-gradient-to-br from-[#022F56]/60 via-[#033A6A]/55 via-[#04457E]/50 to-[#488DB4]/45 backdrop-blur-lg' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg'} rounded-[32px] h-full shadow-2xl overflow-hidden flex flex-col`}>
             {/* Header inside cream container - Fixed */}
             <div className="px-8 py-6 border-b border-gray-200/50">
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
                 <div className="flex items-center">
                   {/* Greeting */}
-                  <h2 className="text-3xl font-bold text-gray-900 whitespace-nowrap mr-8">
-                    Hello, <span className="text-[#92ADA4]">{user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}</span>
+                  <h2 className={`text-3xl font-bold whitespace-nowrap mr-8 ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}>
+                    {L.hello}{' '}
+                    <span
+                      style={{
+                        color: isDarkMode ? '#F5E6D3' : '#0d9488',
+                      }}
+                    >
+                      {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
+                    </span>
                   </h2>
 
                   {/* Search Bar - Same row as greeting */}
@@ -593,7 +691,10 @@ export default function HomePage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
-                        className="w-full px-5 py-3 pr-14 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                        className={`w-full px-5 py-3 pr-14 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base
+                                   ${isDarkMode 
+                                      ? 'bg-black text-white border border-gray-700 placeholder:text-gray-400' 
+                                      : 'bg-white text-gray-900 border border-gray-300 placeholder:text-gray-400'}`}
                       />
                       <button 
                         onClick={handleSearch}
@@ -610,13 +711,61 @@ export default function HomePage() {
                 
                 {/* User Info */}
                 <div className="flex items-center justify-end space-x-4">
+                  {/* Theme + Language Toggles */}
+                  <div className="hidden md:flex items-center space-x-3 mr-2">
+                    {/* Theme toggle */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = themeMode === 'dark' ? 'light' : 'dark';
+                        setThemeMode(next);
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('homeThemeMode', next);
+                        }
+                      }}
+                      className={`flex items-center justify-center h-12 w-12 rounded-full shadow-sm transition
+                                 ${isDarkMode 
+                                   ? 'bg-slate-900 border border-gray-600 text-white hover:bg-slate-800' 
+                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                      title={isDarkMode ? L.darkMode : L.lightMode}
+                    >
+                      {isDarkMode ? (
+                        <Moon className="w-4 h-4 text-slate-100" />
+                      ) : (
+                        <Sun className="w-4 h-4 text-amber-400" />
+                      )}
+                    </button>
+
+                    {/* Language toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
+                      className={`flex items-center gap-1 px-4 h-12 rounded-full text-xs font-medium shadow-sm transition
+                                 ${isDarkMode 
+                                   ? 'bg-slate-900/70 border border-gray-600 text-white hover:bg-slate-800' 
+                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      <Globe className="w-4 h-4" />
+                      <span className="uppercase">{language === 'vi' ? 'VI' : 'EN'}</span>
+                    </button>
+                  </div>
                   {/* Notification Icon */}
-                  <button className="relative p-2 hover:bg-gray-100 rounded-full transition">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <button
+                    className={`relative p-2 rounded-full transition-all duration-150 ease-out
+                               ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+                  >
+                    <svg
+                      className={`w-6 h-6 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
                       <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                     </svg>
                     {false && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
                   </button>
+
 
                   {/* User Avatar and Name */}
                   <button 
@@ -636,11 +785,11 @@ export default function HomePage() {
                     </span>
                   )}
                 </div>
-                    <div className="text-left">
-                      <p className="font-semibold text-gray-900 text-sm">
+                                    <div className="text-left">
+                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}>
                         {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className={`text-xs ${isDarkMode ? 'text-[#F5E6D3]/70' : 'text-gray-500'}`}>
                         @{user?.displayName || user?.username || user?.email?.split('@')[0] || 'user'}
                       </p>
                     </div>
@@ -735,7 +884,7 @@ export default function HomePage() {
               <div className="space-y-8">
             {loading && posts.length === 0 && !tagFilter && !searchQuery ? (
               [...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-3xl shadow-sm p-5 animate-pulse">
+                <div key={i} className={`${isDarkMode ? 'bg-white/10 backdrop-blur-lg border border-white/10' : 'bg-white/60 backdrop-blur-md border border-white/40'} rounded-3xl shadow-sm p-5 animate-pulse`}>
                   <div className="flex items-center space-x-3 mb-4">
                     <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
                     <div className="flex-1">
@@ -749,20 +898,22 @@ export default function HomePage() {
                 </div>
               ))
             ) : posts.length === 0 ? (
-              <div className="bg-white rounded-3xl shadow-sm p-12 text-center">
+              <div className={`${isDarkMode ? 'bg-white/10 backdrop-blur-lg border border-white/10' : 'bg-white/60 backdrop-blur-md border border-white/40'} rounded-3xl shadow-sm p-12 text-center`}>
                 <div className="text-6xl mb-4">📸</div>
-                <h3 className="text-xl font-bold text-gray-800 mb-2">Chưa có bài viết nào</h3>
-                <p className="text-gray-600 mb-6">Hãy tạo bài viết đầu tiên của bạn!</p>
+                <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{L.noPostsTitle}</h3>
+                <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-6`}>{L.noPostsDesc}</p>
                 <button
                   onClick={openModal}
                   className="text-white px-6 py-3 rounded-full hover:shadow-lg transition font-medium bg-[#92ADA4] hover:bg-[#7d9a91]"
                 >
-                  Tạo bài viết mới
+                  {L.createFirstPost}
                 </button>
               </div>
             ) : (
               <>
-                {posts.map((post) => {
+                {posts
+                  .filter((post) => !hiddenPostIds.has(post.articleId))
+                  .map((post) => {
                   const isOwner = user && (
                     post.ownerId === user.sub || 
                     post.ownerId === user.username ||
@@ -774,7 +925,7 @@ export default function HomePage() {
                   const authorInitial = authorDisplayName?.charAt(0)?.toUpperCase() || 'U';
                   
                   return (
-                    <div key={post.articleId} className="bg-white rounded-[32px] shadow-lg overflow-hidden p-8">
+                    <div key={post.articleId} className={`${isDarkMode ? 'bg-[#02182E]/80 backdrop-blur-lg border border-white/15' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg border border-white/15'} rounded-[32px] shadow-lg overflow-hidden p-8`}>
                       {/* User Info - Inside white container */}
                       <div className="flex items-center mb-4">
                         <div className="flex items-center space-x-3">
@@ -792,11 +943,11 @@ export default function HomePage() {
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-gray-800 text-base">
+                            <p className={`font-bold text-base ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}>
                               {authorDisplayName}
                             </p>
                             {(post.location?.name || post.location || post.locationName) && (
-                              <div className="flex items-center text-sm group relative text-gray-500">
+                              <div className={`flex items-center text-sm group relative ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                                 <span className="line-clamp-1 font-normal cursor-pointer">
                                   {post.location?.name || post.location || post.locationName}
@@ -838,19 +989,27 @@ export default function HomePage() {
                         {post.lat && post.lng && (
                           <div className="flex flex-col space-y-3">
                             {/* Time posted */}
-                            <div className="flex items-center text-sm text-gray-500 group relative cursor-pointer">
+                            <div className={`flex items-center text-sm group relative cursor-pointer ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                               <Clock className="w-4 h-4 mr-2" />
                               <span>{getTimeAgo(post.createdAt)}</span>
                               {/* Tooltip with full date/time */}
                               <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
                                 <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
-                                Đăng vào {new Date(post.createdAt).toLocaleString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  day: 'numeric',
-                                  month: 'long',
-                                  year: 'numeric'
-                                })}
+                                {language === 'en'
+                                  ? `Posted at ${new Date(post.createdAt).toLocaleString('en-US', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}`
+                                  : `Đăng vào ${new Date(post.createdAt).toLocaleString('vi-VN', {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                      day: 'numeric',
+                                      month: 'long',
+                                      year: 'numeric',
+                                    })}`}
                               </div>
                             </div>
                             
@@ -877,42 +1036,36 @@ export default function HomePage() {
                               {/* Main Action Button - Quan tâm bài đăng */}
                               <button 
                                 onClick={() => handleLike(post.articleId)}
-                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-colors group ${
-                                  likedPosts.has(post.articleId)
-                                    ? 'bg-[#92ADA4] hover:bg-[#7d9a91]'
-                                    : 'bg-[#f5f5f5] hover:bg-[#92ADA4]'
+                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-all ${
+                                  isDarkMode 
+                                    ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
+                                    : likedPosts.has(post.articleId)
+                                      ? 'bg-[#92ADA4] hover:bg-[#7d9a91] text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
+                                      : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
                                 }`}
                               >
                                 <Heart 
-                                  className={`w-5 h-5 transition-colors ${
-                                    likedPosts.has(post.articleId)
-                                      ? 'text-white fill-white'
-                                      : 'text-gray-700 group-hover:text-white'
-                                  }`}
+                                  className={`w-5 h-5 ${likedPosts.has(post.articleId) && !isDarkMode ? 'fill-white' : ''}`}
                                 />
-                                <span className={`font-medium text-sm transition-colors ${
-                                  likedPosts.has(post.articleId)
-                                    ? 'text-white'
-                                    : 'text-gray-700 group-hover:text-white'
-                                }`}>
-                                  {likedPosts.has(post.articleId) ? 'Đã quan tâm' : 'Quan tâm bài đăng'}
+                                <span className="font-medium text-sm">
+                                  {likedPosts.has(post.articleId) ? L.liked : L.like}
                                 </span>
                               </button>
 
                               {/* Share Button */}
                               <button 
-                                className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                                className={`p-3 rounded-2xl transition-all ${isDarkMode ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]' : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'}`}
                               >
-                                <Share2 className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
+                                <Share2 className="w-5 h-5" />
                               </button>
 
                               {/* More Button - Show for all posts */}
                               <div className="relative">
                                 <button 
                                   onClick={() => toggleMenu(post.articleId)}
-                                  className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                                  className={`p-3 rounded-2xl transition-all ${isDarkMode ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]' : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'}`}
                                 >
-                                  <svg className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <circle cx="12" cy="5" r="2"/>
                                     <circle cx="12" cy="12" r="2"/>
                                     <circle cx="12" cy="19" r="2"/>
@@ -955,6 +1108,7 @@ export default function HomePage() {
                                           <button
                                             onClick={() => {
                                               setOpenMenuId(null);
+                                              setHiddenPostIds((prev) => new Set([...prev, post.articleId]));
                                               console.log('Hide post:', post.articleId);
                                               // TODO: Implement hide post functionality
                                             }}
@@ -995,14 +1149,14 @@ export default function HomePage() {
                                   {/* Content */}
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <span className="font-semibold text-gray-900 text-sm">
+                                      <span className={`font-semibold text-sm ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}>
                                         {authorDisplayName}
                                       </span>
-                                      <span className="text-gray-400 text-xs">
+                                      <span className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-gray-400'}`}>
                                         {getTimeAgo(post.createdAt)}
                                       </span>
                                     </div>
-                                    <p className="text-gray-700 text-sm leading-relaxed">
+                                    <p className={`text-sm leading-relaxed ${isDarkMode ? 'text-white' : 'text-gray-700'}`}>
                                       {post.content || post.title}
                                     </p>
                                     
@@ -1055,7 +1209,7 @@ export default function HomePage() {
                                 </div>
                                 
                                 {/* Like Count - Always at bottom */}
-                                <div className="flex items-center gap-1.5 text-gray-600 pl-[52px]">
+                                <div className={`flex items-center gap-1.5 pl-[52px] ${isDarkMode ? 'text-white' : 'text-gray-600'}`}>
                                   <Heart className="w-4 h-4" />
                                   <span className="text-sm font-medium">
                                     {post.favoriteCount || post.likeCount || 0} lượt quan tâm

@@ -1,0 +1,17 @@
+# 1. Bỏ qua tất cả các file và thư mục trong thư mục gốc
+*
+
+# 2. Quy tắc ngoại lệ (Exceptions)
+# Dùng dấu '!' để nói với Git "ĐỪNG bỏ qua file/thư mục này"
+
+# KHÔNG bỏ qua thư mục .git (là bắt buộc)
+!.git/
+
+# KHÔNG bỏ qua file .gitignore (là bắt buộc)
+!/.gitignore
+
+# KHÔNG bỏ qua thư mục travel-guide-backend (BE)
+!/travel-guide-backend/
+
+# KHÔNG bỏ qua thư mục travel-guide-frontend (FE)
+!/travel-guide-frontend/

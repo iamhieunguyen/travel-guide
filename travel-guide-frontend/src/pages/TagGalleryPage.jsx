@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, Heart, ExternalLink } from 'lucide-react';
-import galleryApi from '../services/galleryApi';
+import galleryApi from '../services/galleryService';
 
 export default function TagGalleryPage() {
   const { tagName } = useParams();
@@ -26,20 +26,14 @@ export default function TagGalleryPage() {
       });
       
       console.log('📦 Photos response:', response);
-      
-      // Dedupe photos by display key (image_url || imageKeys[0] || imageKey)
-      const uniquePhotos = [];
-      const seenKeys = new Set();
-      
-      for (const photo of (response.items || [])) {
-        const displayKey = photo.image_url || photo.imageKeys?.[0] || photo.imageKey;
-        if (displayKey && !seenKeys.has(displayKey)) {
-          seenKeys.add(displayKey);
-          uniquePhotos.push(photo);
-        }
-      }
-      
-      console.log(`✅ Deduped: ${response.items?.length || 0} → ${uniquePhotos.length} unique photos`);
+      // Deduplicate photos by photo_id or image_url
+      const uniquePhotos = (response.items || []).filter((photo, index, self) => 
+        index === self.findIndex(p => 
+          (p.photo_id && p.photo_id === photo.photo_id) || 
+          (p.image_url && p.image_url === photo.image_url)
+        )
+      );
+      console.log('📦 Unique photos:', uniquePhotos.length);
       setPhotos(uniquePhotos);
     } catch (err) {
       console.error('Error loading photos:', err);
@@ -95,10 +89,7 @@ export default function TagGalleryPage() {
                 #{tagName}
               </h1>
               <p className="text-white/70 text-base">
-                {photos.length} {photos.length === 1 ? 'ảnh' : 'ảnh'} được gắn tag này
-              </p>
-              <p className="text-white/50 text-sm mt-1">
-                Tất cả ảnh có chứa tag "{tagName}"
+                {photos.length} ảnh được gắn tag này
               </p>
             </div>
           </div>
@@ -144,7 +135,7 @@ export default function TagGalleryPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {photos.map((photo, index) => (
               <div
-                key={photo.articleId || index}
+                key={photo.photo_id || photo.image_url || index}
                 onClick={() => setSelectedPhoto(photo)}
                 className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]"
               >
@@ -180,10 +171,10 @@ export default function TagGalleryPage() {
                   )}
                 </div>
 
-                {/* Tags badge */}
-                {photo.autoTags && photo.autoTags.length > 0 && (
+                {/* Tags badge - show unique count */}
+                {(photo.autoTags?.length > 0 || photo.tags?.length > 0) && (
                   <div className="absolute top-2 right-2 bg-black/50 backdrop-blur-sm rounded-full px-2 py-1 text-xs text-white">
-                    {photo.autoTags.length} tags
+                    {[...new Set([...(photo.autoTags || []), ...(photo.tags || [])])].length} tags
                   </div>
                 )}
               </div>
@@ -247,12 +238,12 @@ export default function TagGalleryPage() {
                   </p>
                 )}
 
-                {/* Tags */}
-                {(selectedPhoto.autoTags || selectedPhoto.tags) && (
+                {/* Tags - deduplicated */}
+                {(selectedPhoto.autoTags?.length > 0 || selectedPhoto.tags?.length > 0) && (
                   <div className="mb-4">
                     <h4 className="text-white/60 text-sm mb-2">Tags:</h4>
                     <div className="flex flex-wrap gap-2">
-                      {[...(selectedPhoto.autoTags || []), ...(selectedPhoto.tags || [])].map((tag, i) => (
+                      {[...new Set([...(selectedPhoto.autoTags || []), ...(selectedPhoto.tags || [])])].map((tag, i) => (
                         <span
                           key={i}
                           onClick={() => {

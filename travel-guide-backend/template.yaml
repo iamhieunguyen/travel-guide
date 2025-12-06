@@ -858,6 +858,39 @@ Resources:
               Authorizer: CognitoAuthorizer
 
   ##############################
+  # USER PUBLIC PROFILE FUNCTION
+  ##############################
+  GetUserArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_user_articles.lambda_handler
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        GetUserArticlesApi:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/articles
+            Method: GET
+
+  ##############################
   # FAVORITES FUNCTIONS
   ##############################
   FavoriteArticleFunction:

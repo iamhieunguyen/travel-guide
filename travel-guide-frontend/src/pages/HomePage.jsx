@@ -1079,7 +1079,16 @@ export default function HomePage() {
                       {/* User Info - Inside white container */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                          <button
+                            onClick={() => {
+                              if (isOwner) {
+                                navigate('/personal');
+                              } else {
+                                navigate(`/user/${post.ownerId}`);
+                              }
+                            }}
+                            className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden hover:ring-2 hover:ring-[#92ADA4] hover:ring-offset-2 transition-all"
+                          >
                             {isOwner && profile?.avatarUrl ? (
                               <img
                                 src={profile.avatarUrl}
@@ -1091,11 +1100,20 @@ export default function HomePage() {
                                 {authorInitial}
                               </span>
                             )}
-                          </div>
+                          </button>
                           <div>
-                            <p className={`font-bold text-base ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}>
+                            <button
+                              onClick={() => {
+                                if (isOwner) {
+                                  navigate('/personal');
+                                } else {
+                                  navigate(`/user/${post.ownerId}`);
+                                }
+                              }}
+                              className={`font-bold text-base hover:underline text-left ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}
+                            >
                               {authorDisplayName}
-                            </p>
+                            </button>
                             {(post.location?.name || post.location || post.locationName) && (
                               <div className={`flex items-center text-sm group relative ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />

@@ -224,7 +224,7 @@ export default function HomePage() {
         response = await api.searchArticles({
           tags: tag.trim(),
           scope: scope,
-          limit: 3,
+          limit: 50,  // Increased limit for better search results with filters
           nextToken: token
         });
         console.log('📦 Tag search response:', response);
@@ -234,7 +234,7 @@ export default function HomePage() {
         response = await api.searchArticles({
           q: query.trim(),
           scope: scope,
-          limit: 3,
+          limit: 50,  // Increased limit for better search results with filters
           nextToken: token
         });
         console.log('📦 Query search response:', response);
@@ -266,11 +266,39 @@ export default function HomePage() {
       setNextToken(response.nextToken);
     } catch (error) {
       console.error('Lỗi khi tải bài viết:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      
+      // Display user-friendly error message
+      if (window.showSuccessToast) {
+        let errorMsg;
+        if (error.status === 404) {
+          errorMsg = language === 'vi' 
+            ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
+            : 'API endpoint not found. Please deploy backend.';
+        } else if (error.status === 500) {
+          errorMsg = language === 'vi'
+            ? 'Lỗi tìm kiếm. Vui lòng thử lại.'
+            : 'Search failed. Please try again.';
+        } else if (error.status === 400) {
+          errorMsg = language === 'vi'
+            ? 'Tham số tìm kiếm không hợp lệ.'
+            : 'Invalid search parameters.';
+        } else {
+          errorMsg = language === 'vi'
+            ? `Lỗi: ${error.message || 'Đã xảy ra lỗi'}`
+            : `Error: ${error.message || 'An error occurred'}`;
+        }
+        window.showSuccessToast(errorMsg);
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [scope]);
+  }, [scope, language]);
   
   // Read tag from URL on mount
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
@@ -1051,7 +1079,16 @@ export default function HomePage() {
                       {/* User Info - Inside white container */}
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                          <button
+                            onClick={() => {
+                              if (isOwner) {
+                                navigate('/personal');
+                              } else {
+                                navigate(`/user/${post.ownerId}`);
+                              }
+                            }}
+                            className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden hover:ring-2 hover:ring-[#92ADA4] hover:ring-offset-2 transition-all"
+                          >
                             {isOwner && profile?.avatarUrl ? (
                               <img
                                 src={profile.avatarUrl}
@@ -1063,11 +1100,20 @@ export default function HomePage() {
                                 {authorInitial}
                               </span>
                             )}
-                          </div>
+                          </button>
                           <div>
-                            <p className={`font-bold text-base ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}>
+                            <button
+                              onClick={() => {
+                                if (isOwner) {
+                                  navigate('/personal');
+                                } else {
+                                  navigate(`/user/${post.ownerId}`);
+                                }
+                              }}
+                              className={`font-bold text-base hover:underline text-left ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}
+                            >
                               {authorDisplayName}
-                            </p>
+                            </button>
                             {(post.location?.name || post.location || post.locationName) && (
                               <div className={`flex items-center text-sm group relative ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />

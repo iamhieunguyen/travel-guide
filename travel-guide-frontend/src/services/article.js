@@ -281,6 +281,14 @@ export function listFavoriteArticles({ limit = 10, nextToken } = {}) {
   return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: true });
 }
 
+// ===== Get user's public articles =====
+export function getUserPublicArticles(userId, { limit = 20, nextToken } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  return http("GET", `/users/${encodeURIComponent(userId)}/articles?${params.toString()}`, null, { useCache: true });
+}
+
 // ===== Utils =====
 export function clearCache() {
   requestCache.clear();
@@ -339,6 +347,7 @@ const articleService = {
   favoriteArticle,
   unfavoriteArticle,
   listFavoriteArticles,
+  getUserPublicArticles,  // ✨ NEW
   clearCache,
   invalidateArticlesCache,  // ✨ NEW
   clearCacheForEndpoint,    // ✨ NEW

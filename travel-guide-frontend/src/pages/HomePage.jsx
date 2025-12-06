@@ -224,7 +224,7 @@ export default function HomePage() {
         response = await api.searchArticles({
           tags: tag.trim(),
           scope: scope,
-          limit: 3,
+          limit: 50,  // Increased limit for better search results with filters
           nextToken: token
         });
         console.log('📦 Tag search response:', response);
@@ -234,7 +234,7 @@ export default function HomePage() {
         response = await api.searchArticles({
           q: query.trim(),
           scope: scope,
-          limit: 3,
+          limit: 50,  // Increased limit for better search results with filters
           nextToken: token
         });
         console.log('📦 Query search response:', response);
@@ -266,11 +266,39 @@ export default function HomePage() {
       setNextToken(response.nextToken);
     } catch (error) {
       console.error('Lỗi khi tải bài viết:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      
+      // Display user-friendly error message
+      if (window.showSuccessToast) {
+        let errorMsg;
+        if (error.status === 404) {
+          errorMsg = language === 'vi' 
+            ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
+            : 'API endpoint not found. Please deploy backend.';
+        } else if (error.status === 500) {
+          errorMsg = language === 'vi'
+            ? 'Lỗi tìm kiếm. Vui lòng thử lại.'
+            : 'Search failed. Please try again.';
+        } else if (error.status === 400) {
+          errorMsg = language === 'vi'
+            ? 'Tham số tìm kiếm không hợp lệ.'
+            : 'Invalid search parameters.';
+        } else {
+          errorMsg = language === 'vi'
+            ? `Lỗi: ${error.message || 'Đã xảy ra lỗi'}`
+            : `Error: ${error.message || 'An error occurred'}`;
+        }
+        window.showSuccessToast(errorMsg);
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [scope]);
+  }, [scope, language]);
   
   // Read tag from URL on mount
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);

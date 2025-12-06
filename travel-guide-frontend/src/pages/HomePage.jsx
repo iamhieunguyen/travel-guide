@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import galleryApi from '../services/galleryApi';
 import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Eye, Moon, Sun, Globe } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';

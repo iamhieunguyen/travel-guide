@@ -111,6 +111,18 @@ export default function HomePage() {
   const [hoveredLocation, setHoveredLocation] = useState(null); // Track hovered location for tooltip
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
+  
+  // Hide tooltip on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hoveredLocation) {
+        setHoveredLocation(null);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [hoveredLocation]);
 
   const TEXT = {
     vi: {
@@ -871,22 +883,6 @@ export default function HomePage() {
                       <span className="uppercase">{language === 'vi' ? 'VI' : 'EN'}</span>
                     </button>
                   </div>
-                  {/* Notification Icon */}
-                  <button
-                    className={`header-button-gradient relative flex items-center justify-center h-12 w-12 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
-                  >
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                    </svg>
-                    {false && <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
-                  </button>
-
 
                   {/* User Avatar and Name */}
                   <button 
@@ -1210,13 +1206,6 @@ export default function HomePage() {
                                   {likedPosts.has(post.articleId) ? L.liked : L.like}
                                 </span>
                                 <ArrowRight className="w-4 h-4 arrow-icon" />
-                              </button>
-
-                              {/* Share Button */}
-                              <button 
-                                className={`action-button-gradient p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
-                              >
-                                <Share2 className="w-5 h-5" />
                               </button>
 
                               {/* More Button - Show for all posts */}

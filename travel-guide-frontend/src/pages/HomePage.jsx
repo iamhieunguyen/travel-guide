@@ -4,15 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Eye, Moon, Sun, Globe } from 'lucide-react';
+import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Sun, Moon, Globe, ArrowRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
 import { useLanguage } from '../context/LanguageContext';
+import { useTheme } from '../context/ThemeContext';
 import { useInfiniteScroll } from '../hook/useInfiniteScroll';
 import { useNewPostsPolling } from '../hook/useNewPostsPolling';
 import { usePendingPostsPolling } from '../hook/usePendingPostsPolling';
 import NewPostsBanner from '../components/NewPostsBanner';
+import './HomePage.css';
 
 // Component carousel để lướt qua nhiều ảnh
 function PostImageCarousel({ images, postTitle }) {
@@ -92,6 +94,7 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { profile } = useProfile();
   const { language, setLanguage } = useLanguage();
+  const { themeMode, setThemeMode, isDarkMode } = useTheme();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,11 +110,6 @@ export default function HomePage() {
   const [tagFilter, setTagFilter] = useState(''); // Tag filter state
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
-  const [themeMode, setThemeMode] = useState(() => {
-    if (typeof window === 'undefined') return 'dark';
-    const stored = localStorage.getItem('homeThemeMode');
-    return stored === 'light' ? 'light' : 'dark';
-  });
 
   const TEXT = {
     vi: {
@@ -198,12 +196,6 @@ export default function HomePage() {
 
   const L = TEXT[language] || TEXT.vi;
 
-  const isDarkMode = themeMode === 'dark';
-
-  // Classes cho chế độ sáng / tối
-  const pageBgClass = isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]';
-  const mainCardBgClass = isDarkMode ? 'bg-gradient-to-br from-[#022F56]/60 via-[#033A6A]/55 via-[#04457E]/50 to-[#488DB4]/45 backdrop-blur-lg' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg'; // nền khung lớn (nền phía trong)
-  
   // New posts detection state - store the latest createdAt timestamp
   const [latestCreatedAt, setLatestCreatedAt] = useState(null);
 
@@ -294,7 +286,7 @@ export default function HomePage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [scope, language]);
+  }, [scope]);
   
   // Read tag from URL on mount
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
@@ -417,7 +409,7 @@ export default function HomePage() {
       });
       return 0;
     }
-  }, [latestCreatedAt, scope, posts.length]);
+  }, [latestCreatedAt, scope, posts.length, user]);
 
   // Use new posts polling hook
   const { newPostsCount, resetNewPosts } = useNewPostsPolling({
@@ -462,7 +454,7 @@ export default function HomePage() {
   const { sentinelRef } = useInfiniteScroll({
     loadMore: () => {
       if (nextToken && !loadingMore) {
-        loadPosts(nextToken, searchQuery);
+        loadPosts(nextToken, searchQuery, tagFilter);
       }
     },
     hasMore: !!nextToken,
@@ -540,11 +532,8 @@ export default function HomePage() {
     console.log('🚀 Initial load with tagFilter:', tagFilter, 'searchQuery:', searchQuery);
     loadPosts(null, searchQuery, tagFilter);
     loadFavorites(); // Load favorites when component mounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scope, user, navigate, authChecked, urlParamsLoaded]); // Wait for URL params to be loaded, but don't re-run on tag/query changes
-
-  const loadMore = () => {
-    if (nextToken) loadPosts(nextToken, searchQuery, tagFilter);
-  };
 
   const handleLike = async (postId) => {
     try {
@@ -695,11 +684,7 @@ export default function HomePage() {
                     window.history.replaceState({}, '', '/home');
                     loadPosts(null, '', '');
                   }}
-                 className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                             transition-all duration-150 ease-out
-                             ${isDarkMode 
-                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                 >
                   <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M9.005 16.545a2.997 2.997 0 012.997-2.997h0A2.997 2.997 0 0115 16.545V22h7V11.543L12 2 2 11.543V22h7.005z"/>
@@ -709,11 +694,7 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => searchInputRef.current?.focus()}
-                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                             transition-all duration-150 ease-out
-                             ${isDarkMode 
-                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="8"/>
@@ -722,11 +703,10 @@ export default function HomePage() {
                   <span className="font-medium text-base">{L.search}</span>
                 </button>
 
-                <button className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                                   transition-all duration-150 ease-out
-                                   ${isDarkMode 
-                                      ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                      : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}>
+                <button 
+                  onClick={() => navigate('/personal?tab=favorites')}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
+                >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
                   </svg>
@@ -735,11 +715,7 @@ export default function HomePage() {
 
                 <button 
                   onClick={openModal}
-                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                             transition-all duration-150 ease-out
-                             ${isDarkMode 
-                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -751,11 +727,7 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => navigate('/gallery')}
-                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                             transition-all duration-150 ease-out
-                             ${isDarkMode 
-                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                 >
                   <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -765,11 +737,7 @@ export default function HomePage() {
 
                 <button 
                   onClick={() => navigate('/personal')}
-                  className={`w-full flex items-center space-x-4 p-3 rounded-2xl
-                             transition-all duration-150 ease-out
-                             ${isDarkMode 
-                                ? 'text-[#F5E6D3] hover:bg-white/10 hover:shadow-sm hover:font-semibold' 
-                                : 'text-white hover:bg-white/20 hover:shadow-sm hover:font-semibold'}`}
+                  className={`sidebar-nav-button w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                 >
                   <div className="w-7 h-7 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
                     {profile?.avatarUrl ? (
@@ -794,7 +762,7 @@ export default function HomePage() {
               {/* Logout Button - At Bottom */}
               <button 
                 onClick={logout}
-                className="w-full flex items-center space-x-4 p-3 rounded-xl border-t border-white/30 mt-4 pt-4 transition-all duration-200 ease-out hover:bg-gradient-to-r hover:from-red-600 hover:to-red-400 hover:text-white hover:shadow-lg text-white"
+                className={`logout-button-gradient w-full flex items-center space-x-4 p-3 mt-4 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
               >
                 <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
@@ -825,7 +793,7 @@ export default function HomePage() {
 
                   {/* Search Bar - Same row as greeting */}
                   <div className="flex-1">
-                    <div className="relative">
+                    <div className={`relative search-input-wrapper ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
                       <input
                         ref={searchInputRef}
                         type="text"
@@ -833,14 +801,15 @@ export default function HomePage() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyPress={handleSearch}
-                        className={`w-full px-5 py-3 pr-14 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base
-                                   ${isDarkMode 
-                                      ? 'bg-black text-white border border-gray-700 placeholder:text-gray-400' 
-                                      : 'bg-white text-gray-900 border border-gray-300 placeholder:text-gray-400'}`}
+                        className={`search-input-gradient w-full px-5 py-3 pr-14 text-base placeholder:text-gray-400 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                       />
                       <button 
                         onClick={handleSearch}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                          isDarkMode 
+                            ? 'text-gray-400 hover:text-gray-300' 
+                            : 'text-gray-400 hover:text-gray-600'
+                        }`}
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <circle cx="11" cy="11" r="8"/>
@@ -859,16 +828,9 @@ export default function HomePage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const next = themeMode === 'dark' ? 'light' : 'dark';
-                        setThemeMode(next);
-                        if (typeof window !== 'undefined') {
-                          localStorage.setItem('homeThemeMode', next);
-                        }
+                        setThemeMode(themeMode === 'dark' ? 'light' : 'dark');
                       }}
-                      className={`flex items-center justify-center h-12 w-12 rounded-full shadow-sm transition
-                                 ${isDarkMode 
-                                   ? 'bg-slate-900 border border-gray-600 text-white hover:bg-slate-800' 
-                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                      className={`header-button-gradient flex items-center justify-center h-12 w-12 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                       title={isDarkMode ? L.darkMode : L.lightMode}
                     >
                       {isDarkMode ? (
@@ -881,11 +843,12 @@ export default function HomePage() {
                     {/* Language toggle */}
                     <button
                       type="button"
-                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
-                      className={`flex items-center gap-1 px-4 h-12 rounded-full text-xs font-medium shadow-sm transition
-                                 ${isDarkMode 
-                                   ? 'bg-slate-900/70 border border-gray-600 text-white hover:bg-slate-800' 
-                                   : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                      onClick={() => {
+                        const newLang = language === 'vi' ? 'en' : 'vi';
+                        setLanguage(newLang);
+                        localStorage.setItem('appLanguage', newLang);
+                      }}
+                      className={`header-button-gradient flex items-center gap-1 px-4 h-12 text-xs font-medium ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                     >
                       <Globe className="w-4 h-4" />
                       <span className="uppercase">{language === 'vi' ? 'VI' : 'EN'}</span>
@@ -893,11 +856,10 @@ export default function HomePage() {
                   </div>
                   {/* Notification Icon */}
                   <button
-                    className={`relative p-2 rounded-full transition-all duration-150 ease-out
-                               ${isDarkMode ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}
+                    className={`header-button-gradient relative flex items-center justify-center h-12 w-12 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                   >
                     <svg
-                      className={`w-6 h-6 ${isDarkMode ? 'text-white' : 'text-gray-600'}`}
+                      className="w-5 h-5"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2"
@@ -912,26 +874,26 @@ export default function HomePage() {
                   {/* User Avatar and Name */}
                   <button 
                     onClick={() => navigate('/personal')}
-                    className="flex items-center space-x-3 hover:bg-gray-100 rounded-full pr-4 py-1 transition"
+                    className={`header-button-gradient flex items-center space-x-3 px-4 h-12 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                   >
-                <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden">
-                  {profile?.avatarUrl ? (
-                    <img
-                      src={profile.avatarUrl}
-                      alt="Avatar"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-white font-bold text-sm">
-                      {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
-                    </span>
-                  )}
-                </div>
-                                    <div className="text-left">
-                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}>
+                    <div className="w-10 h-10 bg-[#92ADA4] rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {profile?.avatarUrl ? (
+                        <img
+                          src={profile.avatarUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-sm">
+                          {user?.displayName?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <p className={`font-semibold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {user?.displayName || user?.username || user?.email?.split('@')[0] || 'User'}
                       </p>
-                      <p className={`text-xs ${isDarkMode ? 'text-[#F5E6D3]/70' : 'text-gray-500'}`}>
+                      <p className={`text-xs ${isDarkMode ? 'text-white/70' : 'text-gray-500'}`}>
                         @{user?.displayName || user?.username || user?.email?.split('@')[0] || 'user'}
                       </p>
                     </div>
@@ -1070,17 +1032,15 @@ export default function HomePage() {
                     <div key={post.articleId} className={`${isDarkMode ? 'bg-[#02182E]/80 backdrop-blur-lg border border-white/15' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg border border-white/15'} rounded-[32px] shadow-lg overflow-hidden p-8`}>
                       {/* User Info - Inside white container */}
                       <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <button
-                            onClick={() => {
-                              if (isOwner) {
-                                navigate('/personal');
-                              } else {
-                                navigate(`/user/${post.ownerId}`);
-                              }
-                            }}
-                            className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden hover:ring-2 hover:ring-[#92ADA4] hover:ring-offset-2 transition-all"
-                          >
+                        <div 
+                          className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => {
+                            if (!isOwner && post.ownerId) {
+                              navigate(`/user/${post.ownerId}`);
+                            }
+                          }}
+                        >
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
                             {isOwner && profile?.avatarUrl ? (
                               <img
                                 src={profile.avatarUrl}
@@ -1092,20 +1052,11 @@ export default function HomePage() {
                                 {authorInitial}
                               </span>
                             )}
-                          </button>
+                          </div>
                           <div>
-                            <button
-                              onClick={() => {
-                                if (isOwner) {
-                                  navigate('/personal');
-                                } else {
-                                  navigate(`/user/${post.ownerId}`);
-                                }
-                              }}
-                              className={`font-bold text-base hover:underline text-left ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}
-                            >
+                            <p className={`font-bold text-base ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}>
                               {authorDisplayName}
-                            </button>
+                            </p>
                             {(post.location?.name || post.location || post.locationName) && (
                               <div className={`flex items-center text-sm group relative ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
@@ -1222,28 +1173,25 @@ export default function HomePage() {
 
                             {/* Action Buttons Below Map */}
                             <div className="flex items-center gap-3">
-                              {/* Main Action Button - Quan tâm bài đăng */}
+                              {/* Main Action Button - Like/Favorite post with Gradient Style */}
                               <button 
                                 onClick={() => handleLike(post.articleId)}
-                                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-all ${
-                                  isDarkMode 
-                                    ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
-                                    : likedPosts.has(post.articleId)
-                                      ? 'bg-[#92ADA4] hover:bg-[#7d9a91] text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
-                                      : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'
-                                }`}
+                                className={`like-button-gradient flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl ${
+                                  isDarkMode ? 'dark-mode' : 'light-mode'
+                                } ${likedPosts.has(post.articleId) ? 'liked' : ''}`}
                               >
                                 <Heart 
-                                  className={`w-5 h-5 ${likedPosts.has(post.articleId) && !isDarkMode ? 'fill-white' : ''}`}
+                                  className={`w-5 h-5 ${likedPosts.has(post.articleId) ? 'fill-current' : ''}`}
                                 />
                                 <span className="font-medium text-sm">
                                   {likedPosts.has(post.articleId) ? L.liked : L.like}
                                 </span>
+                                <ArrowRight className="w-4 h-4 arrow-icon" />
                               </button>
 
                               {/* Share Button */}
                               <button 
-                                className={`p-3 rounded-2xl transition-all ${isDarkMode ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]' : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'}`}
+                                className={`action-button-gradient p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                               >
                                 <Share2 className="w-5 h-5" />
                               </button>
@@ -1252,7 +1200,7 @@ export default function HomePage() {
                               <div className="relative">
                                 <button 
                                   onClick={() => toggleMenu(post.articleId)}
-                                  className={`p-3 rounded-2xl transition-all ${isDarkMode ? 'border border-white text-white hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]' : 'bg-[#f5f5f5] text-gray-700 hover:shadow-[0_0_8px_rgba(2,195,189,1),0_0_16px_rgba(2,195,189,0.9),0_0_24px_rgba(78,20,140,1),0_0_32px_rgba(78,20,140,0.8),0_0_40px_rgba(78,20,140,0.5)]'}`}
+                                  className={`action-button-gradient p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
                                 >
                                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                                     <circle cx="12" cy="5" r="2"/>

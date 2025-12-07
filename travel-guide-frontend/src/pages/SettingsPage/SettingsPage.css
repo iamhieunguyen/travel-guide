@@ -20,13 +20,7 @@
   --sp-success: #10b981;
   
   min-height: 100vh;
-  background: 
-    /* Nền kem ấm + điểm nhấn xanh lá để làm nổi gradient nút */
-    linear-gradient(135deg, #fefce8 0%, #faf5ff 40%, #ecfeff 100%),
-    radial-gradient(circle at 20% 40%, rgba(34, 197, 94, 0.16) 0%, transparent 55%),
-    radial-gradient(circle at 85% 85%, rgba(45, 212, 191, 0.18) 0%, transparent 55%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
-  background-attachment: fixed;
+  background: transparent; /* Background được set ở wrapper div */
   font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif;
   color: var(--sp-text);
   padding-bottom: 2rem;
@@ -80,20 +74,21 @@
 
 /* --- HEADER --- */
 .settings-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--sp-border);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
   padding: 1.25rem 0;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .settings-page.dark-mode .settings-header {
-  background: rgba(15, 23, 42, 0.95);
-  border-bottom-color: var(--sp-border);
+  background: rgba(2, 24, 46, 0.8);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
@@ -124,24 +119,27 @@
   gap: 2rem;
 }
 
+/* Main container với backdrop blur giống HomePage - backdrop blur được set ở settings-main và settings-sidebar */
+
 /* --- SIDEBAR --- */
 .settings-sidebar {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border-radius: 32px;
   padding: 1.5rem;
   height: fit-content;
   position: sticky;
   top: 100px;
-  box-shadow: 0 4px 16px var(--sp-shadow);
-  border: 1px solid var(--sp-border);
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
 }
 
 .settings-page.dark-mode .settings-sidebar {
-  background: rgba(15, 23, 42, 0.95);
-  border-color: var(--sp-border);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(20, 184, 166, 0.1);
+  background: rgba(2, 24, 46, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .settings-nav {
@@ -163,31 +161,83 @@
   font-weight: 500;
   color: var(--sp-text-light);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
   font-family: inherit;
 }
 
-.nav-item:hover {
-  background: var(--sp-border-light);
-  color: var(--sp-primary);
-  transform: translateX(4px);
+/* Light Mode Hover - Gradient Background (giống save-all-button-gradient) - CHỈ cho nút chưa active */
+.settings-page:not(.dark-mode) .nav-item:not(.active):hover {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  border: none !important;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
 }
 
-.settings-page.dark-mode .nav-item:hover {
-  background: rgba(20, 184, 166, 0.1);
-  color: var(--sp-accent);
+/* Icon và text color khi hover - Light mode */
+.settings-page:not(.dark-mode) .nav-item:not(.active):hover svg,
+.settings-page:not(.dark-mode) .nav-item:not(.active):hover span {
+  color: white !important;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-item.active {
-  background: linear-gradient(135deg, var(--sp-primary) 0%, var(--sp-accent) 100%);
-  color: white;
-  box-shadow: 0 4px 12px var(--sp-shadow-hover);
+/* Dark Mode Hover - Gradient Background (giống save-all-button-gradient) - CHỈ cho nút chưa active */
+.settings-page.dark-mode .nav-item:not(.active):hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  border: none !important;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Icon và text color khi hover - Dark mode */
+.settings-page.dark-mode .nav-item:not(.active):hover svg,
+.settings-page.dark-mode .nav-item:not(.active):hover span {
+  color: white !important;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light Mode - Active state (giống nút inactive khi hover) */
+.settings-page:not(.dark-mode) .nav-item.active {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
+}
+
+.settings-page:not(.dark-mode) .nav-item.active svg,
+.settings-page:not(.dark-mode) .nav-item.active span {
+  color: white !important;
+}
+
+/* Dark Mode - Active state (giống nút inactive khi hover) */
+.settings-page.dark-mode .nav-item.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode .nav-item.active svg,
+.settings-page.dark-mode .nav-item.active span {
+  color: white !important;
 }
 
 .nav-item.active:hover {
-  transform: translateX(4px);
-  box-shadow: 0 6px 16px var(--sp-shadow-hover);
+  transform: none;
 }
 
 .nav-item .w-5 {
@@ -202,6 +252,17 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/* Override màu chữ của nút "Lưu tất cả cài đặt" và "Đăng xuất" để giống nút "Thông báo" */
+.sidebar-footer .sidebar-nav-button.light-mode,
+.sidebar-footer .logout-button-gradient.light-mode {
+  color: var(--sp-text-light) !important;
+}
+
+.settings-page.dark-mode .sidebar-footer .sidebar-nav-button.dark-mode,
+.settings-page.dark-mode .sidebar-footer .logout-button-gradient.dark-mode {
+  color: var(--sp-text-light) !important;
 }
 
 .logout-btn {
@@ -244,19 +305,20 @@
 
 /* --- MAIN CONTENT --- */
 .settings-main {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border-radius: 32px;
   padding: 2.5rem;
-  box-shadow: 0 4px 16px var(--sp-shadow);
-  border: 1px solid var(--sp-border);
-  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
 }
 
 .settings-page.dark-mode .settings-main {
-  background: rgba(15, 23, 42, 0.95);
-  border-color: var(--sp-border);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(20, 184, 166, 0.1);
+  background: rgba(2, 24, 46, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .settings-section {
@@ -366,20 +428,49 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--sp-primary);
   border: 3px solid white;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px var(--sp-shadow);
 }
 
-.avatar-edit-btn:hover {
-  background: var(--sp-primary-dark);
+/* Light Mode - Gradient teal/cyan giống nút Tài khoản active */
+.settings-page:not(.dark-mode) .avatar-edit-btn {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+  box-shadow: 
+    0 4px 12px rgba(13, 148, 136, 0.3),
+    0 0 20px rgba(13, 148, 136, 0.2);
+}
+
+.settings-page:not(.dark-mode) .avatar-edit-btn:hover {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
   transform: scale(1.1) rotate(90deg);
+  box-shadow: 
+    0 6px 16px rgba(13, 148, 136, 0.4),
+    0 0 30px rgba(13, 148, 136, 0.3);
+}
+
+/* Dark Mode - Gradient purple/pink giống nút Tài khoản active */
+.settings-page.dark-mode .avatar-edit-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode .avatar-edit-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3),
+    0 0 60px rgba(139, 92, 246, 0.2) !important;
 }
 
 /* Form Groups */
@@ -400,6 +491,7 @@
 
 .form-group input,
 .form-group textarea {
+  position: relative;
   padding: 0.875rem 1rem;
   border: 2px solid var(--sp-border);
   border-radius: 12px;
@@ -407,14 +499,113 @@
   font-family: inherit;
   color: var(--sp-text);
   background: var(--sp-bg-light);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  isolation: isolate;
 }
 
-.form-group input:focus,
-.form-group textarea:focus {
+/* Light Mode - Normal State */
+.settings-page:not(.dark-mode) .form-group input,
+.settings-page:not(.dark-mode) .form-group textarea {
+  background: white;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+
+/* Dark Mode - Normal State */
+.settings-page.dark-mode .form-group input,
+.settings-page.dark-mode .form-group textarea {
+  background: black;
+  color: white;
+  border: 1px solid #374151;
+}
+
+/* Light Mode Focus - Gradient Border + Shadow */
+.settings-page:not(.dark-mode) .form-group input:focus,
+.settings-page:not(.dark-mode) .form-group textarea:focus {
+  background: white;
+  color: #00ff88; /* Neon green text khi focus */
+  border: none;
   outline: none;
-  border-color: var(--sp-primary);
-  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+.settings-page:not(.dark-mode) .form-group input:focus::placeholder,
+.settings-page:not(.dark-mode) .form-group textarea:focus::placeholder {
+  color: rgba(0, 255, 136, 0.6); /* Placeholder màu neon green nhạt */
+}
+
+/* Gradient border using pseudo-element - Light mode */
+.settings-page:not(.dark-mode) .form-group input:focus::after,
+.settings-page:not(.dark-mode) .form-group textarea:focus::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Focus - Gradient Border + Shadow */
+.settings-page.dark-mode .form-group input:focus,
+.settings-page.dark-mode .form-group textarea:focus {
+  background: black;
+  color: #a78bfa; /* Purple text khi focus */
+  border: none;
+  outline: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.settings-page.dark-mode .form-group input:focus::placeholder,
+.settings-page.dark-mode .form-group textarea:focus::placeholder {
+  color: rgba(167, 139, 250, 0.6); /* Placeholder màu purple nhạt */
+}
+
+/* Gradient border using pseudo-element - Dark mode */
+.settings-page.dark-mode .form-group input:focus::after,
+.settings-page.dark-mode .form-group textarea:focus::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
 }
 
 .form-group input:disabled {
@@ -423,19 +614,7 @@
   cursor: not-allowed;
 }
 
-.settings-page.dark-mode .form-group input,
-.settings-page.dark-mode .form-group textarea {
-  background: rgba(30, 41, 59, 0.6);
-  border-color: var(--sp-border);
-  color: var(--sp-text);
-}
-
-.settings-page.dark-mode .form-group input:focus,
-.settings-page.dark-mode .form-group textarea:focus {
-  border-color: var(--sp-primary);
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
-  background: rgba(30, 41, 59, 0.8);
-}
+/* Dark mode normal state đã được định nghĩa ở trên */
 
 .settings-page.dark-mode .form-group input:disabled {
   background: rgba(15, 23, 42, 0.5);
@@ -484,8 +663,11 @@
 }
 
 .settings-page.dark-mode .setting-item:hover {
-  border-color: var(--sp-primary);
-  box-shadow: 0 4px 12px var(--sp-shadow-hover), 0 0 0 1px rgba(20, 184, 166, 0.2);
+  border-color: #a78bfa; /* purple-400 thay vì màu xanh lá */
+  box-shadow: 
+    0 4px 12px rgba(139, 92, 246, 0.3), 
+    0 0 0 1px rgba(139, 92, 246, 0.4),
+    0 8px 20px rgba(139, 92, 246, 0.2); /* purple/pink shadow thay vì màu xanh lá */
   background: rgba(30, 41, 59, 0.8);
 }
 
@@ -525,6 +707,15 @@
   height: 0;
 }
 
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  cursor: pointer;
+  isolation: isolate;
+}
+
 .toggle-slider {
   position: absolute;
   top: 0;
@@ -533,11 +724,80 @@
   bottom: 0;
   background: #cbd5e1;
   border-radius: 28px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .settings-page.dark-mode .toggle-slider {
   background: #475569;
+}
+
+/* Light Mode - Toggle hover có border gradient teal/cyan */
+.settings-page:not(.dark-mode) .toggle-switch:hover .toggle-slider {
+  background: white;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2);
+}
+
+/* Gradient border using pseudo-element - Light mode hover */
+.settings-page:not(.dark-mode) .toggle-switch:hover .toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode - Toggle hover có border gradient purple/pink giống nút Bản đồ active */
+.settings-page.dark-mode .toggle-switch:hover .toggle-slider {
+  background: rgba(17, 24, 39, 0.95);
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+/* Gradient border using pseudo-element - Dark mode hover */
+.settings-page.dark-mode .toggle-switch:hover .toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
 }
 
 .toggle-slider:before {
@@ -553,8 +813,54 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.toggle-switch input:checked + .toggle-slider {
-  background: var(--sp-primary);
+/* Light Mode - Toggle checked có gradient teal/cyan */
+.settings-page:not(.dark-mode) .toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+  box-shadow: 
+    0 4px 12px rgba(13, 148, 136, 0.3),
+    0 0 20px rgba(13, 148, 136, 0.2);
+}
+
+/* Dark Mode - Toggle checked có gradient purple/pink giống nút Bản đồ active */
+.settings-page.dark-mode .toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Dark Mode - Toggle checked khi hover vẫn giữ background gradient và thêm border gradient */
+.settings-page.dark-mode .toggle-switch:hover input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode .toggle-switch:hover input:checked + .toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
 }
 
 .toggle-switch input:checked + .toggle-slider:before {
@@ -659,6 +965,28 @@
   box-shadow: inset 0 0 0 1px rgba(13, 148, 136, 0.4);
 }
 
+/* Dark Mode - Dropdown item hover và active (phong cách nhẹ nhàng giống light mode) */
+.settings-page.dark-mode .fancy-dropdown-item:hover {
+  background: rgba(139, 92, 246, 0.12) !important; /* purple-400 with opacity, giống light mode */
+}
+
+.settings-page.dark-mode .fancy-dropdown-item.active {
+  background: rgba(139, 92, 246, 0.18) !important; /* purple-400 với opacity nhẹ, giống light mode */
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.4) !important; /* border nhẹ */
+  color: var(--sp-text) !important; /* Giữ màu chữ mặc định, không force white */
+}
+
+.settings-page.dark-mode .fancy-dropdown-item.active svg,
+.settings-page.dark-mode .fancy-dropdown-item.active span {
+  color: var(--sp-text) !important; /* Giữ màu mặc định */
+}
+
+.settings-page.dark-mode .fancy-dropdown-trigger.open,
+.settings-page.dark-mode .fancy-dropdown-trigger:hover {
+  border-color: #a78bfa !important; /* purple-400 */
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.25) !important; /* purple-500 shadow */
+}
+
 .fancy-dropdown-item .item-text {
   display: flex;
   flex-direction: column;
@@ -747,22 +1075,32 @@
   gap: 0.5rem;
   padding: 0.875rem 1.5rem;
   border: none;
-  border-radius: 12px;
+  border-radius: 1rem; /* rounded-2xl giống HomePage */
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
-  background: linear-gradient(135deg, var(--sp-primary) 0%, var(--sp-accent) 100%);
   color: white;
   box-shadow: 0 4px 12px var(--sp-shadow-hover);
+}
+
+/* Base gradient cho action-btn và save-all-btn (không phải save-btn) */
+.action-btn,
+.save-all-btn {
+  background: linear-gradient(135deg, var(--sp-primary) 0%, var(--sp-accent) 100%);
+}
+
+/* Base gradient cho save-btn - CHỈ cho light mode, dark mode sẽ được override bên dưới */
+.settings-page:not(.dark-mode) .save-btn {
+  background: linear-gradient(135deg, var(--sp-primary) 0%, var(--sp-accent) 100%);
 }
 
 .save-btn:hover,
 .action-btn:hover,
 .save-all-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px var(--sp-shadow-hover);
+  box-shadow: 0 8px 20px rgba(6, 182, 212, 0.35), 0 12px 28px rgba(59, 130, 246, 0.25), 0 0 40px rgba(6, 182, 212, 0.15);
 }
 
 .save-btn:active,
@@ -776,6 +1114,84 @@
 .save-all-btn .w-4 {
   width: 1rem;
   height: 1rem;
+}
+
+/* Light Mode - Nút Đổi mật khẩu có gradient giống nút Tài khoản active */
+.settings-page:not(.dark-mode) .save-btn {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
+}
+
+.settings-page:not(.dark-mode) .save-btn:hover {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  transform: none !important;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
+}
+
+.settings-page:not(.dark-mode) .save-btn svg,
+.settings-page:not(.dark-mode) .save-btn span {
+  color: white !important;
+}
+
+/* Dark Mode - Nút Đổi mật khẩu (action-btn) và Lưu mật khẩu (save-btn) có gradient giống nút Tài khoản active - OVERRIDE CUỐI CÙNG */
+.settings-page.dark-mode button.save-btn,
+.settings-page.dark-mode .save-btn,
+.settings-page.dark-mode .settings-main .save-btn,
+.settings-page.dark-mode .settings-content .save-btn,
+.settings-page.dark-mode button.action-btn,
+.settings-page.dark-mode .action-btn,
+.settings-page.dark-mode .settings-main .action-btn,
+.settings-page.dark-mode .settings-content .action-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode button.save-btn:hover,
+.settings-page.dark-mode .save-btn:hover,
+.settings-page.dark-mode .settings-main .save-btn:hover,
+.settings-page.dark-mode .settings-content .save-btn:hover,
+.settings-page.dark-mode button.action-btn:hover,
+.settings-page.dark-mode .action-btn:hover,
+.settings-page.dark-mode .settings-main .action-btn:hover,
+.settings-page.dark-mode .settings-content .action-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  transform: none !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode button.save-btn svg,
+.settings-page.dark-mode button.save-btn span,
+.settings-page.dark-mode .save-btn svg,
+.settings-page.dark-mode .save-btn span,
+.settings-page.dark-mode .settings-main .save-btn svg,
+.settings-page.dark-mode .settings-main .save-btn span,
+.settings-page.dark-mode button.action-btn svg,
+.settings-page.dark-mode button.action-btn span,
+.settings-page.dark-mode .action-btn svg,
+.settings-page.dark-mode .action-btn span,
+.settings-page.dark-mode .settings-main .action-btn svg,
+.settings-page.dark-mode .settings-main .action-btn span {
+  color: white !important;
 }
 
 .save-all-btn {
@@ -1102,5 +1518,84 @@
   .modal-actions button {
     width: 100%;
   }
+}
+
+/* OVERRIDE CUỐI CÙNG - Đảm bảo nút Đổi mật khẩu (action-btn) và Lưu mật khẩu (save-btn) có gradient purple/pink trong dark mode */
+.settings-page.dark-mode button.save-btn,
+.settings-page.dark-mode button.action-btn {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode button.save-btn:hover,
+.settings-page.dark-mode button.action-btn:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  background-image: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  transform: none !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode button.save-btn svg,
+.settings-page.dark-mode button.save-btn span,
+.settings-page.dark-mode button.action-btn svg,
+.settings-page.dark-mode button.action-btn span {
+  color: white !important;
+}
+
+/* OVERRIDE CUỐI CÙNG - Đảm bảo toggle switch hover có border gradient purple/pink trong dark mode */
+.settings-page.dark-mode .setting-item .toggle-switch:hover .toggle-slider,
+.settings-page.dark-mode .settings-content .toggle-switch:hover .toggle-slider,
+.settings-page.dark-mode .settings-main .toggle-switch:hover .toggle-slider,
+.settings-page.dark-mode .toggle-switch:hover .toggle-slider {
+  background: rgba(17, 24, 39, 0.95) !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.settings-page.dark-mode .setting-item .toggle-switch:hover .toggle-slider::after,
+.settings-page.dark-mode .settings-content .toggle-switch:hover .toggle-slider::after,
+.settings-page.dark-mode .settings-main .toggle-switch:hover .toggle-slider::after,
+.settings-page.dark-mode .toggle-switch:hover .toggle-slider::after {
+  content: '' !important;
+  position: absolute !important;
+  top: -2px !important;
+  left: -2px !important;
+  right: -2px !important;
+  bottom: -2px !important;
+  border-radius: 28px !important;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  z-index: -1 !important;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0) !important;
+  -webkit-mask-composite: exclude !important;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0) !important;
+  mask-composite: exclude !important;
+  padding: 2px !important;
+}
+
+/* Đảm bảo toggle checked trong dark mode có background gradient purple/pink */
+.settings-page.dark-mode .setting-item .toggle-switch input:checked + .toggle-slider,
+.settings-page.dark-mode .settings-content .toggle-switch input:checked + .toggle-slider,
+.settings-page.dark-mode .settings-main .toggle-switch input:checked + .toggle-slider,
+.settings-page.dark-mode .toggle-switch input:checked + .toggle-slider {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
 }
 

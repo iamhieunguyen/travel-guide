@@ -455,9 +455,6 @@ def lambda_handler(event, context):
                             from save_to_gallery import save_photo_to_gallery, update_trending_tags
                             tag_names = [label['name'] for label in labels_data]
                             image_url = key  # S3 key
-<<<<<<< HEAD
-                            save_photo_to_gallery(article_id, image_url, tag_names, status='public')
-=======
                             
                             # Use full S3 key as unique photo_id to avoid overwriting
                             # For articles/abc123_img1.jpg → photo_id = 'articles/abc123_img1.jpg'
@@ -465,7 +462,6 @@ def lambda_handler(event, context):
                             photo_id = key  # Use S3 key as unique identifier
                             
                             save_photo_to_gallery(photo_id, image_url, tag_names, status='public', article_id=article_id)
->>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
                             update_trending_tags(tag_names, image_url)
                             print("✓ Saved to Gallery tables")
                         except Exception as gallery_error:

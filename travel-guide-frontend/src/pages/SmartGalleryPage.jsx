@@ -3,14 +3,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, Sparkles } from 'lucide-react';
 import TrendingTagCard from '../components/gallery/TrendingTagCard';
-import galleryApi from '../services/galleryService';
+import galleryApi from '../services/galleryApi';
 
 export default function SmartGalleryPage() {
   const navigate = useNavigate();
   const [trendingTags, setTrendingTags] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [totalTags, setTotalTags] = useState(0);
 
   useEffect(() => {
     loadTrendingTags();
@@ -24,7 +23,6 @@ export default function SmartGalleryPage() {
       const response = await galleryApi.getTrendingTags({ limit: 20 });
       
       setTrendingTags(response.items || []);
-      setTotalTags(response.total_tags || 0);
     } catch (err) {
       console.error('Error loading trending tags:', err);
       setError('Không thể tải dữ liệu. Vui lòng thử lại sau.');
@@ -58,6 +56,9 @@ export default function SmartGalleryPage() {
             </h1>
             <p className="text-white/70 text-base">
               Khám phá các chủ đề đang được quan tâm nhất • {trendingTags.length} tags
+            </p>
+            <p className="text-white/50 text-sm mt-2">
+              💡 Hover vào tag để xem số lượng ảnh
             </p>
           </div>
         </div>

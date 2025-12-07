@@ -1,0 +1,813 @@
+/* Gradient Button Styles - Like Button */
+.like-button-gradient {
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State (giống button Share/3 chấm) */
+.like-button-gradient.light-mode {
+  background: #f5f5f5;
+  color: #374151;
+  border: none;
+  box-shadow: none;
+}
+
+.like-button-gradient.light-mode.liked {
+  background: #f5f5f5;
+  color: #374151;
+  border: none;
+  box-shadow: none;
+}
+
+/* Dark Mode - Normal State (giống button Share/3 chấm) */
+.like-button-gradient.dark-mode {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  box-shadow: none;
+}
+
+.like-button-gradient.dark-mode.liked {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  box-shadow: none;
+}
+
+/* Hover Effect - Gradient Border (Outlined Style) + Shadow Gradient */
+.like-button-gradient:hover {
+  transform: translateY(-2px);
+}
+
+/* Light Mode Hover - Outlined with Gradient Border */
+.like-button-gradient.light-mode:hover {
+  background: white;
+  color: #00ff88;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+/* Gradient border using pseudo-element with proper rounded corners */
+.like-button-gradient.light-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+.like-button-gradient.light-mode.liked:hover {
+  background: white;
+  color: #ec4899;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(236, 72, 153, 0.35),
+    0 12px 28px rgba(249, 115, 22, 0.25),
+    0 0 40px rgba(236, 72, 153, 0.15);
+}
+
+.like-button-gradient.light-mode.liked:hover::after {
+  background: linear-gradient(135deg, #ec4899 0%, #f97316 100%);
+}
+
+/* Dark Mode Hover - Outlined with Gradient Border */
+.like-button-gradient.dark-mode:hover {
+  background: rgba(17, 24, 39, 0.95);
+  color: #a78bfa;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.like-button-gradient.dark-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+.like-button-gradient.dark-mode.liked:hover {
+  background: rgba(17, 24, 39, 0.95);
+  color: #22d3ee;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(6, 182, 212, 0.5),
+    0 12px 28px rgba(59, 130, 246, 0.4),
+    0 0 40px rgba(6, 182, 212, 0.3);
+}
+
+.like-button-gradient.dark-mode.liked:hover::after {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+}
+
+/* Arrow icon animation */
+.like-button-gradient .arrow-icon {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0.5;
+  transform: translateX(0);
+}
+
+.like-button-gradient:hover .arrow-icon {
+  transform: translateX(4px);
+  opacity: 1;
+}
+
+/* Active state */
+.like-button-gradient:active {
+  transform: translateY(0);
+}
+
+/* Gradient Button Styles - Share & More Buttons */
+.action-button-gradient {
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State */
+.action-button-gradient.light-mode {
+  background: #f5f5f5;
+  color: #374151;
+  border: none;
+  box-shadow: none;
+}
+
+/* Dark Mode - Normal State */
+.action-button-gradient.dark-mode {
+  background: transparent;
+  color: white;
+  border: 1px solid white;
+  box-shadow: none;
+}
+
+/* Hover Effect - Gradient Border (Outlined Style) + Shadow Gradient */
+.action-button-gradient:hover {
+  transform: translateY(-2px);
+}
+
+/* Light Mode Hover - Outlined with Gradient Border */
+.action-button-gradient.light-mode:hover {
+  background: white;
+  color: #00ff88;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+/* Gradient border using pseudo-element with proper rounded corners */
+.action-button-gradient.light-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Hover - Outlined with Gradient Border */
+.action-button-gradient.dark-mode:hover {
+  background: rgba(17, 24, 39, 0.95);
+  color: #a78bfa;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.action-button-gradient.dark-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Active state */
+.action-button-gradient:active {
+  transform: translateY(0);
+}
+
+/* Gradient Button Styles - Header Buttons (Theme, Language, Notification, Avatar) */
+.header-button-gradient {
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State */
+.header-button-gradient.light-mode {
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Dark Mode - Normal State */
+.header-button-gradient.dark-mode {
+  background: rgba(15, 23, 42, 0.7); /* slate-900/70 */
+  color: white;
+  border: 1px solid #4b5563; /* gray-600 */
+  box-shadow: none;
+}
+
+/* Hover Effect - Gradient Border (Outlined Style) + Shadow Gradient */
+.header-button-gradient:hover {
+  transform: translateY(-2px);
+}
+
+/* Light Mode Hover - Outlined with Gradient Border */
+.header-button-gradient.light-mode:hover {
+  background: white;
+  color: #00ff88;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+/* Gradient border using pseudo-element with proper rounded corners */
+.header-button-gradient.light-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Hover - Outlined with Gradient Border */
+.header-button-gradient.dark-mode:hover {
+  background: rgba(17, 24, 39, 0.95);
+  color: #a78bfa;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.header-button-gradient.dark-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Active state */
+.header-button-gradient:active {
+  transform: translateY(0);
+}
+
+/* Search Input with Gradient Focus Effect */
+.search-input-gradient {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State */
+.search-input-gradient.light-mode {
+  background: white;
+  color: #111827;
+  border: 1px solid #d1d5db;
+}
+
+/* Dark Mode - Normal State */
+.search-input-gradient.dark-mode {
+  background: black;
+  color: white;
+  border: 1px solid #374151;
+}
+
+/* Light Mode Focus - Outlined with Gradient Border */
+.search-input-gradient.light-mode:focus {
+  background: white;
+  color: #00ff88; /* Neon green text khi focus */
+  border: none;
+  outline: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+.search-input-gradient.light-mode:focus::placeholder {
+  color: rgba(0, 255, 136, 0.6); /* Placeholder màu neon green nhạt */
+}
+
+/* Icon color khi input focus - Light mode */
+.search-input-wrapper:focus-within button svg {
+  color: #00ff88;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-input-wrapper.light-mode:focus-within button svg {
+  color: #00ff88;
+}
+
+/* Gradient border using pseudo-element for focus */
+.search-input-gradient.light-mode:focus::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Focus - Outlined with Gradient Border */
+.search-input-gradient.dark-mode:focus {
+  background: black;
+  color: #a78bfa; /* Purple text khi focus */
+  border: none;
+  outline: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.search-input-gradient.dark-mode:focus::placeholder {
+  color: rgba(167, 139, 250, 0.6); /* Placeholder màu purple nhạt */
+}
+
+/* Logout Button with Red Gradient Hover Effect */
+.logout-button-gradient {
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State (transparent background) */
+.logout-button-gradient.light-mode {
+  background: transparent;
+  color: white;
+  border: none;
+  box-shadow: none;
+}
+
+/* Dark Mode - Normal State (transparent background) */
+.logout-button-gradient.dark-mode {
+  background: transparent;
+  color: #F5E6D3;
+  border: none;
+  box-shadow: none;
+}
+
+/* Hover Effect - Gradient Border (Outlined Style) + Shadow Gradient */
+.logout-button-gradient:hover {
+  transform: translateY(-2px);
+}
+
+/* Light Mode Hover - Outlined with Red Gradient Border */
+.logout-button-gradient.light-mode:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ff0066; /* Neon red text khi hover */
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(255, 0, 102, 0.5),
+    0 12px 28px rgba(255, 0, 102, 0.4),
+    0 0 40px rgba(255, 0, 102, 0.3),
+    0 0 60px rgba(255, 0, 102, 0.2);
+}
+
+/* Icon và text color khi hover - Light mode */
+.logout-button-gradient.light-mode:hover svg,
+.logout-button-gradient.light-mode:hover span {
+  color: #ff0066;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Red gradient border using pseudo-element */
+.logout-button-gradient.light-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ff0066 0%, #ff3366 100%); /* Neon red gradient */
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Hover - Outlined with Red Gradient Border */
+.logout-button-gradient.dark-mode:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ff3366; /* Neon red text khi hover */
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(255, 0, 102, 0.5),
+    0 12px 28px rgba(255, 0, 102, 0.4),
+    0 0 40px rgba(255, 0, 102, 0.3),
+    0 0 60px rgba(255, 0, 102, 0.2);
+}
+
+/* Icon và text color khi hover - Dark mode */
+.logout-button-gradient.dark-mode:hover svg,
+.logout-button-gradient.dark-mode:hover span {
+  color: #ff3366;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.logout-button-gradient.dark-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #ff0066 0%, #ff3366 100%); /* Neon red gradient */
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Active state */
+.logout-button-gradient:active {
+  transform: translateY(0);
+}
+
+/* Sidebar Navigation Buttons with Gradient Hover Effect */
+.sidebar-nav-button {
+  position: relative;
+  overflow: visible;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 1rem; /* rounded-2xl tương đương 1rem */
+  isolation: isolate;
+}
+
+/* Light Mode - Normal State (transparent background) */
+.sidebar-nav-button.light-mode {
+  background: transparent;
+  color: #374151;
+  border: none;
+  box-shadow: none;
+}
+
+/* Dark Mode - Normal State (transparent background) */
+.sidebar-nav-button.dark-mode {
+  background: transparent;
+  color: #F5E6D3;
+  border: none;
+  box-shadow: none;
+}
+
+/* Hover Effect - Gradient Border (Outlined Style) + Shadow Gradient */
+.sidebar-nav-button:hover {
+  transform: translateY(-2px);
+}
+
+/* Light Mode Hover - Outlined with Gradient Border */
+.sidebar-nav-button.light-mode:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #00ff88; /* Neon green text khi hover */
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+/* Icon và text color khi hover - Light mode */
+.sidebar-nav-button.light-mode:hover svg,
+.sidebar-nav-button.light-mode:hover span {
+  color: #00ff88;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Gradient border using pseudo-element */
+.sidebar-nav-button.light-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Dark Mode Hover - Outlined with Gradient Border */
+.sidebar-nav-button.dark-mode:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #a78bfa; /* Purple text khi hover */
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+/* Icon và text color khi hover - Dark mode */
+.sidebar-nav-button.dark-mode:hover svg,
+.sidebar-nav-button.dark-mode:hover span {
+  color: #a78bfa;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-nav-button.dark-mode:hover::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Active state */
+.sidebar-nav-button:active {
+  transform: translateY(0);
+}
+
+/* Active state cho sidebar-nav-button - có gradient background */
+.sidebar-nav-button.active.light-mode {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
+}
+
+.sidebar-nav-button.active.light-mode svg,
+.sidebar-nav-button.active.light-mode span {
+  color: white !important;
+}
+
+.sidebar-nav-button.active.dark-mode {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.sidebar-nav-button.active.dark-mode svg,
+.sidebar-nav-button.active.dark-mode span {
+  color: white !important;
+}
+
+.sidebar-nav-button.active:hover {
+  transform: none;
+}
+
+/* Icon color khi input focus - Dark mode */
+.search-input-wrapper.dark-mode:focus-within button svg {
+  color: #a78bfa;
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-input-gradient.dark-mode:focus::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
+  -webkit-mask-clip: padding-box, border-box;
+  mask-clip: padding-box, border-box;
+}
+
+/* Save All Button with Gradient Background on Hover */
+.save-all-button-gradient.light-mode:hover {
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2) !important;
+}
+
+.save-all-button-gradient.light-mode:hover::after {
+  display: none; /* Remove border gradient, use background gradient instead */
+}
+
+.save-all-button-gradient.light-mode:hover svg,
+.save-all-button-gradient.light-mode:hover span {
+  color: white !important;
+}
+
+.save-all-button-gradient.dark-mode:hover {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3) !important;
+}
+
+.save-all-button-gradient.dark-mode:hover::after {
+  display: none; /* Remove border gradient, use background gradient instead */
+}
+
+.save-all-button-gradient.dark-mode:hover svg,
+.save-all-button-gradient.dark-mode:hover span {
+  color: white !important;
+}
+

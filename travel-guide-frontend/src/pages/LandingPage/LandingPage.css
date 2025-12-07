@@ -12,18 +12,14 @@ html:has(#landing-page-wrapper) {
 
 /* --- WRAPPER ĐỂ CÔ LẬP STYLE --- */
 #landing-page-wrapper {
-  --lp-primary: #0d9488; 
-  --lp-accent: #2dd4bf;
+  --lp-primary: #00A9E0; /* PANTONE 299 C */
+  --lp-accent: #00A9E0; /* PANTONE 299 C */
   --lp-text: #0f172a;
   --lp-text-light: #475569;
   --lp-bg-light: #f8fafc;
   
   min-height: 100vh;
-  background: 
-    linear-gradient(135deg, #ecfdf5 0%, #d1fae5 30%, #a7f3d0 60%, #6ee7b7 100%),
-    radial-gradient(circle at 20% 50%, rgba(129, 201, 103, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(13, 148, 136, 0.08) 0%, transparent 50%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
+  background: linear-gradient(135deg, #1E5A7A 0%, #2B7A9A 25%, #4A9BB8 50%, #6BBCD6 75%, #8DD8E8 100%);
   background-attachment: fixed;
   /* Font stack ưu tiên tiếng Việt */
   font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif !important;
@@ -50,48 +46,47 @@ html:has(#landing-page-wrapper) {
   --lp-text-light: #9ca3af;
   --lp-bg-light: #020617;
 
-  background:
-    linear-gradient(135deg, #020617 0%, #020617 40%, #020617 100%),
-    radial-gradient(circle at 20% 50%, rgba(15, 23, 42, 0.85) 0%, transparent 55%),
-    radial-gradient(circle at 80% 80%, rgba(30, 64, 175, 0.3) 0%, transparent 55%);
+  background: linear-gradient(135deg, #000A14 0%, #01101E 25%, #011628 50%, #011C32 75%, #02182E 100%);
+  background-attachment: fixed;
 }
 
 #landing-page-wrapper.landing-dark .lp-nav {
-  background: rgba(15, 23, 42, 0.95);
-  border-bottom-color: rgba(30, 64, 175, 0.4);
+  background: rgba(1, 16, 40, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom-color: rgba(148, 163, 184, 0.15);
 }
 
-/* Hero + sections nền tối dịu hơn */
+/* Hero + sections nền trong suốt để hiển thị background gradient */
 #landing-page-wrapper.landing-dark .lp-hero {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+  background: transparent;
 }
 
 #landing-page-wrapper.landing-dark .lp-features,
-#landing-page-wrapper.landing-dark .lp-explore,
 #landing-page-wrapper.landing-dark .lp-community-map,
 #landing-page-wrapper.landing-dark .lp-faq {
-  background: rgba(15, 23, 42, 0.98);
+  background: transparent;
 }
 
 #landing-page-wrapper.landing-dark .lp-how-it-works {
-  background: rgba(15, 23, 42, 0.98);
+  background: transparent;
 }
 
 #landing-page-wrapper.landing-dark .lp-why-different {
-  background: linear-gradient(135deg, #020617, #020617);
+  background: transparent;
 }
 
 /* Timeline cards dark mode */
 #landing-page-wrapper.landing-dark .timeline-card {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(45, 212, 191, 0.3);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .timeline-card:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(45, 212, 191, 0.5);
-  box-shadow: 0 25px 60px rgba(13, 148, 136, 0.3);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 25px 60px rgba(139, 92, 246, 0.2);
 }
 
 #landing-page-wrapper.landing-dark .card-number {
@@ -99,35 +94,36 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper.landing-dark .card-icon {
-  background: rgba(13, 148, 136, 0.2);
-  border: 1px solid rgba(45, 212, 191, 0.3);
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .timeline-card:hover .card-icon {
-  background: linear-gradient(135deg, #0891b2, #2dd4bf);
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
   border-color: transparent;
 }
 
 #landing-page-wrapper.landing-dark .track-dot {
-  background: rgba(30, 41, 59, 0.9);
-  border-color: #2dd4bf;
-  box-shadow: 0 4px 12px rgba(45, 212, 191, 0.4);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .track-line {
-  box-shadow: 0 4px 15px rgba(45, 212, 191, 0.4);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
 }
 
 /* FAQ dark mode */
 #landing-page-wrapper.landing-dark .faq-item {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
   color: #e5e7eb;
 }
 
 #landing-page-wrapper.landing-dark .faq-item:hover {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(45, 212, 191, 0.4);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(139, 92, 246, 0.4);
 }
 
 #landing-page-wrapper.landing-dark .faq-question h3 {
@@ -139,37 +135,52 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper.landing-dark .faq-item:hover .arrow {
-  color: #2dd4bf;
+  color: #a78bfa;
 }
 
 #landing-page-wrapper.landing-dark .lp-feature-item {
-  background: #020617;
-  border: 1px solid rgba(51, 65, 85, 0.8);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 #landing-page-wrapper.landing-dark .lp-feature-item:hover {
-  background: #020617;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .lp-icon-box {
-  background: rgba(15, 118, 110, 0.25);
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+#landing-page-wrapper.landing-dark .lp-feature-item:hover .lp-icon-box {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(236, 72, 153, 0.2));
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 #landing-page-wrapper.landing-dark .comparison-item {
-  background: #020617;
-  border-color: rgba(51, 65, 85, 0.9);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .comparison-item.new-way {
-  border-color: #0d9488;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .comparison-item:hover {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(139, 92, 246, 0.5);
 }
 
 #landing-page-wrapper.landing-dark .lp-card,
 #landing-page-wrapper.landing-dark .explore-card {
-  background: #020617;
-  border-color: rgba(51, 65, 85, 0.9);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 #landing-page-wrapper.landing-dark .lp-card-text,
@@ -181,8 +192,9 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper.landing-dark .hero-stats-inline {
-  background: rgba(15, 23, 42, 0.9);
-  border-color: rgba(30, 64, 175, 0.4);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 #landing-page-wrapper.landing-dark .lp-btn-outline {
@@ -270,11 +282,18 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(13, 148, 136, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(13, 148, 136, 0.15) 1px, transparent 1px);
+    linear-gradient(rgba(0, 169, 224, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 169, 224, 0.15) 1px, transparent 1px);
   background-size: 80px 80px;
   opacity: 0.4;
   animation: gridMove 20s linear infinite;
+}
+
+#landing-page-wrapper.landing-dark .map-grid {
+  background-image: 
+    linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px);
+  opacity: 0.3;
 }
 
 /* Map pins (small dots) */
@@ -285,9 +304,16 @@ html:has(#landing-page-wrapper) {
   background: var(--lp-primary);
   border-radius: 50%;
   box-shadow: 
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 0 6px rgba(13, 148, 136, 0.1);
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 0 6px rgba(0, 169, 224, 0.1);
   animation: pinPulse 3s ease-in-out infinite;
+}
+
+#landing-page-wrapper.landing-dark .map-pin {
+  background: #a78bfa;
+  box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.2),
+    0 0 0 6px rgba(139, 92, 246, 0.1);
 }
 
 #landing-page-wrapper .map-pin-1 { top: 15%; left: 20%; animation-delay: 0s; }
@@ -317,19 +343,35 @@ html:has(#landing-page-wrapper) {
   animation: routeDraw 8s ease-in-out infinite;
 }
 
+#landing-page-wrapper.landing-dark .route-line {
+  stroke: #a78bfa;
+}
+
 #landing-page-wrapper .route-1 {
-  stroke: rgba(13, 148, 136, 0.5);
+  stroke: rgba(0, 169, 224, 0.5);
   animation-delay: 0s;
 }
 
+#landing-page-wrapper.landing-dark .route-1 {
+  stroke: rgba(167, 139, 250, 0.5);
+}
+
 #landing-page-wrapper .route-2 {
-  stroke: rgba(45, 212, 191, 0.4);
+  stroke: rgba(107, 188, 214, 0.4);
   animation-delay: 2s;
 }
 
+#landing-page-wrapper.landing-dark .route-2 {
+  stroke: rgba(236, 72, 153, 0.4);
+}
+
 #landing-page-wrapper .route-3 {
-  stroke: rgba(59, 130, 246, 0.4);
+  stroke: rgba(0, 169, 224, 0.4);
   animation-delay: 4s;
+}
+
+#landing-page-wrapper.landing-dark .route-3 {
+  stroke: rgba(139, 92, 246, 0.4);
 }
 
 /* Location markers (larger pins with icons) */
@@ -338,7 +380,12 @@ html:has(#landing-page-wrapper) {
   color: var(--lp-primary);
   opacity: 0.6;
   animation: markerFloat 6s ease-in-out infinite;
-  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(0, 169, 224, 0.3));
+}
+
+#landing-page-wrapper.landing-dark .map-marker {
+  color: #a78bfa;
+  filter: drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3));
 }
 
 #landing-page-wrapper .marker-1 { top: 20%; left: 25%; animation-delay: 0s; }
@@ -351,9 +398,14 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   top: 10%;
   right: 10%;
-  color: rgba(13, 148, 136, 0.3);
+  color: rgba(0, 169, 224, 0.3);
   animation: compassRotate 20s linear infinite;
-  filter: drop-shadow(0 2px 8px rgba(13, 148, 136, 0.2));
+  filter: drop-shadow(0 2px 8px rgba(0, 169, 224, 0.2));
+}
+
+#landing-page-wrapper.landing-dark .compass-rose {
+  color: rgba(167, 139, 250, 0.3);
+  filter: drop-shadow(0 2px 8px rgba(139, 92, 246, 0.2));
 }
 
 /* Map texture (water/land effect) */
@@ -361,9 +413,9 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(13, 148, 136, 0.06) 0%, transparent 50%);
+    radial-gradient(circle at 30% 40%, rgba(30, 90, 122, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0, 169, 224, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(109, 188, 214, 0.06) 0%, transparent 50%);
   opacity: 0.6;
   animation: texturePulse 15s ease-in-out infinite;
 }
@@ -374,8 +426,8 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px),
-    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px);
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(30, 90, 122, 0.03) 2px, rgba(30, 90, 122, 0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(30, 90, 122, 0.03) 2px, rgba(30, 90, 122, 0.03) 4px);
   background-size: 40px 40px;
   opacity: 0.5;
   pointer-events: none;
@@ -386,9 +438,9 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(circle at 15% 25%, rgba(13, 148, 136, 0.1) 0%, transparent 25%),
-    radial-gradient(circle at 85% 75%, rgba(45, 212, 191, 0.08) 0%, transparent 30%),
-    radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 35%);
+    radial-gradient(circle at 15% 25%, rgba(30, 90, 122, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 85% 75%, rgba(0, 169, 224, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 50% 50%, rgba(109, 188, 214, 0.06) 0%, transparent 35%);
   opacity: 0.4;
   pointer-events: none;
   animation: mapGlow 20s ease-in-out infinite;
@@ -409,7 +461,7 @@ html:has(#landing-page-wrapper) {
   left: -10vw; 
   width: 500px; 
   height: 500px; 
-  background: rgba(16, 185, 129, 0.2); 
+  background: rgba(0, 169, 224, 0.2); 
   animation: blobFloat 25s ease-in-out infinite;
 }
 #landing-page-wrapper .lp-blob-2 { 
@@ -417,7 +469,7 @@ html:has(#landing-page-wrapper) {
   right: -10vw; 
   width: 600px; 
   height: 600px; 
-  background: rgba(59, 130, 246, 0.15); 
+  background: rgba(0, 169, 224, 0.15); 
   animation: blobFloat 30s ease-in-out infinite 5s;
 }
 
@@ -444,8 +496,45 @@ html:has(#landing-page-wrapper) {
   font-size: 1.4rem; font-weight: 800;
   color: var(--lp-primary); cursor: pointer;
 }
+#landing-page-wrapper.landing-dark .lp-brand {
+  color: #a78bfa;
+}
 #landing-page-wrapper .lp-brand span { display: inline-block; }
 #landing-page-wrapper .lp-nav-actions { display: flex; gap: 1rem; align-items: center; }
+
+/* Theme Toggle Button - Override lp-btn styles */
+#landing-page-wrapper button.lp-btn.theme-toggle-btn,
+#landing-page-wrapper .theme-toggle-btn {
+  height: 40px !important;
+  width: 40px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease;
+  aspect-ratio: 1 / 1 !important; /* Đảm bảo tỷ lệ 1:1 */
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
+
+#landing-page-wrapper button.lp-btn.theme-toggle-btn:hover,
+#landing-page-wrapper .theme-toggle-btn:hover {
+  transform: scale(1.1);
+  border-radius: 50% !important; /* Đảm bảo vẫn tròn khi hover */
+  width: 40px !important; /* Giữ width cố định */
+  height: 40px !important; /* Giữ height cố định */
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
+
+#landing-page-wrapper .theme-toggle-btn svg {
+  transition: transform 0.3s ease;
+}
+
+#landing-page-wrapper .theme-toggle-btn:hover svg {
+  transform: rotate(15deg);
+}
 
 /* --- BUTTONS --- */
 #landing-page-wrapper button.lp-btn {
@@ -461,11 +550,31 @@ html:has(#landing-page-wrapper) {
   box-shadow: none; width: auto !important; aspect-ratio: auto !important;
 }
 #landing-page-wrapper .lp-btn-ghost { color: var(--lp-text-light); background: transparent; }
-#landing-page-wrapper .lp-btn-ghost:hover { color: var(--lp-primary); background: rgba(13, 148, 136, 0.1); }
-#landing-page-wrapper .lp-btn-primary { background: var(--lp-primary) !important; color: white !important; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3) !important; }
-#landing-page-wrapper .lp-btn-primary:hover { background: var(--lp-accent) !important; transform: translateY(-2px); }
+#landing-page-wrapper .lp-btn-ghost:hover { color: #00A9E0; background: rgba(0, 169, 224, 0.1); box-shadow: 0 4px 12px rgba(0, 169, 224, 0.2); }
+#landing-page-wrapper.landing-dark .lp-btn-ghost:hover {
+  color: #a78bfa;
+  background: rgba(139, 92, 246, 0.1);
+}
+#landing-page-wrapper .lp-btn-primary { background: #00A9E0 !important; color: white !important; box-shadow: 0 4px 12px rgba(0, 169, 224, 0.4) !important; }
+#landing-page-wrapper .lp-btn-primary:hover { 
+  background: #00A9E0 !important; 
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 169, 224, 0.5), 0 0 30px rgba(0, 169, 224, 0.3) !important;
+}
+#landing-page-wrapper.landing-dark .lp-btn-primary {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+#landing-page-wrapper.landing-dark .lp-btn-primary:hover {
+  background: linear-gradient(135deg, #a78bfa, #f472b6) !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4) !important;
+}
 #landing-page-wrapper .lp-btn-outline { background: white !important; border: 1px solid #e2e8f0 !important; color: var(--lp-text) !important; }
-#landing-page-wrapper .lp-btn-outline:hover { border-color: var(--lp-primary) !important; color: var(--lp-primary) !important; }
+#landing-page-wrapper .lp-btn-outline:hover { border-color: #00A9E0 !important; color: #00A9E0 !important; box-shadow: 0 4px 12px rgba(0, 169, 224, 0.2) !important; }
+#landing-page-wrapper.landing-dark .lp-btn-outline:hover {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  color: #a78bfa !important;
+}
 
 /* --- HERO SECTION - Thiết kế mới hoàn toàn --- */
 #landing-page-wrapper .lp-hero {
@@ -508,19 +617,40 @@ html:has(#landing-page-wrapper) {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 50px;
-  border: 1px solid rgba(13, 148, 136, 0.2); 
+  border: 1px solid rgba(0, 169, 224, 0.2); 
   font-size: 0.85rem; 
   color: var(--lp-primary); 
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.1);
   transition: all 0.3s ease;
   width: fit-content;
 }
 
 #landing-page-wrapper .lp-badge:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 6px 20px rgba(0, 169, 224, 0.15);
   border-color: var(--lp-primary);
+}
+
+/* Dark Mode - Badge "Khám phá & Lưu giữ hành trình" */
+#landing-page-wrapper.landing-dark .lp-badge {
+  background: rgba(30, 41, 59, 0.4) !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  color: #a78bfa !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-badge:hover {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-badge svg,
+#landing-page-wrapper.landing-dark .lp-badge .text-teal-600 {
+  color: #a78bfa !important;
+  stroke: #a78bfa !important;
+  fill: none !important;
 }
 
 #landing-page-wrapper .lp-title { 
@@ -534,12 +664,20 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper .lp-highlight { 
-  background: linear-gradient(120deg, var(--lp-primary), var(--lp-accent), #3b82f6); 
+  background: linear-gradient(120deg, #00A9E0, #00A9E0, #00A9E0); 
   background-clip: text;
   -webkit-background-clip: text; 
   -webkit-text-fill-color: transparent; 
   display: inline-block; 
   position: relative;
+}
+
+/* Dark Mode - Highlight "khoảnh khắc" */
+#landing-page-wrapper.landing-dark .lp-highlight {
+  background: linear-gradient(120deg, #8b5cf6, #ec4899, #a78bfa) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 #landing-page-wrapper .lp-desc { 
@@ -558,17 +696,76 @@ html:has(#landing-page-wrapper) {
   margin: 0;
 }
 
+/* Hero CTA Button - Thiết kế giống nút "Đăng ký ngay" ở footer */
 #landing-page-wrapper .lp-cta-btn { 
   height: 50px !important; 
   padding: 0 2rem !important; 
   font-size: 1rem !important;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.2) !important;
-  transition: all 0.3s ease !important;
+  font-weight: 700 !important;
+  border-radius: 99px !important;
+  background: white !important;
+  color: #00A9E0 !important; /* PANTONE 299 C */
+  border: 3px solid #00A9E0 !important; /* Border PANTONE 299 C */
+  box-shadow: 
+    0 10px 25px rgba(0, 169, 224, 0.3),
+    0 0 40px rgba(0, 169, 224, 0.2),
+    inset 0 0 20px rgba(0, 169, 224, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+#landing-page-wrapper .lp-cta-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 169, 224, 0.1), transparent);
+  transition: left 0.5s ease;
+  z-index: 1;
+}
+
+#landing-page-wrapper .lp-cta-btn:hover::before {
+  left: 100%;
 }
 
 #landing-page-wrapper .lp-cta-btn:hover {
-  transform: translateY(-3px) !important;
-  box-shadow: 0 8px 25px rgba(13, 148, 136, 0.3) !important;
+  background: #00A9E0 !important; /* Chuyển sang PANTONE 299 C khi hover */
+  color: white !important;
+  transform: translateY(-4px) scale(1.02) !important;
+  border-color: #00A9E0 !important;
+  box-shadow: 
+    0 20px 40px rgba(0, 169, 224, 0.5),
+    0 0 60px rgba(0, 169, 224, 0.4),
+    0 0 100px rgba(0, 169, 224, 0.3) !important;
+}
+
+/* Dark Mode - Giữ nguyên màu gradient purple/pink như cũ */
+#landing-page-wrapper.landing-dark .lp-cta-btn {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-cta-btn::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+#landing-page-wrapper.landing-dark .lp-cta-btn:hover {
+  background: linear-gradient(135deg, #a78bfa, #f472b6) !important;
+  color: white !important;
+  transform: translateY(-4px) scale(1.02) !important;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4), 0 0 30px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Đảm bảo icon và text trong nút có z-index cao hơn shimmer effect */
+#landing-page-wrapper .lp-cta-btn > * {
+  position: relative;
+  z-index: 2;
 }
 
 /* --- HERO CARDS WRAPPER - Grid Layout mới --- */
@@ -601,7 +798,7 @@ html:has(#landing-page-wrapper) {
   width: 400px;
   height: 400px;
   background: radial-gradient(circle, 
-    rgba(13, 148, 136, 0.15) 0%, 
+    rgba(0, 169, 224, 0.15) 0%, 
     transparent 70%);
   top: 10%;
   left: -5%;
@@ -612,7 +809,7 @@ html:has(#landing-page-wrapper) {
   width: 350px;
   height: 350px;
   background: radial-gradient(circle, 
-    rgba(59, 130, 246, 0.12) 0%, 
+    rgba(0, 169, 224, 0.12) 0%, 
     transparent 70%);
   bottom: 10%;
   right: -5%;
@@ -639,7 +836,7 @@ html:has(#landing-page-wrapper) {
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 
     0 10px 30px -5px rgba(0,0,0,0.1),
-    0 0 0 1px rgba(13, 148, 136, 0.05);
+    0 0 0 1px rgba(0, 169, 224, 0.05);
   color: var(--lp-text);
   font-size: 0.95rem;
   font-weight: 600;
@@ -647,16 +844,36 @@ html:has(#landing-page-wrapper) {
   width: 100%;
   justify-content: center;
   text-align: center;
+  margin-top: 1.5rem;
+}
+
+/* Dark mode styles */
+#landing-page-wrapper.landing-dark .visual-info {
+  background: rgba(30, 41, 59, 0.8);
+  border: 2px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 
+    0 10px 30px -5px rgba(0,0,0,0.3),
+    0 0 0 1px rgba(139, 92, 246, 0.1);
+  color: #e5e7eb;
 }
 
 #landing-page-wrapper .visual-info:hover {
-  transform: translateX(-50%) translateY(-5px);
+  transform: translateY(-5px);
   box-shadow: 
     0 25px 50px -10px rgba(0,0,0,0.15),
-    0 0 0 2px rgba(13, 148, 136, 0.1),
-    0 0 40px rgba(13, 148, 136, 0.1);
+    0 0 0 2px rgba(0, 169, 224, 0.1),
+    0 0 40px rgba(0, 169, 224, 0.1);
   border-color: var(--lp-primary);
   background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+}
+
+#landing-page-wrapper.landing-dark .visual-info:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 
+    0 25px 50px -10px rgba(0,0,0,0.4),
+    0 0 0 2px rgba(139, 92, 246, 0.3),
+    0 0 40px rgba(139, 92, 246, 0.2);
 }
 
 #landing-page-wrapper .visual-info p {
@@ -671,7 +888,7 @@ html:has(#landing-page-wrapper) {
   width: 40px;
   height: 40px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.1), rgba(107, 188, 214, 0.05));
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -681,11 +898,22 @@ html:has(#landing-page-wrapper) {
   animation: compassPulse 3s ease-in-out infinite;
 }
 
+/* Dark mode icon */
+#landing-page-wrapper.landing-dark .info-icon {
+  color: #a78bfa;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.1));
+}
+
 #landing-page-wrapper .visual-info:hover .info-icon {
   background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
   color: white;
   transform: scale(1.1) rotate(10deg);
   animation: none;
+}
+
+#landing-page-wrapper.landing-dark .visual-info:hover .info-icon {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  color: white;
 }
 
 @keyframes compassPulse {
@@ -744,7 +972,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 20px; 
   box-shadow: 
     0 10px 30px -5px rgba(0,0,0,0.1),
-    0 0 0 1px rgba(13, 148, 136, 0.05);
+    0 0 0 1px rgba(0, 169, 224, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.9);
   transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
@@ -769,7 +997,7 @@ html:has(#landing-page-wrapper) {
   opacity: 0;
   transition: all 0.4s ease;
   z-index: 1;
-  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(0, 169, 224, 0.3));
 }
 
 /* Route line effect - đường kết nối từ card đến background */
@@ -785,20 +1013,31 @@ html:has(#landing-page-wrapper) {
   opacity: 0;
   transition: all 0.5s ease;
   z-index: 0;
-  box-shadow: 0 0 10px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 0 10px rgba(0, 169, 224, 0.4);
 }
 
 /* HOVER EFFECT - Theme Bản Đồ: Zoom vào điểm trên bản đồ */
 #landing-page-wrapper .lp-card:hover {
   transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
   box-shadow: 
-    0 40px 80px rgba(13, 148, 136, 0.35),
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 60px rgba(13, 148, 136, 0.25),
-    0 0 100px rgba(59, 130, 246, 0.15);
+    0 40px 80px rgba(0, 169, 224, 0.35),
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 60px rgba(0, 169, 224, 0.25),
+    0 0 100px rgba(0, 169, 224, 0.15);
   border-color: var(--lp-primary);
   z-index: 100 !important;
   background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
+}
+
+/* Dark mode card hover */
+#landing-page-wrapper.landing-dark .lp-card:hover {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  box-shadow: 
+    0 40px 80px rgba(139, 92, 246, 0.3),
+    0 0 0 3px rgba(139, 92, 246, 0.3),
+    0 0 60px rgba(139, 92, 246, 0.2),
+    0 0 100px rgba(236, 72, 153, 0.15) !important;
 }
 
 /* Hiển thị pin marker khi hover */
@@ -839,7 +1078,7 @@ html:has(#landing-page-wrapper) {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(13, 148, 136, 0.4), transparent);
+  background: radial-gradient(circle, rgba(0, 169, 224, 0.4), transparent);
   opacity: 0;
   pointer-events: none;
   z-index: 1;
@@ -854,45 +1093,45 @@ html:has(#landing-page-wrapper) {
 #landing-page-wrapper .card-1:hover {
   transform: translateY(-32px) scale(1.15) rotate(0deg) !important;
   box-shadow: 
-    0 45px 90px rgba(13, 148, 136, 0.4),
-    0 0 0 4px rgba(13, 148, 136, 0.25),
-    0 0 70px rgba(13, 148, 136, 0.3),
-    0 0 120px rgba(59, 130, 246, 0.2);
+    0 45px 90px rgba(0, 169, 224, 0.4),
+    0 0 0 4px rgba(0, 169, 224, 0.25),
+    0 0 70px rgba(0, 169, 224, 0.3),
+    0 0 120px rgba(0, 169, 224, 0.2);
 }
 
 #landing-page-wrapper .card-2:hover {
   transform: translateY(-28px) scale(1.1) rotate(-2deg) !important;
   box-shadow: 
-    0 40px 80px rgba(16, 185, 129, 0.35),
-    0 0 0 3px rgba(16, 185, 129, 0.2),
-    0 0 60px rgba(16, 185, 129, 0.25),
-    0 0 100px rgba(34, 197, 94, 0.15);
+    0 40px 80px rgba(0, 169, 224, 0.35),
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 60px rgba(0, 169, 224, 0.25),
+    0 0 100px rgba(0, 169, 224, 0.15);
 }
 
 #landing-page-wrapper .card-2:hover::before {
-  border-bottom-color: #10b981;
+  border-bottom-color: #00A9E0;
 }
 
 #landing-page-wrapper .card-3:hover {
   transform: translateY(-28px) scale(1.1) rotate(2deg) !important;
   box-shadow: 
-    0 40px 80px rgba(59, 130, 246, 0.35),
-    0 0 0 3px rgba(59, 130, 246, 0.2),
-    0 0 60px rgba(59, 130, 246, 0.25),
-    0 0 100px rgba(96, 165, 250, 0.15);
+    0 40px 80px rgba(0, 169, 224, 0.35),
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 60px rgba(0, 169, 224, 0.25),
+    0 0 100px rgba(0, 169, 224, 0.15);
 }
 
 #landing-page-wrapper .card-3:hover::before {
-  border-bottom-color: #3b82f6;
+  border-bottom-color: #00A9E0;
 }
 
 #landing-page-wrapper .card-4:hover {
   transform: translateY(-26px) scale(1.08) rotate(-1deg) !important;
   box-shadow: 
-    0 38px 75px rgba(245, 158, 11, 0.3),
-    0 0 0 3px rgba(245, 158, 11, 0.2),
-    0 0 55px rgba(245, 158, 11, 0.25),
-    0 0 90px rgba(251, 146, 60, 0.15);
+    0 38px 75px rgba(0, 169, 224, 0.3),
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 55px rgba(0, 169, 224, 0.25),
+    0 0 90px rgba(0, 169, 224, 0.15);
 }
 
 #landing-page-wrapper .card-4:hover::before {
@@ -902,10 +1141,10 @@ html:has(#landing-page-wrapper) {
 #landing-page-wrapper .card-5:hover {
   transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
   box-shadow: 
-    0 40px 80px rgba(13, 148, 136, 0.35),
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 60px rgba(13, 148, 136, 0.25),
-    0 0 100px rgba(59, 130, 246, 0.15);
+    0 40px 80px rgba(0, 169, 224, 0.35),
+    0 0 0 3px rgba(0, 169, 224, 0.2),
+    0 0 60px rgba(0, 169, 224, 0.25),
+    0 0 100px rgba(0, 169, 224, 0.15);
 }
 
 #landing-page-wrapper .card-5:hover::before {
@@ -963,7 +1202,7 @@ html:has(#landing-page-wrapper) {
   inset: 0;
   background: linear-gradient(
     180deg, 
-    rgba(13, 148, 136, 0.05) 0%,
+    rgba(0, 169, 224, 0.05) 0%,
     transparent 30%,
     transparent 70%,
     rgba(0,0,0,0.2) 100%
@@ -977,7 +1216,7 @@ html:has(#landing-page-wrapper) {
   opacity: 1;
   background: linear-gradient(
     180deg, 
-    rgba(13, 148, 136, 0.1) 0%,
+    rgba(0, 169, 224, 0.1) 0%,
     transparent 30%,
     transparent 70%,
     rgba(0,0,0,0.25) 100%
@@ -992,9 +1231,9 @@ html:has(#landing-page-wrapper) {
   border-radius: 15px;
   background: linear-gradient(
     135deg,
-    rgba(13, 148, 136, 0.3),
-    rgba(59, 130, 246, 0.3),
-    rgba(13, 148, 136, 0.3)
+    rgba(0, 169, 224, 0.3),
+    rgba(0, 169, 224, 0.3),
+    rgba(0, 169, 224, 0.3)
   );
   opacity: 0;
   transition: opacity 0.5s ease;
@@ -1037,11 +1276,19 @@ html:has(#landing-page-wrapper) {
   transition: all 0.4s ease;
 }
 
+#landing-page-wrapper.landing-dark .location-name {
+  color: #e5e7eb;
+}
+
 #landing-page-wrapper .lp-year { 
   color: #64748b; 
   font-size: 0.75rem;
   font-weight: 500;
   transition: all 0.4s ease;
+}
+
+#landing-page-wrapper.landing-dark .lp-year {
+  color: #94a3b8;
 }
 
 /* Card Text - Thiết kế mới */
@@ -1058,9 +1305,17 @@ html:has(#landing-page-wrapper) {
   overflow: hidden;
 }
 
+#landing-page-wrapper.landing-dark .lp-card-text {
+  color: #94a3b8;
+}
+
 /* Hover effects cho card content */
 #landing-page-wrapper .lp-card:hover .location-name {
   color: var(--lp-primary);
+}
+
+#landing-page-wrapper.landing-dark .lp-card:hover .location-name {
+  color: #a78bfa;
 }
 
 #landing-page-wrapper .lp-card:hover .map-pin-icon {
@@ -1069,13 +1324,25 @@ html:has(#landing-page-wrapper) {
   transform: scale(1.1);
 }
 
+#landing-page-wrapper.landing-dark .lp-card:hover .map-pin-icon {
+  color: #a78bfa;
+}
+
 #landing-page-wrapper .lp-card:hover .lp-year {
   color: var(--lp-accent);
   font-weight: 600;
 }
 
+#landing-page-wrapper.landing-dark .lp-card:hover .lp-year {
+  color: #ec4899;
+}
+
 #landing-page-wrapper .lp-card:hover .lp-card-text {
   color: var(--lp-text);
+}
+
+#landing-page-wrapper.landing-dark .lp-card:hover .lp-card-text {
+  color: #e5e7eb;
 }
 
 /* Cards trong grid - Không cần absolute positioning */
@@ -1125,7 +1392,7 @@ html:has(#landing-page-wrapper) {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
   border-radius: 20px;
-  border: 2px solid rgba(13, 148, 136, 0.1);
+  border: 2px solid rgba(0, 169, 224, 0.1);
 }
 
 #landing-page-wrapper .hero-stat-mini {
@@ -1140,9 +1407,14 @@ html:has(#landing-page-wrapper) {
   width: 40px;
   height: 40px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.1), rgba(107, 188, 214, 0.05));
   border-radius: 12px;
   flex-shrink: 0;
+}
+
+#landing-page-wrapper.landing-dark .mini-stat-icon {
+  color: #a78bfa;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(236, 72, 153, 0.1));
 }
 
 #landing-page-wrapper .mini-stat-number {
@@ -1155,11 +1427,22 @@ html:has(#landing-page-wrapper) {
   line-height: 1.2;
 }
 
+#landing-page-wrapper.landing-dark .mini-stat-number {
+  background: linear-gradient(135deg, #a78bfa, #ec4899);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 #landing-page-wrapper .mini-stat-label {
   font-size: 0.8rem;
   color: #64748b;
   font-weight: 500;
   margin-top: 0.15rem;
+}
+
+#landing-page-wrapper.landing-dark .mini-stat-label {
+  color: #94a3b8;
 }
 
 /* --- STATS SECTION - Ẩn section cũ vì đã tích hợp vào hero --- */
@@ -1176,7 +1459,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 20px;
   box-shadow: 
     0 8px 25px -5px rgba(0,0,0,0.08),
-    0 0 0 1px rgba(13, 148, 136, 0.06);
+    0 0 0 1px rgba(0, 169, 224, 0.06);
   padding: 1.75rem 2rem; 
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1198,7 +1481,7 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper .lp-stat-item:hover {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.05) 0%, rgba(45, 212, 191, 0.03) 100%);
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.05) 0%, rgba(107, 188, 214, 0.03) 100%);
   transform: translateY(-3px);
 }
 
@@ -1207,7 +1490,7 @@ html:has(#landing-page-wrapper) {
   width: 44px;
   height: 44px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(45, 212, 191, 0.08));
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.12), rgba(107, 188, 214, 0.08));
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1289,12 +1572,12 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .new-way {
   border: 2px solid var(--lp-primary);
-  box-shadow: 0 15px 40px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 15px 40px rgba(0, 169, 224, 0.15);
 }
 
 #landing-page-wrapper .new-way:hover {
   transform: scale(1.05);
-  box-shadow: 0 20px 50px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 20px 50px rgba(0, 169, 224, 0.25);
 }
 
 #landing-page-wrapper .comparison-label {
@@ -1313,7 +1596,12 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .comparison-label.highlight {
   background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .comparison-label.highlight {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
 }
 
 #landing-page-wrapper .comparison-icon {
@@ -1330,6 +1618,10 @@ html:has(#landing-page-wrapper) {
   color: var(--lp-text);
 }
 
+#landing-page-wrapper.landing-dark .comparison-item h3 {
+  color: #f9fafb;
+}
+
 #landing-page-wrapper .comparison-list {
   list-style: none;
   padding: 0;
@@ -1343,6 +1635,11 @@ html:has(#landing-page-wrapper) {
   font-size: 0.95rem;
   line-height: 1.6;
   padding-left: 0.5rem;
+  color: var(--lp-text);
+}
+
+#landing-page-wrapper.landing-dark .comparison-list li {
+  color: #e5e7eb;
 }
 
 #landing-page-wrapper .comparison-arrow {
@@ -1350,6 +1647,10 @@ html:has(#landing-page-wrapper) {
   align-items: center;
   justify-content: center;
   color: var(--lp-primary);
+}
+
+#landing-page-wrapper.landing-dark .comparison-arrow {
+  color: #a78bfa;
 }
 
 /* --- FEATURES SECTION --- */
@@ -1386,6 +1687,9 @@ html:has(#landing-page-wrapper) {
   width: 100%;
   margin: 0 !important;
 }
+#landing-page-wrapper.landing-dark .lp-how-it-works {
+  background: transparent;
+}
 
 /* Timeline Container */
 #landing-page-wrapper .timeline-wrapper {
@@ -1412,7 +1716,12 @@ html:has(#landing-page-wrapper) {
   height: 8px;
   background: linear-gradient(90deg, var(--lp-primary), var(--lp-accent), var(--lp-primary));
   border-radius: 99px;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.3);
+}
+
+#landing-page-wrapper.landing-dark .track-line {
+  background: linear-gradient(90deg, #8b5cf6, #ec4899, #8b5cf6);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
 }
 
 /* Chấm tròn trên track */
@@ -1425,9 +1734,15 @@ html:has(#landing-page-wrapper) {
   background: white;
   border: 4px solid var(--lp-primary);
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 169, 224, 0.3);
   z-index: 2;
   animation: dotPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper.landing-dark .track-dot {
+  background: rgba(30, 41, 59, 0.8);
+  border: 4px solid #a78bfa;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 #landing-page-wrapper .dot-1 { left: 10%; animation-delay: 0s; }
@@ -1455,7 +1770,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 28px;
   padding: 2.5rem 2rem;
   box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-  border: 2px solid rgba(13, 148, 136, 0.15);
+  border: 2px solid rgba(0, 169, 224, 0.15);
   text-align: center;
   position: relative;
   transition: all 0.4s ease;
@@ -1475,7 +1790,7 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .timeline-card:hover {
   transform: translateY(-60px) scale(1.05); /* Nổi cao hơn khi hover */
-  box-shadow: 0 25px 60px rgba(13, 148, 136, 0.2);
+  box-shadow: 0 25px 60px rgba(0, 169, 224, 0.2);
   border-color: var(--lp-primary);
 }
 
@@ -1511,7 +1826,7 @@ html:has(#landing-page-wrapper) {
   align-items: center;
   justify-content: center;
   color: var(--lp-primary);
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.1);
   transition: all 0.3s;
 }
 
@@ -1573,6 +1888,11 @@ html:has(#landing-page-wrapper) {
   border-color: var(--lp-primary);
 }
 
+#landing-page-wrapper.landing-dark .explore-card:hover {
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 25px 50px rgba(139, 92, 246, 0.2);
+}
+
 #landing-page-wrapper .explore-image {
   position: relative;
   height: 240px;
@@ -1613,8 +1933,15 @@ html:has(#landing-page-wrapper) {
   align-items: center;
   justify-content: center;
   color: var(--lp-primary);
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.3);
   border: 4px solid white;
+}
+
+#landing-page-wrapper.landing-dark .explore-icon {
+  background: rgba(30, 41, 59, 0.8);
+  border: 4px solid rgba(30, 41, 59, 0.8);
+  color: #a78bfa;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
 }
 
 #landing-page-wrapper .explore-content h3 {
@@ -1622,6 +1949,10 @@ html:has(#landing-page-wrapper) {
   font-weight: 800;
   margin-bottom: 0.5rem;
   color: var(--lp-text);
+}
+
+#landing-page-wrapper.landing-dark .explore-content h3 {
+  color: #f9fafb;
 }
 
 #landing-page-wrapper .explore-desc {
@@ -1639,6 +1970,10 @@ html:has(#landing-page-wrapper) {
   border-top: 1px solid #f1f5f9;
 }
 
+#landing-page-wrapper.landing-dark .explore-stats {
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+}
+
 #landing-page-wrapper .stat-item {
   display: flex;
   align-items: center;
@@ -1647,9 +1982,17 @@ html:has(#landing-page-wrapper) {
   color: var(--lp-text-light);
 }
 
+#landing-page-wrapper.landing-dark .stat-item {
+  color: #94a3b8;
+}
+
 #landing-page-wrapper .stat-item strong {
   color: var(--lp-primary);
   font-weight: 700;
+}
+
+#landing-page-wrapper.landing-dark .stat-item strong {
+  color: #a78bfa;
 }
 
 #landing-page-wrapper .lp-center-btn { 
@@ -1698,6 +2041,13 @@ html:has(#landing-page-wrapper) {
   margin-bottom: 1.5rem;
 }
 
+#landing-page-wrapper.landing-dark .map-badge {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #a78bfa;
+  backdrop-filter: blur(10px);
+}
+
 #landing-page-wrapper .map-text h2 {
   font-size: 2.5rem;
   font-weight: 800;
@@ -1728,13 +2078,24 @@ html:has(#landing-page-wrapper) {
   color: var(--lp-text);
 }
 
+#landing-page-wrapper.landing-dark .map-feature-item {
+  color: #e5e7eb;
+}
+
 #landing-page-wrapper .map-feature-item svg {
   color: var(--lp-primary);
   flex-shrink: 0;
 }
 
+#landing-page-wrapper.landing-dark .map-feature-item svg {
+  color: #a78bfa;
+}
+
 #landing-page-wrapper .map-visual {
   position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
 }
 
 #landing-page-wrapper .map-mockup {
@@ -1743,6 +2104,14 @@ html:has(#landing-page-wrapper) {
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
   border: 8px solid white;
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+}
+
+#landing-page-wrapper.landing-dark .map-mockup {
+  border: 8px solid rgba(30, 41, 59, 0.6);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
 }
 
 #landing-page-wrapper .map-mockup img {
@@ -1750,6 +2119,24 @@ html:has(#landing-page-wrapper) {
   height: auto;
   display: block;
   filter: brightness(0.9);
+}
+
+#landing-page-wrapper .map-mockup .map-container-wrapper {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+#landing-page-wrapper .map-mockup .map-container-wrapper .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+#landing-page-wrapper .map-mockup .map-container-wrapper .leaflet-marker-icon {
+  pointer-events: none;
 }
 
 #landing-page-wrapper .map-pins {
@@ -1764,8 +2151,14 @@ html:has(#landing-page-wrapper) {
   background: var(--lp-primary);
   border: 3px solid white;
   border-radius: 50%;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 169, 224, 0.5);
   animation: pinPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper.landing-dark .pin {
+  background: #a78bfa;
+  border: 3px solid rgba(30, 41, 59, 0.8);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.5);
 }
 
 #landing-page-wrapper .pin::after {
@@ -1776,6 +2169,10 @@ html:has(#landing-page-wrapper) {
   border-radius: 50%;
   opacity: 0;
   animation: pingPulse 2s ease-in-out infinite;
+}
+
+#landing-page-wrapper.landing-dark .pin::after {
+  border-color: #a78bfa;
 }
 
 #landing-page-wrapper .pin-1 { top: 25%; left: 20%; animation-delay: 0s; }
@@ -1815,23 +2212,86 @@ html:has(#landing-page-wrapper) {
 /* --- FOOTER CTA --- */
 #landing-page-wrapper .lp-footer-cta { 
   padding: 5rem 2rem; 
-  background: var(--lp-primary); 
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.1) 0%, rgba(0, 169, 224, 0.05) 100%); 
   text-align: center; 
-  color: white; 
+  color: var(--lp-text); 
   position: relative; 
   z-index: 3; 
   width: 100%;
   margin: 0 !important;
+  border-top: 1px solid rgba(0, 169, 224, 0.2);
+}
+#landing-page-wrapper.landing-dark .lp-footer-cta {
+  background: linear-gradient(135deg, rgba(0, 169, 224, 0.15) 0%, rgba(0, 169, 224, 0.08) 100%);
+  border-top: 1px solid rgba(0, 169, 224, 0.3);
+  color: #e5e7eb;
 }
 #landing-page-wrapper .lp-footer-cta h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
 #landing-page-wrapper .lp-footer-cta p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+/* Footer CTA Button - Thiết kế mới với PANTONE 299 C, nổi bật trên background */
 #landing-page-wrapper .lp-cta-btn-large {
-  background: white !important; color: var(--lp-primary) !important;
-  height: 56px !important; padding: 0 2.5rem !important;
-  font-size: 1.1rem !important; border-radius: 99px !important;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1) !important;
+  background: white !important;
+  color: #00A9E0 !important; /* PANTONE 299 C */
+  height: 56px !important; 
+  padding: 0 2.5rem !important;
+  font-size: 1.1rem !important; 
+  font-weight: 700 !important;
+  border-radius: 99px !important;
+  border: 3px solid #00A9E0 !important; /* Border PANTONE 299 C */
+  box-shadow: 
+    0 10px 25px rgba(0, 169, 224, 0.3),
+    0 0 40px rgba(0, 169, 224, 0.2),
+    inset 0 0 20px rgba(0, 169, 224, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
-#landing-page-wrapper .lp-cta-btn-large:hover { transform: translateY(-3px); box-shadow: 0 15px 35px rgba(0,0,0,0.2) !important; }
+
+#landing-page-wrapper .lp-cta-btn-large::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 169, 224, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+#landing-page-wrapper .lp-cta-btn-large:hover::before {
+  left: 100%;
+}
+
+#landing-page-wrapper .lp-cta-btn-large:hover {
+  background: #00A9E0 !important; /* Chuyển sang PANTONE 299 C khi hover */
+  color: white !important;
+  transform: translateY(-4px) scale(1.02) !important;
+  border-color: #00A9E0 !important;
+  box-shadow: 
+    0 20px 40px rgba(0, 169, 224, 0.5),
+    0 0 60px rgba(0, 169, 224, 0.4),
+    0 0 100px rgba(0, 169, 224, 0.3) !important;
+}
+
+/* Dark Mode - Giữ nguyên màu gradient purple/pink như cũ */
+#landing-page-wrapper.landing-dark .lp-cta-btn-large {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-cta-btn-large::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+}
+
+#landing-page-wrapper.landing-dark .lp-cta-btn-large:hover {
+  background: linear-gradient(135deg, #a78bfa, #f472b6) !important;
+  color: white !important;
+  transform: translateY(-4px) scale(1.02) !important;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4), 0 0 30px rgba(139, 92, 246, 0.3) !important;
+}
 
 /* --- FOOTER --- */
 #landing-page-wrapper .lp-footer { 
@@ -1844,6 +2304,10 @@ html:has(#landing-page-wrapper) {
   width: 100%;
   max-width: 100%;
   display: block !important;
+}
+#landing-page-wrapper.landing-dark .lp-footer {
+  background: transparent;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
 }
 #landing-page-wrapper .footer-content { 
   max-width: 1100px; 
@@ -1989,16 +2453,16 @@ html:has(#landing-page-wrapper) {
     transform: scale(1);
     opacity: 0.6;
     box-shadow: 
-      0 0 0 3px rgba(13, 148, 136, 0.2),
-      0 0 0 6px rgba(13, 148, 136, 0.1);
+      0 0 0 3px rgba(0, 169, 224, 0.2),
+      0 0 0 6px rgba(0, 169, 224, 0.1);
   }
   50% {
     transform: scale(1.3);
     opacity: 1;
     box-shadow: 
-      0 0 0 5px rgba(13, 148, 136, 0.3),
-      0 0 0 10px rgba(13, 148, 136, 0.15),
-      0 0 20px rgba(13, 148, 136, 0.2);
+      0 0 0 5px rgba(0, 169, 224, 0.3),
+      0 0 0 10px rgba(0, 169, 224, 0.15),
+      0 0 20px rgba(0, 169, 224, 0.2);
   }
 }
 
@@ -2145,11 +2609,11 @@ html:has(#landing-page-wrapper) {
 
 @keyframes dotPulse {
   0%, 100% {
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 169, 224, 0.3);
     border-width: 4px;
   }
   50% {
-    box-shadow: 0 6px 25px rgba(13, 148, 136, 0.6), 0 0 0 8px rgba(13, 148, 136, 0.1);
+    box-shadow: 0 6px 25px rgba(0, 169, 224, 0.6), 0 0 0 8px rgba(0, 169, 224, 0.1);
     border-width: 5px;
   }
 }
@@ -2175,6 +2639,173 @@ html:has(#landing-page-wrapper) {
 }
 
 /* --- RESPONSIVE --- */
+/* Map Demo Modal */
+#landing-page-wrapper .map-modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(8px);
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease-out;
+  overflow-y: auto;
+}
+
+#landing-page-wrapper .map-modal-content {
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 1200px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  animation: slideUp 0.3s ease-out;
+  overflow: hidden;
+  position: relative;
+}
+
+#landing-page-wrapper.landing-light .map-modal-content {
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+#landing-page-wrapper .map-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+}
+
+#landing-page-wrapper.landing-light .map-modal-header {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+#landing-page-wrapper .map-modal-header h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #f9fafb;
+  margin: 0;
+}
+
+#landing-page-wrapper.landing-light .map-modal-header h2 {
+  color: #0f172a;
+}
+
+#landing-page-wrapper .map-modal-close {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #e5e7eb;
+}
+
+#landing-page-wrapper.landing-light .map-modal-close {
+  background: rgba(248, 250, 252, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: #475569;
+}
+
+#landing-page-wrapper .map-modal-close:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #a78bfa;
+  transform: rotate(90deg);
+}
+
+#landing-page-wrapper.landing-light .map-modal-close:hover {
+  background: rgba(0, 169, 224, 0.1);
+  border-color: rgba(0, 169, 224, 0.3);
+  color: var(--lp-primary);
+}
+
+#landing-page-wrapper .map-modal-body {
+  flex: 1;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+}
+
+#landing-page-wrapper .map-modal-body .map-container-wrapper {
+  height: 600px !important;
+  width: 100% !important;
+  border-radius: 0 0 24px 24px;
+  overflow: hidden !important;
+  border: none;
+  position: relative;
+  z-index: 1;
+}
+
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-container {
+  height: 100% !important;
+  width: 100% !important;
+  border-radius: 0 0 24px 24px !important;
+  overflow: hidden !important;
+}
+
+/* Đảm bảo tất cả các layer của Leaflet đều có overflow hidden để bo góc */
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-map-pane,
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-tile-pane,
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-overlay-pane,
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-shadow-pane,
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-marker-pane {
+  overflow: hidden !important;
+}
+
+/* Bo góc cho tiles ở phần dưới */
+#landing-page-wrapper .map-modal-body .map-container-wrapper .leaflet-tile-container {
+  border-radius: 0 0 24px 24px;
+  overflow: hidden;
+}
+
+#landing-page-wrapper.landing-light .map-modal-body .map-container-wrapper {
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+#landing-page-wrapper.landing-light .map-modal-body .map-container-wrapper {
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 @media (max-width: 1024px) {
   #landing-page-wrapper .hero-main-container {
     grid-template-columns: 1fr;
@@ -2234,6 +2865,32 @@ html:has(#landing-page-wrapper) {
   #landing-page-wrapper .hero-stats-inline {
     flex-direction: column;
     gap: 1rem;
+  }
+
+  /* Map Modal Responsive */
+  #landing-page-wrapper .map-modal-overlay {
+    padding: 1rem;
+  }
+
+  #landing-page-wrapper .map-modal-content {
+    max-height: 95vh;
+    border-radius: 16px;
+  }
+
+  #landing-page-wrapper .map-modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  #landing-page-wrapper .map-modal-header h2 {
+    font-size: 1.5rem;
+  }
+
+  #landing-page-wrapper .map-modal-body {
+    padding: 1rem;
+  }
+
+  #landing-page-wrapper .map-modal-body .map-container-wrapper {
+    min-height: 400px;
   }
   
   #landing-page-wrapper .hero-stat-mini {

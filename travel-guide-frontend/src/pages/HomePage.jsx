@@ -574,7 +574,7 @@ export default function HomePage() {
         ));
         
         if (window.showSuccessToast) {
-          window.showSuccessToast('Đã bỏ quan tâm bài viết');
+          window.showSuccessToast(L.unlikeSuccess);
         }
       } else {
         // Favorite
@@ -592,7 +592,7 @@ export default function HomePage() {
         ));
         
         if (window.showSuccessToast) {
-          window.showSuccessToast('Đã quan tâm bài viết');
+          window.showSuccessToast(L.likeSuccess);
         }
       }
     } catch (error) {
@@ -620,7 +620,7 @@ export default function HomePage() {
   };
 
   const handleDeletePost = async (postId) => {
-    const confirmed = await window.showConfirmDialog('Bạn có chắc chắn muốn xóa bài viết này?');
+    const confirmed = await window.showConfirmDialog(L.deleteConfirm);
     if (!confirmed) return;
 
     try {
@@ -629,11 +629,11 @@ export default function HomePage() {
       setPosts(prev => prev.filter(post => post.articleId !== postId));
       setOpenMenuId(null);
       if (window.showSuccessToast) {
-        window.showSuccessToast('Xóa bài viết thành công!');
+        window.showSuccessToast(L.deleteSuccess);
       }
     } catch (error) {
       if (window.showSuccessToast) {
-        window.showSuccessToast('Lỗi khi xóa bài viết');
+        window.showSuccessToast(L.deleteError);
       }
     }
   };

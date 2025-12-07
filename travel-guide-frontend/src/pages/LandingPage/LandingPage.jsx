@@ -499,7 +499,7 @@ export default function LandingPage() {
       <nav className="lp-nav">
         <div className="lp-brand" onClick={() => navigate('/')}>
           <Leaf size={32} strokeWidth={2.5} />
-          <span>MemoryMap</span>
+          <span>Travel Journal</span>
         </div>
         
         <div className="lp-nav-actions">

@@ -913,7 +913,7 @@ export default function LandingPage() {
           <div className="footer-brand">
             <div className="brand-row">
               <Leaf size={24} />
-              <span>MemoryMap</span>
+              <span>Travel Journal</span>
             </div>
             <p>{L.footer.copyright}</p>
           </div>

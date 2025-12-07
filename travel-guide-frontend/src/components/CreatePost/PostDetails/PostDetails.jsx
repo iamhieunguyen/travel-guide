@@ -21,6 +21,9 @@ const TEXT = {
     update: 'Cập nhật',
     posting: 'Đang đăng...',
     wait: 'Đợi',
+    postSuccess: 'Đăng bài thành công!',
+    updateSuccess: 'Cập nhật bài viết thành công!',
+    validationError: 'Vui lòng nhập caption và chọn vị trí',
   },
   en: {
     caption: 'Caption',
@@ -39,6 +42,9 @@ const TEXT = {
     update: 'Update',
     posting: 'Posting...',
     wait: 'Wait',
+    postSuccess: 'Post created successfully!',
+    updateSuccess: 'Post updated successfully!',
+    validationError: 'Please enter caption and select location',
   },
 };
 
@@ -183,7 +189,9 @@ export default function PostDetails({
       
       // Validate dữ liệu
       if (!caption?.trim() || !locationData) {
-        alert('Vui lòng nhập caption và chọn vị trí');
+        if (window.showSuccessToast) {
+          window.showSuccessToast(L.validationError);
+        }
         return;
       }
 
@@ -206,7 +214,7 @@ export default function PostDetails({
       await handleShare(postData);
       
       // Hiển thị toast
-      const message = editMode ? 'Cập nhật bài viết thành công!' : 'Đăng bài thành công!';
+      const message = editMode ? L.updateSuccess : L.postSuccess;
       if (window.showSuccessToast) {
         window.showSuccessToast(message);
       }

@@ -58,7 +58,21 @@ export default function AuthPage() {
         <div className="floating-particle" style={{ bottom: '20%', right: '25%', animationDelay: '3s' }} />
       </div>
 
-      <div ref={containerRef} className="auth-container">
+      <div ref={containerRef} className="auth-container relative">
+        {/* Close button to go back to landing page */}
+        <button
+          onClick={() => navigate('/')}
+          className={`absolute top-4 left-4 z-50 p-2 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:rotate-90 ${
+            isRegister 
+              ? 'bg-cyan-500/90 hover:bg-cyan-500 text-white' 
+              : 'bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800'
+          }`}
+          title="Quay về trang chủ"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         {/* LOGIN FORM */}
         <div className="form-box login">
           <div className="form-content">

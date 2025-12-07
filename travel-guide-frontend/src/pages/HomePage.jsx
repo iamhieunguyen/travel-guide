@@ -111,6 +111,18 @@ export default function HomePage() {
   const [hoveredLocation, setHoveredLocation] = useState(null); // Track hovered location for tooltip
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
+  
+  // Hide tooltip on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (hoveredLocation) {
+        setHoveredLocation(null);
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [hoveredLocation]);
 
   const TEXT = {
     vi: {

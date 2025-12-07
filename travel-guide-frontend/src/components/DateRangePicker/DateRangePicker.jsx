@@ -2,13 +2,36 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X, ChevronDown } from 'lucide-react';
 import './DateRangePicker.css';
 
-const DAYS_OF_WEEK = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-const MONTHS = [
-  'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
-  'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
-];
+const TRANSLATIONS = {
+  vi: {
+    daysOfWeek: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'],
+    months: [
+      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+    ],
+    shortMonths: [
+      'Thg 1', 'Thg 2', 'Thg 3', 'Thg 4', 'Thg 5', 'Thg 6',
+      'Thg 7', 'Thg 8', 'Thg 9', 'Thg 10', 'Thg 11', 'Thg 12'
+    ],
+    timeLabel: 'Thời gian',
+    hint: 'Chọn ngày bắt đầu và kết thúc',
+  },
+  en: {
+    daysOfWeek: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    months: [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ],
+    shortMonths: [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ],
+    timeLabel: 'Time',
+    hint: 'Select start and end dates',
+  },
+};
 
-export default function DateRangePicker({ selected, onSelect }) {
+export default function DateRangePicker({ selected, onSelect, language = 'vi' }) {
   const [isOpen, setIsOpen] = useState(false);
   
   // View Mode: 'date' (ngày), 'month' (tháng), 'year' (năm)
@@ -111,9 +134,12 @@ export default function DateRangePicker({ selected, onSelect }) {
     }
   };
 
+  const locale = language === 'en' ? 'en-GB' : 'vi-VN';
+  const t = TRANSLATIONS[language] || TRANSLATIONS.vi;
+
   // --- RENDER HELPERS ---
   const renderHeaderLabel = () => {
-    if (viewMode === 'date') return `${MONTHS[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+    if (viewMode === 'date') return `${t.months[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
     if (viewMode === 'month') return `${currentDate.getFullYear()}`;
     if (viewMode === 'year') {
       const startYear = Math.floor(currentDate.getFullYear() / 12) * 12;
@@ -143,13 +169,13 @@ export default function DateRangePicker({ selected, onSelect }) {
   const renderMonths = () => {
     return (
       <div className="calendar-grid-large">
-        {MONTHS.map((month, index) => (
+        {t.shortMonths.map((month, index) => (
           <button
             key={month}
             className={`calendar-cell ${index === new Date().getMonth() && currentDate.getFullYear() === new Date().getFullYear() ? 'current' : ''} ${index === currentDate.getMonth() ? 'selected' : ''}`}
             onClick={(e) => { e.stopPropagation(); handleMonthClick(index); }}
           >
-            {month.replace('Tháng ', 'Thg ')}
+            {month}
           </button>
         ))}
       </div>
@@ -197,7 +223,7 @@ export default function DateRangePicker({ selected, onSelect }) {
     return (
       <>
         <div className="calendar-weekdays">
-          {DAYS_OF_WEEK.map(day => <div key={day} className="weekday">{day}</div>)}
+          {t.daysOfWeek.map(day => <div key={day} className="weekday">{day}</div>)}
         </div>
         <div className="calendar-grid">{days}</div>
       </>
@@ -205,10 +231,12 @@ export default function DateRangePicker({ selected, onSelect }) {
   };
 
   const formatDateDisplay = () => {
-    if (!selected?.from) return 'Thời gian';
-    const from = new Date(selected.from).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const label = t.timeLabel;
+
+    if (!selected?.from) return label;
+    const from = new Date(selected.from).toLocaleDateString(locale, {day: '2-digit', month: '2-digit', year: '2-digit'});
     if (!selected.to) return `${from} - ...`;
-    const to = new Date(selected.to).toLocaleDateString('vi-VN', {day: '2-digit', month: '2-digit', year: '2-digit'});
+    const to = new Date(selected.to).toLocaleDateString(locale, {day: '2-digit', month: '2-digit', year: '2-digit'});
     return `${from} - ${to}`;
   };
 
@@ -250,7 +278,9 @@ export default function DateRangePicker({ selected, onSelect }) {
           </div>
           
           <div className="mt-3 border-t pt-2 text-center">
-             <p className="text-xs text-gray-400">Chọn ngày bắt đầu và kết thúc</p>
+             <p className="text-xs text-gray-400">
+              {t.hint}
+             </p>
           </div>
         </div>
       )}

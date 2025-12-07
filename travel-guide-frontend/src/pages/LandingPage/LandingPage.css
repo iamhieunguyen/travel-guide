@@ -40,6 +40,177 @@ html:has(#landing-page-wrapper) {
   overflow-x: hidden;
 }
 
+/* THEME VARIANTS */
+#landing-page-wrapper.landing-light {
+  /* giữ nguyên biến màu sáng mặc định */
+}
+
+#landing-page-wrapper.landing-dark {
+  --lp-text: #e5e7eb;
+  --lp-text-light: #9ca3af;
+  --lp-bg-light: #020617;
+
+  background:
+    linear-gradient(135deg, #020617 0%, #020617 40%, #020617 100%),
+    radial-gradient(circle at 20% 50%, rgba(15, 23, 42, 0.85) 0%, transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(30, 64, 175, 0.3) 0%, transparent 55%);
+}
+
+#landing-page-wrapper.landing-dark .lp-nav {
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom-color: rgba(30, 64, 175, 0.4);
+}
+
+/* Hero + sections nền tối dịu hơn */
+#landing-page-wrapper.landing-dark .lp-hero {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95));
+}
+
+#landing-page-wrapper.landing-dark .lp-features,
+#landing-page-wrapper.landing-dark .lp-explore,
+#landing-page-wrapper.landing-dark .lp-community-map,
+#landing-page-wrapper.landing-dark .lp-faq {
+  background: rgba(15, 23, 42, 0.98);
+}
+
+#landing-page-wrapper.landing-dark .lp-how-it-works {
+  background: rgba(15, 23, 42, 0.98);
+}
+
+#landing-page-wrapper.landing-dark .lp-why-different {
+  background: linear-gradient(135deg, #020617, #020617);
+}
+
+/* Timeline cards dark mode */
+#landing-page-wrapper.landing-dark .timeline-card {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(45, 212, 191, 0.3);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .timeline-card:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(45, 212, 191, 0.5);
+  box-shadow: 0 25px 60px rgba(13, 148, 136, 0.3);
+}
+
+#landing-page-wrapper.landing-dark .card-number {
+  opacity: 0.15;
+}
+
+#landing-page-wrapper.landing-dark .card-icon {
+  background: rgba(13, 148, 136, 0.2);
+  border: 1px solid rgba(45, 212, 191, 0.3);
+}
+
+#landing-page-wrapper.landing-dark .timeline-card:hover .card-icon {
+  background: linear-gradient(135deg, #0891b2, #2dd4bf);
+  border-color: transparent;
+}
+
+#landing-page-wrapper.landing-dark .track-dot {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: #2dd4bf;
+  box-shadow: 0 4px 12px rgba(45, 212, 191, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .track-line {
+  box-shadow: 0 4px 15px rgba(45, 212, 191, 0.4);
+}
+
+/* FAQ dark mode */
+#landing-page-wrapper.landing-dark .faq-item {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(148, 163, 184, 0.2);
+  color: #e5e7eb;
+}
+
+#landing-page-wrapper.landing-dark .faq-item:hover {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(45, 212, 191, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .faq-question h3 {
+  color: #f9fafb;
+}
+
+#landing-page-wrapper.landing-dark .arrow {
+  color: #94a3b8;
+}
+
+#landing-page-wrapper.landing-dark .faq-item:hover .arrow {
+  color: #2dd4bf;
+}
+
+#landing-page-wrapper.landing-dark .lp-feature-item {
+  background: #020617;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+}
+
+#landing-page-wrapper.landing-dark .lp-feature-item:hover {
+  background: #020617;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+
+#landing-page-wrapper.landing-dark .lp-icon-box {
+  background: rgba(15, 118, 110, 0.25);
+}
+
+#landing-page-wrapper.landing-dark .comparison-item {
+  background: #020617;
+  border-color: rgba(51, 65, 85, 0.9);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
+}
+
+#landing-page-wrapper.landing-dark .comparison-item.new-way {
+  border-color: #0d9488;
+}
+
+#landing-page-wrapper.landing-dark .lp-card,
+#landing-page-wrapper.landing-dark .explore-card {
+  background: #020617;
+  border-color: rgba(51, 65, 85, 0.9);
+}
+
+#landing-page-wrapper.landing-dark .lp-card-text,
+#landing-page-wrapper.landing-dark .lp-year,
+#landing-page-wrapper.landing-dark .mini-stat-label,
+#landing-page-wrapper.landing-dark .explore-desc,
+#landing-page-wrapper.landing-dark .lp-feature-item p {
+  color: var(--lp-text-light);
+}
+
+#landing-page-wrapper.landing-dark .hero-stats-inline {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(30, 64, 175, 0.4);
+}
+
+#landing-page-wrapper.landing-dark .lp-btn-outline {
+  background: transparent !important;
+  border-color: rgba(148, 163, 184, 0.6) !important;
+  color: #e5e7eb !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-btn-ghost {
+  color: #e5e7eb;
+}
+
+#landing-page-wrapper.landing-dark .lp-btn-ghost:hover {
+  background: rgba(15, 23, 42, 0.9);
+}
+
+#landing-page-wrapper.landing-dark .lp-section-header h2,
+#landing-page-wrapper.landing-dark .lp-title,
+#landing-page-wrapper.landing-dark .map-text h2 {
+  color: #f9fafb;
+}
+
+#landing-page-wrapper.landing-dark .lp-section-header p,
+#landing-page-wrapper.landing-dark .lp-desc,
+#landing-page-wrapper.landing-dark .map-text > p {
+  color: #e5e7eb;
+}
+
 /* Đảm bảo các section con hiển thị đúng */
 #landing-page-wrapper > header,
 #landing-page-wrapper > section,

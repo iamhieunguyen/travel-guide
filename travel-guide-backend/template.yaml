@@ -638,6 +638,8 @@ Resources:
             Path: /gallery/trending
             Method: GET
 
+<<<<<<< HEAD
+=======
   GetArticlesByTagFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -675,6 +677,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref GalleryTrendsTable
 
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################

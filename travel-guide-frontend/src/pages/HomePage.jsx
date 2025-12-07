@@ -8,6 +8,7 @@ import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Eye, Moon, Sun
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
+import { useLanguage } from '../context/LanguageContext';
 import { useInfiniteScroll } from '../hook/useInfiniteScroll';
 import { useNewPostsPolling } from '../hook/useNewPostsPolling';
 import { usePendingPostsPolling } from '../hook/usePendingPostsPolling';
@@ -90,6 +91,7 @@ export default function HomePage() {
   const { openModal, openEditModal } = useCreatePostModal();
   const navigate = useNavigate();
   const { profile } = useProfile();
+  const { language, setLanguage } = useLanguage();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,11 +105,6 @@ export default function HomePage() {
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set()); // Track hidden posts
   const [tagFilter, setTagFilter] = useState(''); // Tag filter state
-  const [language, setLanguage] = useState(() => {
-    if (typeof window === 'undefined') return 'vi';
-    const stored = localStorage.getItem('appLanguage');
-    return stored || 'vi';
-  });
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
   const [themeMode, setThemeMode] = useState(() => {
@@ -884,11 +881,7 @@ export default function HomePage() {
                     {/* Language toggle */}
                     <button
                       type="button"
-                      onClick={() => {
-                        const newLang = language === 'vi' ? 'en' : 'vi';
-                        setLanguage(newLang);
-                        localStorage.setItem('appLanguage', newLang);
-                      }}
+                      onClick={() => setLanguage(language === 'vi' ? 'en' : 'vi')}
                       className={`flex items-center gap-1 px-4 h-12 rounded-full text-xs font-medium shadow-sm transition
                                  ${isDarkMode 
                                    ? 'bg-slate-900/70 border border-gray-600 text-white hover:bg-slate-800' 

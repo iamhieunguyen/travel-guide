@@ -5,7 +5,6 @@ import {
   Lock,
   Bell,
   Map as MapIcon,
-  Palette,
   Trash2,
   LogOut,
   Save,
@@ -13,16 +12,17 @@ import {
   Camera,
   Eye,
   EyeOff,
-  Shield,
-  Moon,
-  Sun
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import BackButton from '../../components/personal/BackButton';
 import PrivacyDropdown from '../../components/settings/PrivacyDropdown';
-import LanguageDropdown from '../../components/settings/LanguageDropdown';
 import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
 import useProfile from '../../hook/useProfile';
+<<<<<<< HEAD
+import { useLanguage } from '../../context/LanguageContext';
+=======
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 import './SettingsPage.css';
 
 // Translations
@@ -76,14 +76,6 @@ const translations = {
     mapTypeDesc: 'Chọn loại bản đồ bạn muốn hiển thị',
     autoZoom: 'Tự động phóng to',
     autoZoomDesc: 'Tự động phóng to khi chọn địa điểm',
-    
-    // Appearance Section
-    appearanceSettings: 'Cài đặt giao diện',
-    appearanceDescription: 'Tùy chỉnh giao diện ứng dụng',
-    theme: 'Giao diện',
-    themeDesc: 'Chọn chế độ sáng hoặc tối',
-    light: 'Sáng',
-    dark: 'Tối',
     language: 'Ngôn ngữ',
     languageDesc: 'Chọn ngôn ngữ hiển thị',
     
@@ -161,14 +153,6 @@ const translations = {
     mapTypeDesc: 'Choose the map type you want to display',
     autoZoom: 'Auto Zoom',
     autoZoomDesc: 'Automatically zoom when selecting a location',
-    
-    // Appearance Section
-    appearanceSettings: 'Appearance Settings',
-    appearanceDescription: 'Customize the app interface',
-    theme: 'Theme',
-    themeDesc: 'Choose light or dark mode',
-    light: 'Light',
-    dark: 'Dark',
     language: 'Language',
     languageDesc: 'Choose display language',
     
@@ -205,6 +189,17 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
   const { profile, updateProfile: updateProfileApi, uploadAvatar } = useProfile();
+<<<<<<< HEAD
+  const { language } = useLanguage();
+  // Đồng bộ chế độ sáng/tối với HomePage thông qua localStorage
+  const [themeMode, setThemeMode] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    const stored = localStorage.getItem('homeThemeMode');
+    return stored === 'dark' ? 'dark' : 'light';
+  });
+  const isDarkMode = themeMode === 'dark';
+=======
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
   const [activeSection, setActiveSection] = useState('account');
   
   // Account Settings
@@ -226,10 +221,6 @@ export default function SettingsPage() {
   // Map Settings
   const [mapType, setMapType] = useState('roadmap');
   const [autoZoom, setAutoZoom] = useState(true);
-  
-  // Appearance Settings
-  const [theme, setTheme] = useState('light');
-  const [language, setLanguage] = useState('vi');
   
   // Password Change
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -328,9 +319,20 @@ export default function SettingsPage() {
       // Cập nhật lại context để đồng bộ tên hiển thị / bio trong app
       updateDisplayName(displayName);
       updateProfileBio(bio);
+<<<<<<< HEAD
+
+      // Hiển thị popup thông báo giống khi đăng bài
+      if (window.showSuccessToast) {
+        window.showSuccessToast(t.settingsSaved);
+      }
+    } catch (error) {
+      console.error('Error saving account settings:', error);
+      alert(error.message || (language === 'en' ? 'Unable to save account information' : 'Không thể lưu thông tin tài khoản'));
+=======
     } catch (error) {
       console.error('Error saving account settings:', error);
       alert(error.message || 'Không thể lưu thông tin tài khoản');
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
     }
   };
 
@@ -354,8 +356,7 @@ export default function SettingsPage() {
     { id: 'account', label: t.account, icon: User },
     { id: 'privacy', label: t.privacy, icon: Shield },
     { id: 'notifications', label: t.notifications, icon: Bell },
-    { id: 'map', label: t.map, icon: MapIcon },
-    { id: 'appearance', label: t.appearance, icon: Palette }
+    { id: 'map', label: t.map, icon: MapIcon }
   ];
 
   const renderAccountSection = () => (
@@ -375,9 +376,15 @@ export default function SettingsPage() {
                 className="settings-avatar-img"
               />
             ) : (
+<<<<<<< HEAD
+            <div className="avatar-placeholder">
+              {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
+            </div>
+=======
               <div className="avatar-placeholder">
                 {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
               </div>
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
             )}
             <input
               ref={fileInputRef}
@@ -722,57 +729,18 @@ export default function SettingsPage() {
     </div>
   );
 
-  const renderAppearanceSection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.appearanceSettings}</h2>
-        <p className="section-description">{t.appearanceDescription}</p>
-      </div>
-
-      <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.theme}</h3>
-            <p>{t.themeDesc}</p>
-          </div>
-          <div className="setting-control">
-            <div className="theme-selector">
-              <button
-                className={`theme-option ${theme === 'light' ? 'active' : ''}`}
-                onClick={() => setTheme('light')}
-              >
-                <Sun className="w-5 h-5" />
-                <span>{t.light}</span>
-              </button>
-              <button
-                className={`theme-option ${theme === 'dark' ? 'active' : ''}`}
-                onClick={() => setTheme('dark')}
-              >
-                <Moon className="w-5 h-5" />
-                <span>{t.dark}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.language}</h3>
-            <p>{t.languageDesc}</p>
-          </div>
-          <div className="setting-control">
-            <LanguageDropdown
-              value={language}
-              onChange={setLanguage}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // Sync theme khi vào trang
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem('homeThemeMode');
+    if (stored && stored !== themeMode) {
+      setThemeMode(stored === 'dark' ? 'dark' : 'light');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // chỉ cần đọc một lần khi mount
 
   return (
-    <div className={`settings-page ${theme === 'dark' ? 'dark-mode' : ''}`}>
+    <div className={`settings-page ${isDarkMode ? 'dark-mode' : ''}`}>
       <header className="settings-header">
         <div className="header-content">
           <BackButton onClick={() => navigate('/personal')} />
@@ -822,9 +790,6 @@ export default function SettingsPage() {
           )}
           {activeSection === 'map' && (
             <div key="map">{renderMapSection()}</div>
-          )}
-          {activeSection === 'appearance' && (
-            <div key="appearance">{renderAppearanceSection()}</div>
           )}
         </main>
       </div>

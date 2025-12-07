@@ -21,26 +21,6 @@ export function useNewPostsPolling({ checkNewPosts, interval = 10000, enabled = 
     retryCount.current = 0;
   }, []);
 
-  // Handle visibility change
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      const isActive = !document.hidden;
-      setIsTabActive(isActive);
-      
-      // When tab becomes active, check immediately
-      if (isActive && enabled) {
-        console.log('👁️ Tab became active, checking for new posts...');
-        performCheck();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [enabled]);
-
   // Perform the check for new posts
   const performCheck = useCallback(async () => {
     if (!enabled) return;
@@ -67,6 +47,26 @@ export function useNewPostsPolling({ checkNewPosts, interval = 10000, enabled = 
       }
     }
   }, [checkNewPosts, enabled]);
+
+  // Handle visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isActive = !document.hidden;
+      setIsTabActive(isActive);
+      
+      // When tab becomes active, check immediately
+      if (isActive && enabled) {
+        console.log('👁️ Tab became active, checking for new posts...');
+        performCheck();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, performCheck]);
 
   // Set up polling interval
   useEffect(() => {

@@ -208,6 +208,18 @@ def lambda_handler(event, context):
             if next_token:
                 query_params["ExclusiveStartKey"] = json.loads(next_token)
 
+<<<<<<< HEAD
+        # Debug logging
+        print(f"📊 Query params:")
+        print(f"  - IndexName: {query_params.get('IndexName')}")
+        print(f"  - KeyCondition: {query_params.get('KeyConditionExpression')}")
+        if filter_expression:
+            print(f"  - FilterExpression: {filter_expression}")
+        print(f"  - AttributeNames: {expression_attribute_names}")
+        print(f"  - AttributeValues: {expression_attribute_values}")
+        
+        resp = table.query(**query_params)
+=======
             # Debug logging for query
             print(f"📊 Query operation:")
             print(f"  - IndexName: {query_params.get('IndexName')}")
@@ -254,6 +266,7 @@ def lambda_handler(event, context):
                 print(f"  - Trimming {len(items_before_trim)} items to {limit}")
                 resp["Items"] = items_before_trim[:limit]
                 # Keep LastEvaluatedKey for pagination
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 
         items = resp.get("Items", [])
         last_key = resp.get("LastEvaluatedKey")

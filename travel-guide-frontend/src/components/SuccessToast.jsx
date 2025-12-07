@@ -23,31 +23,16 @@ export default function SuccessToast({ message, onClose }) {
         boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         display: 'flex',
         alignItems: 'center',
-        gap: '16px',
+        gap: '12px',
         minWidth: '350px',
         animation: 'slideInRight 0.4s ease-out',
         fontFamily: 'Poppins, sans-serif',
         border: '1px solid #e5e7eb'
       }}
     >
-      <div style={{
-        width: '32px',
-        height: '32px',
-        backgroundColor: '#10b981',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '18px',
-        fontWeight: 'bold',
-        color: 'white',
-        flexShrink: 0
-      }}>
-        ✓
-      </div>
       <span style={{ 
         flex: 1, 
-        fontSize: '15px', 
+        fontSize: '16px', 
         fontWeight: '500',
         color: '#374151'
       }}>

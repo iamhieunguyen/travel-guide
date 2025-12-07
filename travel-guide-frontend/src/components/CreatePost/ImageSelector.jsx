@@ -80,6 +80,31 @@ export default function ImageSelector({ onNext }) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     
+    // Check if adding these files would exceed 4 images
+    const totalImages = images.length + files.length;
+    if (totalImages > 4) {
+      // Show error toast
+      if (window.showSuccessToast) {
+        const message = language === 'vi' 
+          ? '⚠️ Tối đa 4 ảnh mỗi bài đăng' 
+          : '⚠️ Maximum 4 images per post';
+        window.showSuccessToast(message);
+      }
+      
+      // Only add images up to the limit
+      const remainingSlots = 4 - images.length;
+      if (remainingSlots > 0) {
+        const allowedFiles = files.slice(0, remainingSlots);
+        const newUrls = allowedFiles.map((file) => URL.createObjectURL(file));
+        setImages(prev => [...prev, ...newUrls]);
+        
+        if (images.length === 0) {
+          setCurrentIndex(0);
+        }
+      }
+      return;
+    }
+    
     // Thêm ảnh mới vào cuối danh sách (giữ thứ tự chọn)
     const newUrls = files.map((file) => URL.createObjectURL(file));
     setImages(prev => [...prev, ...newUrls]);
@@ -120,6 +145,31 @@ export default function ImageSelector({ onNext }) {
     );
     
     if (files.length > 0) {
+      // Check if adding these files would exceed 4 images
+      const totalImages = images.length + files.length;
+      if (totalImages > 4) {
+        // Show error toast
+        if (window.showSuccessToast) {
+          const message = language === 'vi' 
+            ? '⚠️ Tối đa 4 ảnh mỗi bài đăng' 
+            : '⚠️ Maximum 4 images per post';
+          window.showSuccessToast(message);
+        }
+        
+        // Only add images up to the limit
+        const remainingSlots = 4 - images.length;
+        if (remainingSlots > 0) {
+          const allowedFiles = files.slice(0, remainingSlots);
+          const newUrls = allowedFiles.map((file) => URL.createObjectURL(file));
+          setImages(prev => [...prev, ...newUrls]);
+          
+          if (images.length === 0) {
+            setCurrentIndex(0);
+          }
+        }
+        return;
+      }
+      
       const newUrls = files.map((file) => URL.createObjectURL(file));
       setImages(prev => [...prev, ...newUrls]);
       
@@ -404,14 +454,16 @@ export default function ImageSelector({ onNext }) {
                 </div>
               )}
               
-              {/* Nút thêm ảnh */}
-              <button
-                onClick={triggerFileSelect}
-                className="absolute top-4 right-4 bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
-              >
-                <Plus size={18} />
-                <span className="text-sm font-medium">{L.addImage}</span>
-              </button>
+              {/* Nút thêm ảnh - Only show if less than 4 images */}
+              {images.length < 4 && (
+                <button
+                  onClick={triggerFileSelect}
+                  className="absolute top-4 right-4 bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
+                >
+                  <Plus size={18} />
+                  <span className="text-sm font-medium">{L.addImage}</span>
+                </button>
+              )}
               
               {/* Hidden file input for adding more images */}
               <input

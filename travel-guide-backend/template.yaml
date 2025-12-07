@@ -624,13 +624,13 @@ Resources:
       Environment:
         Variables:
           BUCKET_NAME: !Ref ArticleImagesBucket
-          PROFILES_TABLE_NAME: !Ref ProfilesTable
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
           CF_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
-            TableName: !Ref ProfilesTable
+            TableName: !Ref UserProfilesTable
       Events:
         UploadCoverApi:
           Type: Api

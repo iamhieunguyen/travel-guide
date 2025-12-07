@@ -14,6 +14,7 @@ import {
   ChevronDown,
   CheckCircle2
 } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 import './LandingPage.css';
 import { useScrollAnimation } from './useScrollAnimation';
 

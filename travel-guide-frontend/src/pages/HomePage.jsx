@@ -1064,10 +1064,10 @@ export default function HomePage() {
                                   {post.location?.name || post.location || post.locationName}
                                 </span>
                                 {/* Tooltip on hover */}
-                                <div className="absolute left-0 top-full mt-2 hidden group-hover:block z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-xl max-w-md whitespace-normal">
-                                  <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                                <span className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-sm rounded-xl px-4 py-2.5 shadow-2xl max-w-md whitespace-normal pointer-events-none" style={{ zIndex: 99999 }}>
+                                  <span className="absolute -bottom-1 left-4 w-2.5 h-2.5 bg-gray-900 transform rotate-45"></span>
                                   {post.location?.name || post.location || post.locationName}
-                                </div>
+                                </span>
                               </div>
                             )}
                           </div>

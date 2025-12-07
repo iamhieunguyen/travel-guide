@@ -11,7 +11,13 @@ import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
 import PersonalPage from './pages/PersonalPage/PersonalPage';
+import PublicProfilePage from './pages/PublicProfilePage/PublicProfilePage';
 import SettingsPage from './pages/SettingsPage/SettingsPage';
+<<<<<<< HEAD
+=======
+import SmartGalleryPage from './pages/SmartGalleryPage';
+import TagGalleryPage from './pages/TagGalleryPage';
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 
 // Global functions
 window.showSuccessToast = null;
@@ -46,6 +52,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+<<<<<<< HEAD
       <LanguageProvider>
         <AuthProvider>
           <CreatePostModalProvider>
@@ -55,6 +62,19 @@ export default function App() {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/personal" element={<PersonalPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+=======
+      <AuthProvider>
+        <CreatePostModalProvider>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/auth" element={<AuthPage />} />
+            <Route path="/personal" element={<PersonalPage />} />
+            <Route path="/user/:userId" element={<PublicProfilePage />} />
+            <Route path='/settings' element={<SettingsPage />} />
+            <Route path="/gallery" element={<SmartGalleryPage />} />
+            <Route path="/gallery/tag/:tagName" element={<TagGalleryPage />} />
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 
             </Routes>
             <CreatePostModal />

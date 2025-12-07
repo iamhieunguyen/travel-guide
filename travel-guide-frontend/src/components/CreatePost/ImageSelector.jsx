@@ -11,14 +11,53 @@ import {
 import { useCreatePostModal } from "../../context/CreatePostModalContext";
 import CreatePostStyleHeader from "./CreatePostStyleHeader";
 
+const TEXT = {
+  vi: {
+    dragDrop: 'Kéo ảnh hoặc video vào đây',
+    supportedFormats: 'Hỗ trợ JPG, PNG, GIF • Tối đa 10MB',
+    selectFromComputer: 'Chọn từ máy tính',
+    next: 'Tiếp theo',
+    aspectRatio: 'Tỷ lệ',
+    original: 'Gốc',
+    square: 'Vuông',
+    portrait: 'Dọc',
+    landscape: 'Ngang',
+    back: '← Quay lại',
+    addImage: 'Thêm ảnh',
+    ratio: 'Tỉ lệ',
+  },
+  en: {
+    dragDrop: 'Drag photo or video here',
+    supportedFormats: 'Supports JPG, PNG, GIF • Max 10MB',
+    selectFromComputer: 'Select from computer',
+    next: 'Next',
+    aspectRatio: 'Ratio',
+    original: 'Original',
+    square: 'Square',
+    portrait: 'Portrait',
+    landscape: 'Landscape',
+    back: '← Back',
+    addImage: 'Add image',
+    ratio: 'Ratio',
+  },
+};
+
 export default function ImageSelector({ onNext }) {
   const { setImage, aspect, setAspect, image, closeModal } = useCreatePostModal();
   const [images, setImages] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [zoom, setZoom] = useState(100);
   const [showAspectMenu, setShowAspectMenu] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const aspectMenuRef = useRef(null);
+  const dropZoneRef = useRef(null);
+  const [language] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    return localStorage.getItem('appLanguage') || 'vi';
+  });
+  
+  const L = TEXT[language] || TEXT.vi;
 
   // Load ảnh từ context khi quay lại
   useEffect(() => {
@@ -40,9 +79,54 @@ export default function ImageSelector({ onNext }) {
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
-    const urls = files.map((file) => URL.createObjectURL(file));
-    setImages(urls);
-    setCurrentIndex(0);
+    
+    // Thêm ảnh mới vào cuối danh sách (giữ thứ tự chọn)
+    const newUrls = files.map((file) => URL.createObjectURL(file));
+    setImages(prev => [...prev, ...newUrls]);
+    
+    // Nếu chưa có ảnh nào, set index = 0
+    if (images.length === 0) {
+      setCurrentIndex(0);
+    }
+  };
+
+  // Drag & Drop handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+      file.type.startsWith('image/')
+    );
+    
+    if (files.length > 0) {
+      const newUrls = files.map((file) => URL.createObjectURL(file));
+      setImages(prev => [...prev, ...newUrls]);
+      
+      if (images.length === 0) {
+        setCurrentIndex(0);
+      }
+    }
   };
 
   const triggerFileSelect = () => {
@@ -113,7 +197,7 @@ export default function ImageSelector({ onNext }) {
   };
 
   const aspectRatios = [
-    { label: "Gốc", value: "original" },
+    { label: L.original, value: "original" },
     { label: "1:1", value: "1:1" },
     { label: "4:5", value: "4:5" },
     { label: "16:9", value: "16:9" },
@@ -152,10 +236,21 @@ export default function ImageSelector({ onNext }) {
         <div className="flex flex-col items-center justify-center bg-[#f5f3f0] relative pt-6 pb-4 overflow-hidden" style={{ minHeight: "700px", zIndex: 10, borderBottomLeftRadius: "24px", borderBottomRightRadius: "24px" }}>
           {images.length === 0 ? (
             <>
-              <div className="flex flex-col items-center justify-center w-full h-full group px-4">
+              <div 
+                ref={dropZoneRef}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className="flex flex-col items-center justify-center w-full h-full group px-4"
+              >
                 <div 
                   onClick={triggerFileSelect}
-                  className="flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed border-[#92ADA4]/40 group-hover:border-[#92ADA4] transition-all duration-500 group-hover:scale-[1.01] group-hover:shadow-[#92ADA4]/20 relative max-w-[700px] w-full cursor-pointer" 
+                  className={`flex flex-col items-center space-y-8 p-24 rounded-[45px] bg-white/95 backdrop-blur-md shadow-2xl border-2 border-dashed transition-all duration-500 group-hover:scale-[1.01] relative max-w-[700px] w-full cursor-pointer ${
+                    isDragging 
+                      ? 'border-[#92ADA4] bg-[#92ADA4]/10 scale-[1.02]' 
+                      : 'border-[#92ADA4]/40 group-hover:border-[#92ADA4] group-hover:shadow-[#92ADA4]/20'
+                  }`}
                   style={{ zIndex: 30 }}
                 >
                   <div className="relative">
@@ -167,15 +262,15 @@ export default function ImageSelector({ onNext }) {
                   
                   <div className="text-center space-y-3">
                     <p className="text-gray-800 text-xl font-semibold">
-                      Kéo ảnh hoặc video vào đây
+                      {L.dragDrop}
                     </p>
                     <p className="text-gray-500 text-sm">
-                      Hỗ trợ JPG, PNG, GIF • Tối đa 10MB
+                      {L.supportedFormats}
                     </p>
                   </div>
                   
                   <button className="bg-[#92ADA4] hover:bg-[#7d9a91] text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-xl group-hover:shadow-2xl transition-all duration-300 group-hover:scale-110">
-                    Chọn từ máy tính
+                    {L.selectFromComputer}
                   </button>
                 </div>
                 
@@ -183,7 +278,6 @@ export default function ImageSelector({ onNext }) {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  multiple
                   onChange={handleFileChange}
                   className="hidden"
                 />
@@ -191,7 +285,14 @@ export default function ImageSelector({ onNext }) {
             </>
           ) : (
             <div
-              className="relative bg-black rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl animate-fadeIn"
+              ref={dropZoneRef}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className={`relative bg-black rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl animate-fadeIn transition-all ${
+                isDragging ? 'ring-4 ring-[#92ADA4] ring-opacity-50' : ''
+              }`}
               style={{
                 width: "900px",
                 height: "650px",
@@ -224,7 +325,7 @@ export default function ImageSelector({ onNext }) {
                   className="bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
                 >
                   <Crop size={18} />
-                  <span className="text-sm font-medium">Tỉ lệ</span>
+                  <span className="text-sm font-medium">{L.ratio}</span>
                 </button>
 
                 {showAspectMenu && (
@@ -302,6 +403,24 @@ export default function ImageSelector({ onNext }) {
                   ))}
                 </div>
               )}
+              
+              {/* Nút thêm ảnh */}
+              <button
+                onClick={triggerFileSelect}
+                className="absolute top-4 right-4 bg-[#92ADA4]/90 hover:bg-[#7d9a91] text-white px-4 py-2 rounded-full flex items-center space-x-2 backdrop-blur-sm shadow-lg transition-all duration-300 hover:scale-105"
+              >
+                <Plus size={18} />
+                <span className="text-sm font-medium">{L.addImage}</span>
+              </button>
+              
+              {/* Hidden file input for adding more images */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
           )}
         </div>
@@ -312,13 +431,13 @@ export default function ImageSelector({ onNext }) {
               onClick={handleBack}
               className="px-7 py-2.5 bg-white text-gray-700 rounded-full hover:bg-gray-50 transition-all duration-300 shadow-lg hover:shadow-xl font-semibold text-sm border border-gray-200 hover:scale-105"
             >
-              ← Quay lại
+              {L.back}
             </button>
             <button
               onClick={handleNext}
               className="px-10 py-2.5 bg-[#92ADA4] hover:bg-[#7d9a91] text-white rounded-full hover:shadow-2xl transition-all duration-300 hover:scale-110 font-bold text-sm shadow-xl"
             >
-              Tiếp tục →
+              {L.next} →
             </button>
           </div>
         )}

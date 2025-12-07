@@ -3,7 +3,10 @@ Save photo metadata and update trending tags in Gallery tables
 """
 import os
 import boto3
+<<<<<<< HEAD
 from decimal import Decimal
+=======
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 from datetime import datetime, timezone
 
 dynamodb = boto3.resource('dynamodb')
@@ -16,6 +19,7 @@ trends_table = dynamodb.Table(GALLERY_TRENDS_TABLE) if GALLERY_TRENDS_TABLE else
 
 
 def save_photo_to_gallery(photo_id, image_url, tags, status='public'):
+<<<<<<< HEAD
     """Save photo metadata to Gallery_Photos table"""
     if not photos_table:
         print("Gallery Photos table not configured")
@@ -23,11 +27,18 @@ def save_photo_to_gallery(photo_id, image_url, tags, status='public'):
     
     try:
         item = {
+=======
+    if not photos_table:
+        return False
+    try:
+        photos_table.put_item(Item={
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
             'photo_id': photo_id,
             'image_url': image_url,
             'tags': tags,
             'status': status,
             'created_at': datetime.now(timezone.utc).isoformat()
+<<<<<<< HEAD
         }
         
         photos_table.put_item(Item=item)
@@ -36,10 +47,16 @@ def save_photo_to_gallery(photo_id, image_url, tags, status='public'):
         
     except Exception as e:
         print(f"Failed to save photo to gallery: {e}")
+=======
+        })
+        return True
+    except Exception:
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
         return False
 
 
 def update_trending_tags(tags, image_url):
+<<<<<<< HEAD
     """Update tag counts in Gallery_Trends table (atomic increment)"""
     if not trends_table:
         print("Gallery Trends table not configured")
@@ -69,4 +86,22 @@ def update_trending_tags(tags, image_url):
         
     except Exception as e:
         print(f"Failed to update trending tags: {e}")
+=======
+    if not trends_table:
+        return False
+    try:
+        for tag in tags:
+            trends_table.update_item(
+                Key={'tag_name': tag.lower()},
+                UpdateExpression='ADD #count :inc SET cover_image = if_not_exists(cover_image, :img), last_updated = :ts',
+                ExpressionAttributeNames={'#count': 'count'},
+                ExpressionAttributeValues={
+                    ':inc': 1,
+                    ':img': image_url,
+                    ':ts': datetime.now(timezone.utc).isoformat()
+                }
+            )
+        return True
+    except Exception:
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
         return False

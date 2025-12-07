@@ -47,6 +47,17 @@ def _get_user_id(event):
     return None
 
 
+def _convert_decimal(obj):
+    """Recursively convert Decimal to float/int"""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    elif isinstance(obj, dict):
+        return {k: _convert_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_decimal(item) for item in obj]
+    return obj
+
+
 def lambda_handler(event, context):
     method = (event.get("httpMethod") or event.get("requestContext", {}).get("http", {}).get("method"))
     if method == "OPTIONS":
@@ -68,7 +79,8 @@ def lambda_handler(event, context):
 
         # Query DynamoDB
         if scope == "mine" and user_id:
-            # Query theo ownerId nếu scope là mine
+            # Query theo ownerId nếu scope là mine (show all statuses for owner)
+            # Owner can see their own articles regardless of status (pending/approved/rejected)
             query_params = {
                 'IndexName': 'gsi_owner_createdAt',
                 'KeyConditionExpression': 'ownerId = :owner_id',
@@ -78,17 +90,36 @@ def lambda_handler(event, context):
                 'ScanIndexForward': False, # Mới nhất trước
                 'Limit': limit
             }
+            print(f"📝 Querying articles for owner: {user_id} (all statuses)")
         else:
-            # Query theo visibility nếu scope là public
+            # Public feed: Show approved posts + owner's own posts (any status)
+            # This allows users to see their pending/rejected posts in the public feed
             query_params = {
                 'IndexName': 'gsi_visibility_createdAt',
                 'KeyConditionExpression': 'visibility = :visibility',
+                'ExpressionAttributeNames': {
+                    '#status': 'status',
+                    '#ownerId': 'ownerId'
+                },
                 'ExpressionAttributeValues': {
-                    ':visibility': 'public'
+                    ':visibility': 'public',
+                    ':status': 'approved'
                 },
                 'ScanIndexForward': False, # Mới nhất trước
                 'Limit': limit
             }
+            
+            # Filter: Show approved posts from everyone + all posts from current user
+            if user_id:
+                # Logged in: (approved OR no status) OR (my own post regardless of status)
+                # This means: show approved posts from others + all my posts
+                query_params['FilterExpression'] = '((#status = :status OR attribute_not_exists(#status)) OR #ownerId = :userId)'
+                query_params['ExpressionAttributeValues'][':userId'] = user_id
+                print(f"📝 Public feed for user {user_id}: approved posts from all + own posts (any status)")
+            else:
+                # Not logged in: show only approved posts
+                query_params['FilterExpression'] = '(#status = :status OR attribute_not_exists(#status))'
+                print(f"📝 Public feed for guest: approved posts only")
 
         if next_token:
             query_params['ExclusiveStartKey'] = json.loads(next_token)
@@ -98,16 +129,15 @@ def lambda_handler(event, context):
         items = response['Items']
         next_key = response.get('LastEvaluatedKey')
 
-        # Chuyển Decimal sang float/int cho frontend
+        # Chuyển Decimal sang float/int cho frontend (recursive)
         processed_items = []
         for item in items:
-            processed_item = {}
-            for k, v in item.items():
-                if isinstance(v, Decimal):
-                    # Chuyển Decimal sang int nếu là số nguyên, ngược lại float
-                    processed_item[k] = int(v) if v % 1 == 0 else float(v)
-                else:
-                    processed_item[k] = v
+            processed_item = _convert_decimal(item)
+            
+            # Backward compatibility: treat articles without status as approved
+            if 'status' not in processed_item:
+                processed_item['status'] = 'approved'
+            
             processed_items.append(processed_item)
 
         result = {

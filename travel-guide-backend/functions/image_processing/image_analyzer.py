@@ -452,6 +452,11 @@ def lambda_handler(event, context):
                         print("Skipping thumbnail")
                         continue
                     
+                    # Skip folder/prefix objects (they end with /)
+                    if key.endswith('/'):
+                        print(f"Skipping folder object: {key}")
+                        continue
+                    
                     article_id = extract_article_id_from_key(key)
                     analysis = analyze_image(bucket, key)
                     

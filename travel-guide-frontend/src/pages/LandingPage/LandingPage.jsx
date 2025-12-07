@@ -18,11 +18,384 @@ import { useLanguage } from '../../context/LanguageContext';
 import './LandingPage.css';
 import { useScrollAnimation } from './useScrollAnimation';
 
+const TEXT = {
+  vi: {
+    nav: {
+      login: 'Đăng nhập',
+      signup: 'Đăng ký ngay'
+    },
+    hero: {
+      badge: 'Khám phá & Lưu giữ hành trình',
+      title1: 'Lưu giữ từng',
+      titleHighlight: 'khoảnh khắc',
+      title2: 'trên bản đồ cuộc đời',
+      description: 'Không chỉ là những bức ảnh, đó là những câu chuyện. Tạo bản đồ ký ức của riêng bạn, đánh dấu những nơi đã đi qua và chia sẻ niềm đam mê xê dịch.',
+      ctaStart: 'Bắt đầu miễn phí',
+      ctaExplore: 'Dạo quanh một vòng',
+      stats: {
+        users: 'Người dùng',
+        countries: 'Quốc gia',
+        moments: 'Khoảnh khắc'
+      },
+      communityInfo: 'Những khoảnh khắc thật từ cộng đồng MemoryMap'
+    },
+    cards: {
+      card1: 'Buổi sáng tuyệt vời tại tháp Eiffel... 🥐',
+      card2: 'Phố cổ đầy màu sắc và ánh đèn lồng 🏮',
+      card3: 'Thiên nhiên hùng vĩ và hồ nước trong xanh 🏔️',
+      card4: 'Thiên đường nhiệt đới với văn hóa độc đáo 🌴',
+      card5: 'Hoàng hôn tuyệt đẹp trên biển Aegean 🌅',
+      card6: 'Văn hóa truyền thống và kiến trúc cổ kính 🏯'
+    },
+    features: {
+      title: 'Tại sao chọn MemoryMap?',
+      subtitle: 'Những tính năng được thiết kế dành riêng cho người yêu du lịch.',
+      map: {
+        title: 'Bản đồ tương tác',
+        desc: 'Ghim mọi điểm đến trên bản đồ thế giới 3D sống động. Xem lại lộ trình di chuyển của bạn một cách trực quan.'
+      },
+      privacy: {
+        title: 'Riêng tư tuyệt đối',
+        desc: 'Chế độ "Chỉ mình tôi" cho những khoảnh khắc riêng tư. Dữ liệu được mã hóa an toàn tuyệt đối.'
+      },
+      album: {
+        title: 'Album ảnh thông minh',
+        desc: 'Tự động sắp xếp ảnh theo địa điểm và thời gian. Tạo nên cuốn nhật ký hành trình kỹ thuật số.'
+      },
+      community: {
+        title: 'Cộng đồng xê dịch',
+        desc: 'Kết nối với những người cùng đam mê. Khám phá những địa điểm ẩn ("hidden gems") từ cộng đồng.'
+      },
+      access: {
+        title: 'Truy cập mọi nơi',
+        desc: 'Đồng bộ hóa dữ liệu trên mọi thiết bị: Máy tính, điện thoại, máy tính bảng. Ký ức luôn bên bạn.'
+      },
+      free: {
+        title: 'Hoàn toàn miễn phí',
+        desc: 'Bắt đầu hành trình của bạn mà không tốn chi phí. Nâng cấp chỉ khi bạn cần thêm dung lượng lưu trữ.'
+      }
+    },
+    comparison: {
+      title: 'Hơn cả một thư viện ảnh',
+      subtitle: 'MemoryMap không chỉ lưu ảnh, mà còn lưu giữ cả câu chuyện và hành trình của bạn.',
+      oldWay: 'Cách cũ',
+      oldTitle: 'Thư viện ảnh thông thường',
+      oldPoints: [
+        'Ảnh lưu lộn xộn trong điện thoại',
+        'Quên mất chụp ở đâu, khi nào',
+        'Không thể chia sẻ theo lộ trình',
+        'Dễ mất dữ liệu khi đổi máy'
+      ],
+      newWay: 'Cách mới',
+      newTitle: 'MemoryMap',
+      newPoints: [
+        'Tự động sắp xếp theo địa điểm',
+        'Gắn chính xác vị trí & thời gian',
+        'Xem lại hành trình trên bản đồ',
+        'Đồng bộ đám mây an toàn'
+      ]
+    },
+    howItWorks: {
+      title: 'Hành trình của bạn bắt đầu từ đây',
+      subtitle: '3 bước đơn giản để biến những khoảnh khắc thành bản đồ ký ức vĩnh cửu.',
+      step1: {
+        title: 'Tạo tài khoản',
+        desc: 'Đăng ký miễn phí chỉ với Email hoặc Google. Không cần thẻ tín dụng.'
+      },
+      step2: {
+        title: 'Chia sẻ khoảnh khắc',
+        desc: 'Tải ảnh lên, ghim vị trí và viết câu chuyện của riêng bạn.'
+      },
+      step3: {
+        title: 'Khám phá bản đồ',
+        desc: 'Nhìn lại toàn bộ hành trình trên bản đồ tương tác 3D.'
+      }
+    },
+    explore: {
+      title: 'Khám phá thế giới cùng MemoryMap',
+      subtitle: 'Hơn 1 triệu ký ức được lưu giữ tại hơn 50 quốc gia trên toàn thế giới.',
+      asia: {
+        title: 'Châu Á',
+        desc: 'Từ phố cổ Hội An đến Phú Sĩ huyền thoại',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      europe: {
+        title: 'Châu Âu',
+        desc: 'Paris lãng mạn, Venice thơ mộng, Alps hùng vĩ',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      americas: {
+        title: 'Châu Mỹ',
+        desc: 'Grand Canyon, Machu Picchu, New York sôi động',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      oceania: {
+        title: 'Châu Đại Dương',
+        desc: 'Rạn san hô Great Barrier, Sydney Opera House, New Zealand kỳ vĩ',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      cta: 'Bắt đầu khám phá'
+    },
+    communityMap: {
+      badge: 'Trực quan & Tương tác',
+      title: 'Nhìn thấy thế giới của bạn',
+      desc: 'Mỗi điểm đỏ là một ký ức. Mỗi đường kẻ là một hành trình. Kết nối các khoảnh khắc để tạo nên câu chuyện riêng của bạn trên bản đồ toàn cầu.',
+      features: [
+        'Zoom & khám phá mọi góc nhìn',
+        'Lọc theo thời gian & địa điểm',
+        'Chia sẻ bản đồ với bạn bè'
+      ],
+      cta: 'Xem bản đồ demo'
+    },
+    faq: {
+      title: 'Câu hỏi thường gặp',
+      items: [
+        {
+          q: 'MemoryMap có miễn phí không?',
+          a: 'Có! Chúng tôi cung cấp gói miễn phí vĩnh viễn với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên Premium nếu cần lưu trữ không giới hạn.'
+        },
+        {
+          q: 'Ảnh của tôi có được bảo mật không?',
+          a: 'Tuyệt đối an toàn. Dữ liệu của bạn được mã hóa và lưu trữ trên hệ thống đám mây bảo mật cao cấp.'
+        },
+        {
+          q: 'Tôi có thể chia sẻ bản đồ với bạn bè không?',
+          a: 'Được chứ. Bạn có thể chia sẻ link profile công khai hoặc chia sẻ từng bài viết cụ thể lên mạng xã hội.'
+        },
+        {
+          q: 'Làm sao để bắt đầu?',
+          a: 'Chỉ cần nhấn nút \'Đăng ký ngay\' ở góc trên bên phải, điền thông tin và bạn đã sẵn sàng!'
+        }
+      ]
+    },
+    footerCta: {
+      title: 'Sẵn sàng viết tiếp câu chuyện của bạn?',
+      subtitle: 'Tham gia cùng hơn 10,000 người dùng đang lưu giữ hành trình mỗi ngày.',
+      cta: 'Tạo tài khoản miễn phí'
+    },
+    footer: {
+      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      product: {
+        title: 'Sản phẩm',
+        features: 'Tính năng',
+        pricing: 'Bảng giá',
+        roadmap: 'Roadmap'
+      },
+      company: {
+        title: 'Công ty',
+        about: 'Về chúng tôi',
+        blog: 'Blog',
+        careers: 'Tuyển dụng'
+      },
+      support: {
+        title: 'Hỗ trợ',
+        help: 'Trung tâm trợ giúp',
+        terms: 'Điều khoản',
+        privacy: 'Bảo mật'
+      }
+    }
+  },
+  en: {
+    nav: {
+      login: 'Login',
+      signup: 'Sign Up'
+    },
+    hero: {
+      badge: 'Explore & Preserve Your Journey',
+      title1: 'Preserve every',
+      titleHighlight: 'moment',
+      title2: 'on your life map',
+      description: 'More than just photos, these are stories. Create your own memory map, mark the places you\'ve been, and share your passion for travel.',
+      ctaStart: 'Start Free',
+      ctaExplore: 'Take a Tour',
+      stats: {
+        users: 'Users',
+        countries: 'Countries',
+        moments: 'Moments'
+      },
+      communityInfo: 'Real moments from the MemoryMap community'
+    },
+    cards: {
+      card1: 'Wonderful morning at the Eiffel Tower... 🥐',
+      card2: 'Colorful ancient town with lantern lights 🏮',
+      card3: 'Majestic nature and crystal clear lakes 🏔️',
+      card4: 'Tropical paradise with unique culture 🌴',
+      card5: 'Beautiful sunset over the Aegean Sea 🌅',
+      card6: 'Traditional culture and ancient architecture 🏯'
+    },
+    features: {
+      title: 'Why Choose MemoryMap?',
+      subtitle: 'Features designed specifically for travel lovers.',
+      map: {
+        title: 'Interactive Map',
+        desc: 'Pin every destination on a vibrant 3D world map. Visualize your travel routes intuitively.'
+      },
+      privacy: {
+        title: 'Absolute Privacy',
+        desc: '"Only Me" mode for private moments. Data is encrypted with absolute security.'
+      },
+      album: {
+        title: 'Smart Photo Album',
+        desc: 'Automatically organize photos by location and time. Create a digital travel journal.'
+      },
+      community: {
+        title: 'Travel Community',
+        desc: 'Connect with like-minded travelers. Discover hidden gems from the community.'
+      },
+      access: {
+        title: 'Access Anywhere',
+        desc: 'Sync data across all devices: Computer, phone, tablet. Memories always with you.'
+      },
+      free: {
+        title: 'Completely Free',
+        desc: 'Start your journey at no cost. Upgrade only when you need more storage.'
+      }
+    },
+    comparison: {
+      title: 'More Than a Photo Library',
+      subtitle: 'MemoryMap doesn\'t just store photos, it preserves your stories and journeys.',
+      oldWay: 'Old Way',
+      oldTitle: 'Regular Photo Library',
+      oldPoints: [
+        'Photos scattered in your phone',
+        'Forget where and when photos were taken',
+        'Can\'t share by route',
+        'Easy to lose data when changing devices'
+      ],
+      newWay: 'New Way',
+      newTitle: 'MemoryMap',
+      newPoints: [
+        'Auto-organize by location',
+        'Precise location & time tagging',
+        'Review journey on map',
+        'Secure cloud sync'
+      ]
+    },
+    howItWorks: {
+      title: 'Your Journey Starts Here',
+      subtitle: '3 simple steps to turn moments into an eternal memory map.',
+      step1: {
+        title: 'Create Account',
+        desc: 'Sign up free with Email or Google. No credit card required.'
+      },
+      step2: {
+        title: 'Share Moments',
+        desc: 'Upload photos, pin locations, and write your own story.'
+      },
+      step3: {
+        title: 'Explore Map',
+        desc: 'Review your entire journey on an interactive 3D map.'
+      }
+    },
+    explore: {
+      title: 'Explore the World with MemoryMap',
+      subtitle: 'Over 1 million memories preserved in more than 50 countries worldwide.',
+      asia: {
+        title: 'Asia',
+        desc: 'From Hoi An ancient town to legendary Mount Fuji',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      europe: {
+        title: 'Europe',
+        desc: 'Romantic Paris, dreamy Venice, majestic Alps',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      americas: {
+        title: 'Americas',
+        desc: 'Grand Canyon, Machu Picchu, vibrant New York',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      oceania: {
+        title: 'Oceania',
+        desc: 'Great Barrier Reef, Sydney Opera House, magnificent New Zealand',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      cta: 'Start Exploring'
+    },
+    communityMap: {
+      badge: 'Visual & Interactive',
+      title: 'See Your World',
+      desc: 'Each red dot is a memory. Each line is a journey. Connect moments to create your own story on the global map.',
+      features: [
+        'Zoom & explore every angle',
+        'Filter by time & location',
+        'Share map with friends'
+      ],
+      cta: 'View Demo Map'
+    },
+    faq: {
+      title: 'Frequently Asked Questions',
+      items: [
+        {
+          q: 'Is MemoryMap free?',
+          a: 'Yes! We offer a forever-free plan with all basic features. You can upgrade to Premium if you need unlimited storage.'
+        },
+        {
+          q: 'Are my photos secure?',
+          a: 'Absolutely safe. Your data is encrypted and stored on a high-security cloud system.'
+        },
+        {
+          q: 'Can I share my map with friends?',
+          a: 'Of course. You can share your public profile link or share specific posts on social media.'
+        },
+        {
+          q: 'How do I get started?',
+          a: 'Just click the \'Sign Up\' button in the top right corner, fill in your information, and you\'re ready!'
+        }
+      ]
+    },
+    footerCta: {
+      title: 'Ready to Continue Your Story?',
+      subtitle: 'Join over 10,000 users preserving their journeys every day.',
+      cta: 'Create Free Account'
+    },
+    footer: {
+      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      product: {
+        title: 'Product',
+        features: 'Features',
+        pricing: 'Pricing',
+        roadmap: 'Roadmap'
+      },
+      company: {
+        title: 'Company',
+        about: 'About Us',
+        blog: 'Blog',
+        careers: 'Careers'
+      },
+      support: {
+        title: 'Support',
+        help: 'Help Center',
+        terms: 'Terms',
+        privacy: 'Privacy'
+      }
+    }
+  }
+};
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
   const [openFaq, setOpenFaq] = useState(null);
-  useScrollAnimation(); // Kích hoạt scroll animations
+  const [language, setLanguage] = useState(() => {
+    return localStorage.getItem('language') || 'vi';
+  });
+  
+  useScrollAnimation();
+
+  useEffect(() => {
+    localStorage.setItem('language', language);
+  }, [language]);
+
+  const t = TEXT[language];
 
   const TEXT = {
     vi: {

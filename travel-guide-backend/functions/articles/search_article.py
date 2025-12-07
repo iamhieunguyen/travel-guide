@@ -51,6 +51,13 @@ def _convert_decimal(obj):
     return obj
 
 
+def _has_image(item):
+    """Check if article has at least one image"""
+    image_key = item.get('imageKey')
+    image_keys = item.get('imageKeys') or []
+    return bool(image_key) or len(image_keys) > 0
+
+
 def lambda_handler(event, context):
     method = (
         event.get("httpMethod")
@@ -85,28 +92,50 @@ def lambda_handler(event, context):
             key_condition = "ownerId = :owner_id"
             expression_attribute_values[":owner_id"] = user_id
         else:
-            # Mặc định: chỉ tìm trong bài public
-            index_name = "gsi_visibility_createdAt"
-            key_condition = "visibility = :visibility"
-            expression_attribute_values[":visibility"] = "public"
+            # Mặc định: tìm trong bài public
+            # Note: We can't use GSI for this because old articles have visibility=unknown
+            # We'll need to scan or use a different approach
+            # For now, let's use scan with filter for better compatibility
+            index_name = None  # Will use scan instead
+            key_condition = None
 
         # ------------------------------
         # 2) Xây FilterExpression (q, tags, bbox...)
         # ------------------------------
         filter_parts = []
 
+        # NEW: Filter by status for public searches (not for "mine" scope)
+        # TEMPORARILY DISABLED - Allow all posts to be searchable for testing
+        # TODO: Re-enable after content moderation is working
+        # if scope != "mine" or not user_id:
+        #     expression_attribute_names["#status"] = "status"
+        #     expression_attribute_values[":approved"] = "approved"
+        #     # Use OR to include legacy articles without status field
+        #     filter_parts.append(
+        #         "(#status = :approved OR attribute_not_exists(#status))"
+        #     )
+
         # Tìm theo text: title / content / locationName (case-insensitive)
+        # Support both old (title/content/locationName) and new (*Lower) fields
         if q:
             q_lower = q.lower()
+            
+            # New fields (lowercase) - preferred for performance
             expression_attribute_names["#titleLower"] = "titleLower"
             expression_attribute_names["#contentLower"] = "contentLower"
             expression_attribute_names["#locationNameLower"] = "locationNameLower"
+            
             expression_attribute_values[":q"] = q_lower
 
+            # Search in lowercase fields (will work for new articles)
+            # Note: Old articles without *Lower fields won't match here
+            # Run migrate_lowercase_fields.py to fix old articles
             filter_parts.append(
-                "contains(#titleLower, :q) OR "
-                "contains(#contentLower, :q) OR "
+                "("
+                "(attribute_exists(#titleLower) AND contains(#titleLower, :q)) OR "
+                "(attribute_exists(#contentLower) AND contains(#contentLower, :q)) OR "
                 "(attribute_exists(#locationNameLower) AND contains(#locationNameLower, :q))"
+                ")"
             )
 
         # Tìm theo tags (search in both 'tags' and 'autoTags' fields)
@@ -160,24 +189,26 @@ def lambda_handler(event, context):
                 filter_expression = " AND ".join(filter_parts)
 
         # ------------------------------
-        # 3) Gọi DynamoDB query
+        # 3) Gọi DynamoDB query hoặc scan
         # ------------------------------
-        query_params = {
-            "IndexName": index_name,
-            "KeyConditionExpression": key_condition,
-            "ExpressionAttributeValues": expression_attribute_values,
-            "ScanIndexForward": False,  # mới nhất trước
-            "Limit": limit,
-        }
+        if index_name and key_condition:
+            # Path 1: Query with GSI for personal searches
+            query_params = {
+                "IndexName": index_name,
+                "KeyConditionExpression": key_condition,
+                "ExpressionAttributeValues": expression_attribute_values,
+                "ScanIndexForward": False,  # mới nhất trước
+                "Limit": limit,
+            }
 
-        if expression_attribute_names:
-            query_params["ExpressionAttributeNames"] = expression_attribute_names
-        if filter_expression:
-            query_params["FilterExpression"] = filter_expression
-        if next_token:
-            # nextToken từ FE là chuỗi JSON của LastEvaluatedKey
-            query_params["ExclusiveStartKey"] = json.loads(next_token)
+            if expression_attribute_names:
+                query_params["ExpressionAttributeNames"] = expression_attribute_names
+            if filter_expression:
+                query_params["FilterExpression"] = filter_expression
+            if next_token:
+                query_params["ExclusiveStartKey"] = json.loads(next_token)
 
+<<<<<<< HEAD
         # Debug logging
         print(f"📊 Query params:")
         print(f"  - IndexName: {query_params.get('IndexName')}")
@@ -188,6 +219,54 @@ def lambda_handler(event, context):
         print(f"  - AttributeValues: {expression_attribute_values}")
         
         resp = table.query(**query_params)
+=======
+            # Debug logging for query
+            print(f"📊 Query operation:")
+            print(f"  - IndexName: {query_params.get('IndexName')}")
+            print(f"  - KeyCondition: {query_params.get('KeyConditionExpression')}")
+            if filter_expression:
+                print(f"  - FilterExpression: {filter_expression}")
+            print(f"  - AttributeNames: {expression_attribute_names}")
+            print(f"  - AttributeValues: {expression_attribute_values}")
+            
+            resp = table.query(**query_params)
+        else:
+            # Path 2: Scan for public searches
+            # IMPORTANT: DynamoDB applies FilterExpression AFTER scanning Limit items
+            # So we need to scan MORE items to get enough results after filtering
+            # Use a larger scan limit and then trim results to requested limit
+            scan_limit = limit * 10  # Scan 10x more items to account for filtering
+            
+            scan_params = {
+                "Limit": scan_limit,
+            }
+
+            if expression_attribute_names:
+                scan_params["ExpressionAttributeNames"] = expression_attribute_names
+            if expression_attribute_values:
+                scan_params["ExpressionAttributeValues"] = expression_attribute_values
+            if filter_expression:
+                scan_params["FilterExpression"] = filter_expression
+            if next_token:
+                scan_params["ExclusiveStartKey"] = json.loads(next_token)
+
+            # Debug logging for scan
+            print(f"📊 Scan operation:")
+            print(f"  - Scan Limit: {scan_params.get('Limit')} (requested: {limit})")
+            if filter_expression:
+                print(f"  - FilterExpression: {filter_expression}")
+            print(f"  - AttributeNames: {expression_attribute_names}")
+            print(f"  - AttributeValues: {expression_attribute_values}")
+            
+            resp = table.scan(**scan_params)
+            
+            # Trim results to requested limit
+            items_before_trim = resp.get("Items", [])
+            if len(items_before_trim) > limit:
+                print(f"  - Trimming {len(items_before_trim)} items to {limit}")
+                resp["Items"] = items_before_trim[:limit]
+                # Keep LastEvaluatedKey for pagination
+>>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 
         items = resp.get("Items", [])
         last_key = resp.get("LastEvaluatedKey")

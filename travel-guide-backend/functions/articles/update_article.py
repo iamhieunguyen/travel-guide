@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import base64
 import boto3
@@ -48,32 +49,22 @@ def _get_user_id(event):
 
 def _reverse_geocode(lat: float, lng: float) -> str | None:
     """
-    Gọi Nominatim để lấy locationName (display_name) từ lat/lng.
-    Dùng khi update lat/lng nhưng không truyền locationName.
+    Reverse geocode using AWS Location Service with cache and fallback
     """
     try:
-        base_url = "https://nominatim.openstreetmap.org/reverse"
-        params = {
-            "format": "json",
-            "lat": str(lat),
-            "lon": str(lng),
-            "zoom": "14",
-            "addressdetails": "1",
-            "accept-language": "vi",
-        }
-        url = f"{base_url}?{urllib.parse.urlencode(params)}"
-
-        req = urllib.request.Request(
-            url,
-            headers={
-                # ⚠️ Thay email thật của bạn
-                "User-Agent": "travel-guide-app/1.0 (chaukiet2704@gmail.com)"
-            },
-        )
-
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            return data.get("display_name")
+        import sys
+        sys.path.insert(0, '/var/task/functions')
+        from utils.location_service import reverse_geocode
+        
+        # Auto-detect language
+        language = 'en'
+        if 8 <= lat <= 24 and 102 <= lng <= 110:
+            language = 'vi'
+        elif 24 <= lat <= 46 and 122 <= lng <= 154:
+            language = 'ja'
+        
+        return reverse_geocode(lat, lng, language=language)
+        
     except Exception as e:
         print(f"reverse_geocode(update) error for ({lat}, {lng}): {e}")
         return None

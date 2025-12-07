@@ -67,7 +67,7 @@ def lambda_handler(event, context):
             Item={
                 "userId": user_id,
                 "articleId": article_id,
-                "createdAt": now,
+                "createdAt": now,   
             }
         )
 

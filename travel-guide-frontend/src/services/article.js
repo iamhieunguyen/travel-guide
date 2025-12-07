@@ -100,9 +100,15 @@ export function buildImageUrlFromKey(imageKey) {
   return `${CF_BASE}/${imageKey}`;
 }
 
-// ===== Upload presign (Giữ nguyên) =====
-export async function getUploadUrl({ filename, contentType }) {
-  return http("POST", "/upload-url", { filename, contentType });
+// ===== Upload presign =====
+// articleId là optional - nếu không có, backend sẽ tạo mới
+// Nếu có, backend sẽ dùng articleId đó để tạo S3 key
+export async function getUploadUrl({ filename, contentType, articleId = null }) {
+  const body = { filename, contentType };
+  if (articleId) {
+    body.articleId = articleId;
+  }
+  return http("POST", "/upload-url", body);
 }
 
 export async function uploadToS3(url, file, contentType) {
@@ -170,6 +176,9 @@ export function searchArticles({ bbox, q = "", tags = "", scope = "public", limi
 
 /**
  * Xử lý upload hàng loạt và tạo bài viết với mảng imageKeys.
+ * QUAN TRỌNG: Sử dụng cùng articleId cho cả upload và tạo bài viết
+ * để Rekognition có thể cập nhật autoTags đúng bài viết.
+ * 
  * @param {File[]} files - Mảng các file ảnh (File objects).
  * @param {object} articleMetadata - Metadata của bài viết (title, content, lat, lng, etc.).
  * @returns {Promise<object>} - Bài viết đã tạo.
@@ -182,31 +191,44 @@ export async function createArticleWithMultipleFiles(files, articleMetadata) {
 
   console.log(`📦 Bắt đầu upload ${files.length} files...`);
 
-  // Tạo một mảng các Promise cho toàn bộ quy trình upload
-  const uploadPromises = files.map(async (file, index) => {
+  // Upload ảnh đầu tiên để lấy articleId
+  let articleId = null;
+  const imageKeys = [];
+
+  for (let index = 0; index < files.length; index++) {
+    const file = files[index];
     const contentType = file.type || "application/octet-stream";
     const filename = file.name || `image-${index}.png`;
 
     // 1. Lấy URL upload presigned và key
-    const { uploadUrl, key } = await getUploadUrl({ filename, contentType });
+    // Gửi articleId để backend dùng cùng ID cho tất cả ảnh của bài viết này
+    const uploadResponse = await getUploadUrl({ 
+      filename, 
+      contentType,
+      articleId: articleId // null cho ảnh đầu tiên, backend sẽ tạo mới
+    });
+
+    // Lưu articleId từ response đầu tiên
+    if (!articleId && uploadResponse.articleId) {
+      articleId = uploadResponse.articleId;
+      console.log(`🆔 Got articleId from backend: ${articleId}`);
+    }
 
     // 2. Upload file lên S3
-    await uploadToS3(uploadUrl, file, contentType);
+    await uploadToS3(uploadResponse.uploadUrl, file, contentType);
 
-    // 3. Trả về key để thu thập
-    return key;
-  });
+    // 3. Thu thập key
+    imageKeys.push(uploadResponse.key);
+  }
 
-  // Chờ tất cả các uploads hoàn thành và thu thập keys
-  const imageKeys = await Promise.all(uploadPromises);
-
-  // 4. Gọi API tạo bài viết với mảng imageKeys
+  // 4. Gọi API tạo bài viết với mảng imageKeys VÀ articleId
   const body = {
     ...articleMetadata,
-    imageKeys: imageKeys.filter(k => k), // Lọc bỏ keys rỗng nếu có
+    articleId: articleId, // Sử dụng cùng articleId để khớp với S3 keys
+    imageKeys: imageKeys.filter(k => k),
   };
 
-  console.log(`✅ Upload hoàn tất. Gửi bài viết với ${body.imageKeys.length} keys.`);
+  console.log(`✅ Upload hoàn tất. Gửi bài viết với articleId=${articleId}, ${body.imageKeys.length} keys.`);
   return createArticle(body);
 }
 
@@ -260,9 +282,52 @@ export function listFavoriteArticles({ limit = 10, nextToken } = {}) {
   return http("GET", `/me/favorites?${params.toString()}`, null, { useCache: false });
 }
 
-// ===== Utils (Giữ nguyên) =====
+// ===== Get user's public articles =====
+export function getUserPublicArticles(userId, { limit = 20, nextToken } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  return http("GET", `/users/${encodeURIComponent(userId)}/articles?${params.toString()}`, null, { useCache: true });
+}
+
+// ===== Utils =====
 export function clearCache() {
   requestCache.clear();
+  console.log('🗑️ All cache cleared');
+}
+
+// ✨ NEW: Clear cache cho specific endpoint
+export function clearCacheForEndpoint(path) {
+  const keysToDelete = [];
+  
+  for (const [key] of requestCache.entries()) {
+    if (key.includes(path)) {
+      keysToDelete.push(key);
+    }
+  }
+  
+  keysToDelete.forEach(key => requestCache.delete(key));
+  
+  if (keysToDelete.length > 0) {
+    console.log(`🗑️ Cleared ${keysToDelete.length} cache entries for ${path}`);
+  }
+}
+
+// ✨ NEW: Invalidate articles cache
+export function invalidateArticlesCache() {
+  clearCacheForEndpoint('/articles');
+  clearCacheForEndpoint('/search');
+}
+
+// ✨ NEW: No-cache version for polling
+export function listArticlesNoCache({ scope = "public", limit = 10, nextToken } = {}) {
+  const params = new URLSearchParams();
+  params.set("scope", scope);
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  return http("GET", `/articles?${params.toString()}`, null, { 
+    useCache: false  // ✅ NO CACHE for real-time polling
+  });
 }
 
 const articleService = {
@@ -273,16 +338,20 @@ const articleService = {
   updateArticle,
   deleteArticle,
   listArticles,
+  listArticlesNoCache,  // ✨ NEW
   searchArticles,
-  createArticleWithUpload, // Giữ để tương thích
-  createArticleWithMultipleFiles, // Hàm mới
+  createArticleWithUpload,
+  createArticleWithMultipleFiles,
   buildImageUrlFromKey,
   getDisplayImageUrl,
   getMultipleArticles,
   favoriteArticle,
   unfavoriteArticle,
   listFavoriteArticles,
+  getUserPublicArticles,  // ✨ NEW
   clearCache,
+  invalidateArticlesCache,  // ✨ NEW
+  clearCacheForEndpoint,    // ✨ NEW
 };
 
 export default articleService;
@@ -293,18 +362,28 @@ export async function createArticleWithMultipleUploads({
   if (!files || files.length === 0) throw new Error("files array is required");
   
   const imageKeys = [];
+  let articleId = null;  // Track articleId across uploads
   
   for (const file of files) {
     const contentType = file.type || "application/octet-stream";
-    const { uploadUrl, key } = await getUploadUrl({ 
+    const uploadResponse = await getUploadUrl({ 
       filename: file.name || "image.png", 
-      contentType 
+      contentType,
+      articleId: articleId  // Use same articleId for all images
     });
-    await uploadToS3(uploadUrl, file, contentType);
-    imageKeys.push(key);
+    
+    // Save articleId from first upload
+    if (!articleId && uploadResponse.articleId) {
+      articleId = uploadResponse.articleId;
+      console.log(`🆔 Got articleId from backend: ${articleId}`);
+    }
+    
+    await uploadToS3(uploadResponse.uploadUrl, file, contentType);
+    imageKeys.push(uploadResponse.key);
   }
   
   return createArticle({ 
+    articleId: articleId,  // Use same articleId for article creation
     title, 
     content, 
     visibility, 

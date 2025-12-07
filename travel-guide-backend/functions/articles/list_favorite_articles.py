@@ -91,10 +91,13 @@ def lambda_handler(event, context):
 
         articles = batch_resp["Responses"].get(ARTICLES_TABLE_NAME, [])
 
-        # 3. Convert Decimal, đặc biệt lat/lng
+        # 3. Convert Decimal và đảm bảo có username
         processed = []
         for art in articles:
             obj = _convert_decimal(art)
+            # Đảm bảo có username để hiển thị tên người đăng
+            if "username" not in obj or not obj["username"]:
+                obj["username"] = "Người dùng ẩn danh"
             processed.append(obj)
 
         return ok(200, {

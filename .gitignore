@@ -1,28 +1,14 @@
-# root .gitignore - covers backend + frontend
-
-# general
-.DS_Store
-.vscode/
-.idea/
-*.log
-
-# sam env (file bạn không muốn push)
-**/sam-env
-# hoặc nếu ở root cố định: /sam-env
-
-# backend (AWS SAM, Python)
-**/.aws-sam/
-**/.venv/
-**/__pycache__/
-**/*.pyc
-
-# frontend (Node)
+# Bỏ qua node_modules và build
 **/node_modules/
 **/build/
-**/dist/
-**/.next/
-**/.cache/
-.kiro
+**/.aws-sam/
 
-# optional: ignore any node_modules anywhere
-**/node_modules/
+# Không bỏ qua BE & FE
+!/travel-guide-backend/**
+!/travel-guide-frontend/**
+
+# Bỏ qua mọi thứ khác trong root
+/*
+!.gitignore
+!/travel-guide-backend
+!/travel-guide-frontend

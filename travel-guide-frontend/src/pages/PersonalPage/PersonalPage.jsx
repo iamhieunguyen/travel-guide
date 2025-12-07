@@ -13,6 +13,7 @@ import {
   Share2,
   ChevronLeft,
   ChevronRight
+  Share2
 } from 'lucide-react';
 import { useAuth } from '../../hook/useAuth';
 import useProfile from '../../hook/useProfile';
@@ -188,6 +189,11 @@ export default function PersonalPage() {
   };
 
   const L = TEXT[language] || TEXT.vi;
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [likedIds, setLikedIds] = useState(new Set());
+  const [userLocation, setUserLocation] = useState(null);
+  const showLocation = user?.showLocationPref ?? true; // chỉ điều khiển marker vị trí hiện tại
+  const mapType = user?.mapTypePref || 'roadmap';
 
   const journeyYears = useMemo(() => {
     if (memories.length === 0) return new Date().getFullYear();
@@ -318,6 +324,10 @@ export default function PersonalPage() {
       const matchDate = true; // hiện tại bỏ lọc ngày để đơn giản
       const notHidden = !hiddenMemoryIds.has(m.id);
       return matchPrivacy && matchFavorite && matchDate && notHidden;
+    return memories.filter(m => {
+      const matchPrivacy = privacyFilter === 'all' || m.scope === privacyFilter;
+      const matchDate = true; // hiện tại bỏ lọc ngày để đơn giản
+      return matchPrivacy && matchDate;
     });
   }, [memories, favoriteMemories, privacyFilter, hiddenMemoryIds, likedIds]);
 
@@ -367,6 +377,11 @@ export default function PersonalPage() {
         window.showSuccessToast && window.showSuccessToast(
           language === 'en' ? 'Added to favorites' : 'Đã quan tâm bài viết'
         );
+        window.showSuccessToast && window.showSuccessToast('Đã bỏ quan tâm bài viết');
+      } else {
+        await api.favoriteArticle(articleId);
+        setLikedIds((prev) => new Set([...prev, articleId]));
+        window.showSuccessToast && window.showSuccessToast('Đã quan tâm bài viết');
       }
     } catch (error) {
       console.error('Lỗi khi toggle quan tâm:', error);
@@ -432,6 +447,10 @@ export default function PersonalPage() {
     loadFavorites();
   }, [user]);
 
+        window.showSuccessToast(error.status === 401 ? 'Bạn cần đăng nhập để thực hiện thao tác này' : `Lỗi: ${error.message}`);
+    }
+  };
+
   return (
     <div className={`journal-page ${isDarkMode ? 'journal-page--dark' : 'journal-page--light'}`}>
       <header className="journal-header">
@@ -477,6 +496,11 @@ export default function PersonalPage() {
             </p>
             <div className="profile-meta">
               <span><strong>{memories.length}</strong> {L.memories}</span>
+              {user?.displayName || user?.username || user?.email?.split('@')[0] || ''}
+            </h1>
+            <p className="profile-bio">Lưu giữ những mảnh ghép của cuộc đời.</p>
+            <div className="profile-meta">
+              <span><strong>{memories.length}</strong> kỷ ức</span>
               <span className="dot">•</span>
               <span><strong>{journeyYears}</strong> {L.journeys}</span>
             </div>
@@ -551,6 +575,7 @@ export default function PersonalPage() {
               <div className="empty-journal">
                 <div className="empty-icon">📚</div>
                 <p>{L.empty}</p>
+                <p>Không tìm thấy ký ức nào phù hợp.</p>
                 {(privacyFilter !== 'all' || dateRange) ? (
                   <div className="flex flex-col items-center gap-2 mt-2">
                     <p className="text-sm text-gray-500">{L.maybeFiltered}</p>
@@ -577,6 +602,7 @@ export default function PersonalPage() {
                       className="journal-card"
                       onClick={() => {
                         setSelectedMemory(memory);
+                        setCurrentImageIndex(0);
                       }}
                     >
                       {memory.image && (
@@ -598,6 +624,19 @@ export default function PersonalPage() {
                         </div>
                         </div>
                         )}
+                            {/* Status Badge */}
+                            {memory.status && memory.status !== 'approved' && (
+                              <span className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${
+                                memory.status === 'pending' 
+                                  ? 'bg-yellow-500/90 text-white' 
+                                  : 'bg-red-500/90 text-white'
+                              }`}>
+                                {memory.status === 'pending' ? '⏳ Đang xử lý' : '❌ Bị từ chối'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -610,6 +649,9 @@ export default function PersonalPage() {
                    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
                     {L.noLocations}
                    </div>
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
+                    Không có địa điểm nào phù hợp với bộ lọc
+                  </div>
                 )}
                 <MapView 
                   locations={filteredMemories} 
@@ -619,6 +661,7 @@ export default function PersonalPage() {
                     const fullMemory = memories.find(m => m.id === memory.id);
                     if (fullMemory) {
                       setSelectedMemory(fullMemory);
+                      setCurrentImageIndex(0);
                     }
                   }}
                 />
@@ -633,6 +676,7 @@ export default function PersonalPage() {
           className="journal-modal-backdrop"
           onClick={() => {
             setSelectedMemory(null);
+            setCurrentImageIndex(0);
           }}
         >
           <div className="journal-modal" onClick={e => e.stopPropagation()}>
@@ -784,6 +828,150 @@ export default function PersonalPage() {
                     <span>{selectedMemory.likeCount || 0} {L.likeCount}</span>
                   </div>
 
+                  {(() => {
+                    const rawKeys = selectedMemory.imageKeys && selectedMemory.imageKeys.length
+                      ? selectedMemory.imageKeys
+                      : (selectedMemory.image ? [selectedMemory.image] : []);
+                    if (!rawKeys.length) return null;
+
+                    const resolvedUrls = rawKeys.map((key) =>
+                      typeof key === 'string' && key.startsWith('http')
+                        ? key
+                        : api.buildImageUrlFromKey(key)
+                    );
+                    const safeIndex = Math.min(currentImageIndex, resolvedUrls.length - 1);
+                    const currentUrl = resolvedUrls[safeIndex];
+
+                    const handlePrev = () => {
+                      setCurrentImageIndex((prev) =>
+                        prev === 0 ? resolvedUrls.length - 1 : prev - 1
+                      );
+                    };
+
+                    const handleNext = () => {
+                      setCurrentImageIndex((prev) =>
+                        prev === resolvedUrls.length - 1 ? 0 : prev + 1
+                      );
+                    };
+
+                    return (
+                      <div className="modal-img-container modal-image-carousel">
+                        <img src={currentUrl} alt={selectedMemory.title} />
+
+                        {resolvedUrls.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className="modal-img-nav modal-img-nav-left"
+                              onClick={handlePrev}
+                            >
+                              ‹
+                            </button>
+                            <button
+                              type="button"
+                              className="modal-img-nav modal-img-nav-right"
+                              onClick={handleNext}
+                            >
+                              ›
+                            </button>
+                            <div className="modal-img-indicator">
+                              {safeIndex + 1} / {resolvedUrls.length}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                <div className="modal-right">
+                  <div className="modal-top-bar">
+                    <span className="modal-date">
+                      {formatDate(selectedMemory.date)}
+                      <span style={{ margin: '0 6px' }}>•</span>
+                      {selectedMemory.date.toLocaleTimeString('vi-VN', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                    <span className={`modal-privacy ${selectedMemory.scope}`}>
+                      {selectedMemory.scope === 'public' ? (
+                        <Globe size={14} />
+                      ) : (
+                        <Lock size={14} />
+                      )}
+                    </span>
+                  </div>
+                  
+                  {showLocation && selectedMemory.location && selectedMemory.location.lat && selectedMemory.location.lng && (
+                    <div className="modal-map-wrapper">
+                      <PostMap
+                        lat={selectedMemory.location.lat}
+                        lng={selectedMemory.location.lng}
+                        locationName={selectedMemory.location.name}
+                        imageUrl={selectedMemory.image}
+                        mapType={mapType}
+                        height={380}
+                      />
+                    </div>
+                  )}
+
+                  {/* Hàng nút hành động - copy style từ HomePage */}
+                  <div className="flex items-center gap-3 mb-3">
+                    {/* Nút quan tâm bài đăng */}
+                    <button 
+                      type="button"
+                      onClick={() => toggleLike(selectedMemory.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-colors group ${
+                        likedIds.has(selectedMemory.id)
+                          ? 'bg-[#92ADA4] hover:bg-[#7d9a91]'
+                          : 'bg-[#f5f5f5] hover:bg-[#92ADA4]'
+                      }`}
+                    >
+                      <Heart 
+                        className={`w-5 h-5 transition-colors ${
+                          likedIds.has(selectedMemory.id)
+                            ? 'text-white fill-white'
+                            : 'text-gray-700 group-hover:text-white'
+                        }`}
+                      />
+                      <span className={`font-medium text-sm transition-colors ${
+                        likedIds.has(selectedMemory.id)
+                          ? 'text-white'
+                          : 'text-gray-700 group-hover:text-white'
+                      }`}>
+                        {likedIds.has(selectedMemory.id) ? 'Đã quan tâm' : 'Quan tâm bài đăng'}
+                      </span>
+                    </button>
+
+                    {/* Nút share */}
+                    <button 
+                      type="button"
+                      className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                    >
+                      <Share2 className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
+                    </button>
+
+                    {/* Nút more (ba chấm) */}
+                    <button 
+                      type="button"
+                      className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                    >
+                      <MoreHorizontal className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
+                    </button>
+                  </div>
+
+                  <h2 className="modal-title">{selectedMemory.title}</h2>
+                  
+                  {selectedMemory.location && (
+                    <div className="modal-location">
+                      <MapPin size={16} /> 
+                      {typeof selectedMemory.location === 'object' 
+                        ? selectedMemory.location.name 
+                        : selectedMemory.location
+                      }
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -791,6 +979,7 @@ export default function PersonalPage() {
               className="close-modal-btn"
               onClick={() => {
                 setSelectedMemory(null);
+                setCurrentImageIndex(0);
               }}
             >
               <Plus size={32} style={{ transform: 'rotate(45deg)' }} />

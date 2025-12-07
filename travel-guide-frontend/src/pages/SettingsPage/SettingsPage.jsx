@@ -19,10 +19,7 @@ import BackButton from '../../components/personal/BackButton';
 import PrivacyDropdown from '../../components/settings/PrivacyDropdown';
 import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
 import useProfile from '../../hook/useProfile';
-<<<<<<< HEAD
 import { useLanguage } from '../../context/LanguageContext';
-=======
->>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
 import './SettingsPage.css';
 
 // Translations
@@ -189,7 +186,6 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
   const { profile, updateProfile: updateProfileApi, uploadAvatar } = useProfile();
-<<<<<<< HEAD
   const { language } = useLanguage();
   // Đồng bộ chế độ sáng/tối với HomePage thông qua localStorage
   const [themeMode, setThemeMode] = useState(() => {
@@ -198,8 +194,6 @@ export default function SettingsPage() {
     return stored === 'dark' ? 'dark' : 'light';
   });
   const isDarkMode = themeMode === 'dark';
-=======
->>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
   const [activeSection, setActiveSection] = useState('account');
   
   // Account Settings
@@ -319,7 +313,6 @@ export default function SettingsPage() {
       // Cập nhật lại context để đồng bộ tên hiển thị / bio trong app
       updateDisplayName(displayName);
       updateProfileBio(bio);
-<<<<<<< HEAD
 
       // Hiển thị popup thông báo giống khi đăng bài
       if (window.showSuccessToast) {
@@ -328,11 +321,6 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('Error saving account settings:', error);
       alert(error.message || (language === 'en' ? 'Unable to save account information' : 'Không thể lưu thông tin tài khoản'));
-=======
-    } catch (error) {
-      console.error('Error saving account settings:', error);
-      alert(error.message || 'Không thể lưu thông tin tài khoản');
->>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
     }
   };
 
@@ -376,15 +364,9 @@ export default function SettingsPage() {
                 className="settings-avatar-img"
               />
             ) : (
-<<<<<<< HEAD
-            <div className="avatar-placeholder">
-              {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
-            </div>
-=======
               <div className="avatar-placeholder">
                 {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
               </div>
->>>>>>> a3b812c3104d06b6d08bded7f3e501f0337a0999
             )}
             <input
               ref={fileInputRef}

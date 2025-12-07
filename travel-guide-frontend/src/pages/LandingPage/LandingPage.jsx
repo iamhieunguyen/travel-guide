@@ -383,17 +383,10 @@ const TEXT = {
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [openFaq, setOpenFaq] = useState(null);
-  const [language, setLanguage] = useState(() => {
-    return localStorage.getItem('language') || 'vi';
-  });
   
   useScrollAnimation();
-
-  useEffect(() => {
-    localStorage.setItem('language', language);
-  }, [language]);
 
   const t = TEXT[language];
 

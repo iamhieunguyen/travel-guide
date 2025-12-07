@@ -57,7 +57,7 @@ export default function CreatePostModal() {
     <>
       {step === 1 && <ImageSelector onNext={() => setStep(2)} />}
       {step === 2 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
           <div className="bg-white shadow-2xl w-full max-w-[1100px] flex flex-col relative animate-fadeIn rounded-3xl overflow-hidden">
             <CreatePostStyleHeader />
 
@@ -92,7 +92,7 @@ export default function CreatePostModal() {
       )}
       
       {step === 3 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}>
           <div className="bg-white shadow-2xl w-full max-w-[1100px] h-[90vh] flex flex-col relative animate-fadeIn rounded-3xl overflow-hidden">
             <div className="absolute top-4 left-4 z-40">
               <button

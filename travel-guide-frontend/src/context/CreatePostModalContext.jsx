@@ -190,30 +190,54 @@ export function CreatePostModalProvider({ children }) {
       // Nếu đang ở chế độ edit
       if (editMode && editPostData) {
         console.log('✏️ Updating existing article:', editPostData.articleId);
+        console.log('📦 Post data received:', postData);
+        console.log('📦 Edit post data:', editPostData);
         
+        // Validate location data
+        if (!postData.location || postData.location.lat === undefined || postData.location.lng === undefined) {
+          console.error('❌ Missing location data:', postData.location);
+          alert('Vui lòng chọn vị trí cho bài viết');
+          return;
+        }
+
         const updateData = {
-          title: postData.caption,
-          content: postData.caption,
-          visibility: postData.privacy || 'public',
-          lat: postData.location.lat,
-          lng: postData.location.lng,
-          locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
+          title: postData.caption || editPostData.title || '',
+          content: postData.caption || editPostData.content || '',
+          visibility: postData.privacy || editPostData.visibility || 'public',
+          lat: Number(postData.location.lat),
+          lng: Number(postData.location.lng),
+          locationName: postData.location.name || editPostData.locationName || `${postData.location.lat}, ${postData.location.lng}`,
         };
         
         // If images are provided (reordered), extract the keys and send them
         if (postData.image && Array.isArray(postData.image) && postData.image.length > 0) {
           // Extract image keys from URLs (remove CloudFront domain)
           const imageKeys = postData.image.map(url => {
-            if (url.includes(process.env.REACT_APP_CF_DOMAIN)) {
-              // Extract key from CloudFront URL
-              return url.split(`${process.env.REACT_APP_CF_DOMAIN}/`)[1];
+            if (typeof url === 'string') {
+              if (url.includes(process.env.REACT_APP_CF_DOMAIN)) {
+                // Extract key from CloudFront URL
+                const key = url.split(`${process.env.REACT_APP_CF_DOMAIN}/`)[1];
+                return key ? key.split('?')[0] : url; // Remove query params if any
+              }
+              // If already a key (no http/https), use as is
+              if (!url.startsWith('http')) {
+                return url;
+              }
             }
-            return url; // If already a key, use as is
-          });
-          updateData.imageKeys = imageKeys;
-          console.log('📸 Updating image order:', imageKeys);
+            return url;
+          }).filter(key => key && typeof key === 'string'); // Remove any null/undefined/invalid values
+          
+          if (imageKeys.length > 0) {
+            updateData.imageKeys = imageKeys;
+            console.log('📸 Updating image order:', imageKeys);
+          }
+        } else if (editPostData.imageKeys && Array.isArray(editPostData.imageKeys) && editPostData.imageKeys.length > 0) {
+          // If no new images provided, keep existing imageKeys
+          updateData.imageKeys = editPostData.imageKeys;
+          console.log('📸 Keeping existing image keys:', editPostData.imageKeys);
         }
         
+        console.log('📤 Sending update data to API:', updateData);
         const result = await api.updateArticle(editPostData.articleId, updateData);
         console.log('✅ Update success:', result);
         

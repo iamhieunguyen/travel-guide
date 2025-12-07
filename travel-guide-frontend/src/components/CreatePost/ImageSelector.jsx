@@ -267,7 +267,7 @@ export default function ImageSelector({ onNext }) {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-50 p-4">
+    <div className="fixed inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-[10000] p-4">
       <div className="bg-[#f5f3f0] shadow-2xl w-full max-w-[1100px] flex flex-col relative animate-fadeIn" style={{
         borderRadius: "24px",
         overflow: "visible"

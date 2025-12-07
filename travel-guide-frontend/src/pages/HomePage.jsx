@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCreatePostModal } from '../context/CreatePostModalContext';
 import api from '../services/article';
-import { Heart, MapPin, Clock, Share2, ChevronLeft, ChevronRight, Sun, Moon, Globe, ArrowRight } from 'lucide-react';
+import { Heart, MapPin, Clock, ChevronLeft, ChevronRight, Sun, Moon, Globe, ArrowRight } from 'lucide-react';
 import ChristmasEffects from '../components/ChristmasEffects';
 import PostMap from '../components/PostMap';
 import useProfile from '../hook/useProfile';
@@ -299,7 +299,7 @@ export default function HomePage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [scope]);
+  }, [scope, language]);
   
   // Read tag from URL on mount
   const [urlParamsLoaded, setUrlParamsLoaded] = useState(false);
@@ -662,15 +662,6 @@ export default function HomePage() {
     if (diffMinutes > 0) return `${diffMinutes} phút trước`;
     return 'Vừa xong';
   };
-
-  // Handle tag click - filter posts by tag
-  const handleTagClick = useCallback((tagName) => {
-    console.log('🏷️ Tag clicked:', tagName);
-    setSearchQuery(''); // Clear text search
-    setTagFilter(tagName);
-    window.history.pushState({}, '', `/home?tag=${encodeURIComponent(tagName)}`);
-    loadPosts(null, '', tagName);
-  }, [loadPosts]);
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]'}`}>
@@ -1045,28 +1036,41 @@ export default function HomePage() {
                     <div key={post.articleId} className={`${isDarkMode ? 'bg-[#02182E]/80 backdrop-blur-lg border border-white/15' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg border border-white/15'} rounded-[32px] shadow-lg p-8`} style={{ overflow: 'visible' }}>
                       {/* User Info - Inside white container */}
                       <div className="flex items-center justify-between mb-4">
-                        <div 
-                          className="flex items-center space-x-3 cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={() => {
-                            if (!isOwner && post.ownerId) {
-                              navigate(`/user/${post.ownerId}`);
-                            }
-                          }}
-                        >
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
-                            {isOwner && profile?.avatarUrl ? (
-                              <img
-                                src={profile.avatarUrl}
-                                alt={authorDisplayName}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-white font-bold text-base">
-                                {authorInitial}
-                              </span>
-                            )}
+                        <div className="user-info-container flex items-center">
+                          <div 
+                            className="user-avatar-wrapper cursor-pointer transition-all duration-300"
+                            onClick={() => {
+                              if (!isOwner && post.ownerId) {
+                                navigate(`/user/${post.ownerId}`);
+                              } else if (isOwner) {
+                                navigate('/personal');
+                              }
+                            }}
+                          >
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                              {isOwner && profile?.avatarUrl ? (
+                                <img
+                                  src={profile.avatarUrl}
+                                  alt={authorDisplayName}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-white font-bold text-base">
+                                  {authorInitial}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div>
+                          <div 
+                            className="user-name-wrapper cursor-pointer transition-all duration-300"
+                            onClick={() => {
+                              if (!isOwner && post.ownerId) {
+                                navigate(`/user/${post.ownerId}`);
+                              } else if (isOwner) {
+                                navigate('/personal');
+                              }
+                            }}
+                          >
                             <p className={`font-bold text-base ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-800'}`}>
                               {authorDisplayName}
                             </p>
@@ -1281,24 +1285,44 @@ export default function HomePage() {
                               <div className="mt-3 p-3">
                                 <div className="flex items-start gap-3 mb-3">
                                   {/* Avatar */}
-                                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] flex-shrink-0 overflow-hidden">
-                                    {isOwner && profile?.avatarUrl ? (
-                                      <img
-                                        src={profile.avatarUrl}
-                                        alt={authorDisplayName}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    ) : (
-                                      <span className="text-white font-bold text-sm">
-                                        {authorInitial}
-                                      </span>
-                                    )}
+                                  <div 
+                                    className="user-avatar-wrapper-comment cursor-pointer transition-all duration-300 flex-shrink-0"
+                                    onClick={() => {
+                                      if (!isOwner && post.ownerId) {
+                                        navigate(`/user/${post.ownerId}`);
+                                      } else if (isOwner) {
+                                        navigate('/personal');
+                                      }
+                                    }}
+                                  >
+                                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
+                                      {isOwner && profile?.avatarUrl ? (
+                                        <img
+                                          src={profile.avatarUrl}
+                                          alt={authorDisplayName}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="text-white font-bold text-sm">
+                                          {authorInitial}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                   
                                   {/* Content */}
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                      <span className={`font-semibold text-sm ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}>
+                                      <span 
+                                        className={`user-name-wrapper-comment font-semibold text-sm cursor-pointer transition-all duration-300 ${isDarkMode ? 'text-[#F5E6D3]' : 'text-gray-900'}`}
+                                        onClick={() => {
+                                          if (!isOwner && post.ownerId) {
+                                            navigate(`/user/${post.ownerId}`);
+                                          } else if (isOwner) {
+                                            navigate('/personal');
+                                          }
+                                        }}
+                                      >
                                         {authorDisplayName}
                                       </span>
                                       <span className={`text-xs ${isDarkMode ? 'text-white/60' : 'text-gray-400'}`}>

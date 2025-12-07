@@ -121,6 +121,89 @@ export const uploadAvatar = async (file) => {
 };
 
 /**
+ * Lấy presigned URL để upload cover photo
+ * @param {string} filename - Tên file (vd: cover.jpg)
+ * @param {string} contentType - Content type (vd: image/jpeg)
+ * @returns {Promise<Object>} { uploadUrl, coverKey, expiresIn }
+ */
+export const getCoverUploadUrl = async (filename, contentType) => {
+  try {
+    const response = await api.post('/profile/cover-upload-url', {
+      filename,
+      contentType
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Get cover upload URL error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Upload cover photo lên S3 (sử dụng presigned URL)
+ * @param {string} uploadUrl - Presigned URL từ getCoverUploadUrl
+ * @param {File} file - File object từ input
+ * @param {string} contentType - Content type của file
+ * @returns {Promise<void>}
+ */
+export const uploadCoverToS3 = async (uploadUrl, file, contentType) => {
+  try {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': contentType
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Upload cover to S3 error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Complete cover photo upload flow (get URL → upload → update profile)
+ * @param {File} file - File object từ input
+ * @returns {Promise<Object>} Updated profile
+ */
+export const uploadCoverPhoto = async (file) => {
+  try {
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      throw new Error('File phải là ảnh');
+    }
+
+    const maxSize = 10 * 1024 * 1024; // 10MB for cover photos
+    if (file.size > maxSize) {
+      throw new Error('File không được vượt quá 10MB');
+    }
+
+    // Step 1: Get presigned URL
+    const { uploadUrl, coverKey } = await getCoverUploadUrl(
+      file.name,
+      file.type
+    );
+
+    // Step 2: Upload to S3
+    await uploadCoverToS3(uploadUrl, file, file.type);
+
+    // Step 3: Update profile with cover key
+    const updatedProfile = await updateProfile({ coverKey });
+
+    return updatedProfile;
+  } catch (error) {
+    console.error('Upload cover photo error:', error);
+    throw error;
+  }
+};
+
+/**
  * Thay đổi mật khẩu
  * @param {string} oldPassword - Mật khẩu cũ
  * @param {string} newPassword - Mật khẩu mới (min 8 ký tự)
@@ -229,6 +312,9 @@ const profileService = {
   getAvatarUploadUrl,
   uploadAvatarToS3,
   uploadAvatar,
+  getCoverUploadUrl,
+  uploadCoverToS3,
+  uploadCoverPhoto,
   changePassword,
   validateUsername,
   validateBio,

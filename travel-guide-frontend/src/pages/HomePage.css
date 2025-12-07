@@ -811,3 +811,50 @@
   color: white !important;
 }
 
+/* User Info Hover Effect - Facebook style (avatar and name separate on hover) */
+.user-info-container {
+  gap: 12px; /* Default gap */
+  transition: gap 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.user-info-container:hover {
+  gap: 20px; /* Increased gap on hover - tách ra */
+}
+
+.user-avatar-wrapper {
+  transition: opacity 0.3s ease;
+}
+
+.user-info-container:hover .user-avatar-wrapper {
+  opacity: 0.9;
+}
+
+.user-name-wrapper {
+  transition: text-decoration 0.3s ease;
+}
+
+.user-info-container:hover .user-name-wrapper {
+  text-decoration: underline;
+}
+
+.user-info-container:hover .user-name-wrapper p {
+  text-decoration: underline;
+}
+
+/* Comment section hover effects */
+.user-avatar-wrapper-comment {
+  transition: opacity 0.3s ease;
+}
+
+.user-avatar-wrapper-comment:hover {
+  opacity: 0.9;
+}
+
+.user-name-wrapper-comment {
+  transition: text-decoration 0.3s ease;
+}
+
+.user-name-wrapper-comment:hover {
+  text-decoration: underline;
+}
+

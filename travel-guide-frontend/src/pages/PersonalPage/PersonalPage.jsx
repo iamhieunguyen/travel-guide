@@ -8,9 +8,8 @@ import {
   Globe,
   Lock,
   LayoutGrid,
-  Map,
+  Map as MapIcon,
   Heart,
-  Share2,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -94,7 +93,7 @@ function PersonalImageCarousel({ images, postTitle }) {
 export default function PersonalPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, authChecked } = useAuth(); // Thêm authChecked
-  const { openModal, refreshKey } = useCreatePostModal();
+  const { openModal, openEditModal, refreshKey } = useCreatePostModal();
   const { profile } = useProfile();
   const { language } = useLanguage();
   const { isDarkMode } = useTheme();
@@ -102,6 +101,7 @@ export default function PersonalPage() {
   const [memories, setMemories] = useState([]);
   const [favoriteMemories, setFavoriteMemories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [originalPostsMap, setOriginalPostsMap] = useState(new Map()); // Store original API data for editing
   
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState('grid');
@@ -118,7 +118,8 @@ export default function PersonalPage() {
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [likedIds, setLikedIds] = useState(new Set());
   const [userLocation, setUserLocation] = useState(null);
-  const [hiddenMemoryIds, setHiddenMemoryIds] = useState(new Set());
+  // eslint-disable-next-line no-unused-vars
+  const [hiddenMemoryIds, _setHiddenMemoryIds] = useState(new Set());
   const [openMenuId, setOpenMenuId] = useState(null);
   const showLocation = user?.showLocationPref ?? true; // chỉ điều khiển marker vị trí hiện tại
   const mapType = user?.mapTypePref || 'roadmap';
@@ -167,6 +168,11 @@ export default function PersonalPage() {
       hidePost: 'Ẩn bài viết',
       needLogin: 'Bạn cần đăng nhập để thực hiện thao tác này',
       likeCount: 'lượt quan tâm',
+      edit: 'Chỉnh sửa',
+      delete: 'Xóa',
+      deleteConfirm: 'Bạn có chắc chắn muốn xóa bài viết này?',
+      deleteSuccess: 'Xóa bài viết thành công!',
+      deleteError: 'Lỗi khi xóa bài viết',
     },
     en: {
       tagline: 'Keep the pieces of your life.',
@@ -190,6 +196,11 @@ export default function PersonalPage() {
       hidePost: 'Hide post',
       needLogin: 'You need to log in to perform this action',
       likeCount: 'likes',
+      edit: 'Edit',
+      delete: 'Delete',
+      deleteConfirm: 'Are you sure you want to delete this post?',
+      deleteSuccess: 'Post deleted successfully!',
+      deleteError: 'Error deleting post',
     },
   };
 
@@ -260,6 +271,13 @@ export default function PersonalPage() {
         // Sort theo thời gian mới nhất
         const sortedItems = myItems.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+        // Store original posts for editing
+        const postsMap = new Map();
+        sortedItems.forEach(item => {
+          postsMap.set(item.articleId, item);
+        });
+        setOriginalPostsMap(postsMap);
+
         const mapped = sortedItems.map(item => {
           // Xác định tên location (ưu tiên locationName từ backend)
           let locationName = 'Không xác định';
@@ -314,14 +332,109 @@ export default function PersonalPage() {
             : m.scope === privacyFilter;
       const matchFavorite =
         privacyFilter === 'favorites' ? isFavorite : true;
-      const matchDate = true; // hiện tại bỏ lọc ngày để đơn giản
+      
+      // Date filter logic
+      let matchDate = true;
+      if (dateRange && dateRange.from) {
+        // Normalize dates to start of day for comparison (ignore time)
+        const memoryDate = new Date(m.date);
+        memoryDate.setHours(0, 0, 0, 0);
+        
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to);
+          toDate.setHours(23, 59, 59, 999); // End of day
+          matchDate = memoryDate >= fromDate && memoryDate <= toDate;
+        } else {
+          // Only from date selected
+          matchDate = memoryDate >= fromDate;
+        }
+      }
+      
+      // hiddenMemoryIds is always empty (setter never used), so notHidden is always true
       const notHidden = !hiddenMemoryIds.has(m.id);
       return matchPrivacy && matchFavorite && matchDate && notHidden;
     });
-  }, [memories, favoriteMemories, privacyFilter, hiddenMemoryIds, likedIds]);
+  }, [memories, favoriteMemories, privacyFilter, hiddenMemoryIds, likedIds, dateRange]);
 
   const formatDate = (date) => {
     return date.toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
+  const handleEditPost = (memory) => {
+    setOpenMenuId(null);
+    // Close the view modal first
+    setSelectedMemory(null);
+    
+    // Small delay to ensure modal closes before opening edit modal
+    setTimeout(() => {
+      // Get original post data from API for accurate editing
+      const originalPost = originalPostsMap.get(memory.id);
+      
+      if (!originalPost) {
+        console.error('❌ Original post data not found for:', memory.id);
+        // Fallback: use memory data
+        const postData = {
+          articleId: memory.id,
+          title: memory.title,
+          content: memory.description,
+          imageKeys: memory.imageKeys || [],
+          imageKey: memory.imageKeys?.[0],
+          lat: memory.location?.lat,
+          lng: memory.location?.lng,
+          locationName: memory.location?.name,
+          visibility: memory.scope || 'public',
+          createdAt: memory.date.toISOString(),
+        };
+        console.log('📝 Opening edit modal with fallback data:', postData);
+        openEditModal(postData);
+        return;
+      }
+
+      // Use original post data from API - ensures correct format
+      const postData = {
+        articleId: originalPost.articleId,
+        title: originalPost.title,
+        content: originalPost.content,
+        imageKeys: Array.isArray(originalPost.imageKeys) 
+          ? originalPost.imageKeys 
+          : (originalPost.imageKey ? [originalPost.imageKey] : []),
+        imageKey: originalPost.imageKey,
+        lat: originalPost.lat,
+        lng: originalPost.lng,
+        locationName: originalPost.locationName,
+        visibility: originalPost.visibility || 'public',
+        createdAt: originalPost.createdAt,
+      };
+      
+      console.log('📝 Opening edit modal with original post data:', postData);
+      openEditModal(postData);
+    }, 100);
+  };
+
+  const handleDeletePost = async (memoryId) => {
+    const confirmed = await window.showConfirmDialog(L.deleteConfirm);
+    if (!confirmed) return;
+
+    try {
+      await api.deleteArticle(memoryId);
+      api.clearCache();
+      setMemories(prev => prev.filter(m => m.id !== memoryId));
+      setFavoriteMemories(prev => prev.filter(m => m.id !== memoryId));
+      if (selectedMemory?.id === memoryId) {
+        setSelectedMemory(null);
+      }
+      setOpenMenuId(null);
+      if (window.showSuccessToast) {
+        window.showSuccessToast(L.deleteSuccess);
+      }
+    } catch (error) {
+      if (window.showSuccessToast) {
+        window.showSuccessToast(L.deleteError);
+      }
+    }
   };
 
   const toggleLike = async (articleId) => {
@@ -459,6 +572,26 @@ export default function PersonalPage() {
           </button>
         </div>
 
+        {/* Cover Photo - Always show with placeholder */}
+        <div className="journal-cover-photo">
+          {profile?.coverUrl ? (
+            <img 
+              src={profile.coverUrl} 
+              alt="Cover" 
+              className="cover-photo-img"
+            />
+          ) : (
+            <div className="cover-photo-placeholder">
+              <div className="cover-placeholder-content">
+                <svg className="cover-placeholder-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.105 20 20 19.105 20 18V6C20 4.895 19.105 4 18 4H6C4.895 4 4 4.895 4 6V18C4 19.105 4.895 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                <p className="cover-placeholder-text">Ảnh bìa</p>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="journal-profile">
           <div className="avatar-container">
             {profile?.avatarUrl ? (
@@ -510,7 +643,7 @@ export default function PersonalPage() {
               className={`sidebar-nav-button ${isDarkMode ? 'dark-mode' : 'light-mode'} ${viewMode === 'map' ? 'active' : ''} flex items-center gap-2 px-4 py-2`}
               onClick={() => setViewMode('map')}
             >
-              <Map size={18} />
+              <MapIcon size={18} />
               <span>{L.mapView}</span>
             </button>
           </div>
@@ -579,7 +712,6 @@ export default function PersonalPage() {
                 ) : (
                   <button 
                     onClick={openModal}
-                    className={`sidebar-nav-button ${isDarkMode ? 'dark-mode' : 'light-mode'} px-6 py-3`}
                   >
                     {L.writeFirst}
                   </button>
@@ -694,52 +826,52 @@ export default function PersonalPage() {
                       </span>
                     </button>
 
-                    <button 
-                      type="button"
-                      className={`action-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3`}
-                    >
-                      <Share2 className="w-5 h-5" />
-                    </button>
+                    {/* More Button - Only show when NOT in favorites tab */}
+                    {privacyFilter !== 'favorites' && (
+                      <div className="relative">
+                        <button 
+                          type="button"
+                          className={`action-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3`}
+                          onClick={() => setOpenMenuId(selectedMemory.id)}
+                        >
+                          <MoreHorizontal className="w-5 h-5" />
+                        </button>
 
-                    <div className="relative">
-                      <button 
-                        type="button"
-                        className={`action-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3`}
-                        onClick={() => setOpenMenuId(selectedMemory.id)}
-                      >
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
-
-                      {openMenuId === selectedMemory.id && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-[9998]"
-                            onClick={() => setOpenMenuId(null)}
-                          />
-                          <div
-                            className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl z-[9999] overflow-hidden"
-                            style={{ border: '1px solid rgba(0,0,0,0.1)' }}
-                          >
-                            <button
-                              type="button"
-                              className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setHiddenMemoryIds((prev) => new Set([...prev, selectedMemory.id]));
-                                setSelectedMemory(null);
-                              }}
+                        {openMenuId === selectedMemory.id && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-[9998]"
+                              onClick={() => setOpenMenuId(null)}
+                            />
+                            <div
+                              className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl z-[9999] overflow-hidden"
+                              style={{ border: '1px solid rgba(0,0,0,0.1)' }}
                             >
-                              <span className="inline-flex w-4 h-4 items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => handleEditPost(selectedMemory)}
+                                className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 transition flex items-center space-x-2"
+                              >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                              </span>
-                              <span>{L.hidePost}</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                                <span>{L.edit}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePost(selectedMemory.id)}
+                                className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 transition flex items-center space-x-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>{L.delete}</span>
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 
                   <div className="modal-body">

@@ -117,6 +117,117 @@
   margin-bottom: 2rem;
 }
 
+/* Cover Photo */
+.journal-cover-photo {
+  width: 100%;
+  max-width: 100%;
+  height: 300px;
+  margin: 0 0 2rem 0;
+  border-radius: 0 0 24px 24px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.cover-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Cover Photo Placeholder */
+.cover-photo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.cover-photo-placeholder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.05) 10px,
+      rgba(255, 255, 255, 0.05) 20px
+    );
+}
+
+.cover-placeholder-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cover-placeholder-icon {
+  width: 64px;
+  height: 64px;
+  opacity: 0.6;
+}
+
+.cover-placeholder-text {
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin: 0;
+  opacity: 0.8;
+}
+
+.journal-page--dark .journal-cover-photo {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+}
+
+.journal-page--dark .cover-photo-placeholder {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+}
+
+.journal-page--dark .cover-photo-placeholder::before {
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.03) 10px,
+      rgba(255, 255, 255, 0.03) 20px
+    );
+}
+
+/* Adjust profile position when cover photo exists */
+.journal-header .journal-cover-photo ~ .journal-profile {
+  margin-top: -60px; /* Half of avatar height to overlap */
+  z-index: 20;
+  position: relative;
+}
+
+.journal-header .journal-cover-photo ~ .journal-profile .avatar-container {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border: none;
+  background: transparent;
+}
+
+.journal-page--dark .journal-header .journal-cover-photo ~ .journal-profile .avatar-container {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  border: none;
+  background: transparent;
+}
+
 /* --- PROFILE SECTION --- */
 .journal-profile {
   display: flex; 
@@ -129,13 +240,26 @@
   padding: 0 1rem;
 }
 
-.avatar-container { position: relative; }
+.avatar-container { 
+  position: relative; 
+  border-radius: 50%;
+  overflow: hidden;
+}
 
 .avatar-img, .avatar-placeholder {
-  width: 120px; height: 120px; border-radius: 50%; border: 4px solid #fdfbf7;
-  object-fit: cover; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  background: #fff; display: flex; align-items: center; justify-content: center;
-  font-size: 2.5rem; color: #0891b2;
+  width: 120px; 
+  height: 120px; 
+  border-radius: 50%; 
+  border: 4px solid #fdfbf7;
+  object-fit: cover; 
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  background: #fff; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  font-size: 2.5rem; 
+  color: #0891b2;
+  overflow: hidden;
 }
 
 .add-status-btn {
@@ -908,7 +1032,47 @@
 /* Empty State & Modal */
 .empty-journal { text-align: center; padding: 4rem 0; color: #94a3b8; }
 .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
-.empty-journal button { margin-top: 1rem; background: #0891b2; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: 500; }
+.empty-journal button { 
+  margin-top: 1.5rem; 
+  background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); 
+  color: white; 
+  border: none; 
+  padding: 14px 32px; 
+  border-radius: 24px; 
+  cursor: pointer; 
+  font-weight: 600; 
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4), 0 2px 4px rgba(8, 145, 178, 0.3);
+  transition: all 0.3s ease;
+  transform: translateY(0);
+}
+.empty-journal button:hover {
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  box-shadow: 0 6px 20px rgba(8, 145, 178, 0.5), 0 4px 8px rgba(8, 145, 178, 0.4);
+  transform: translateY(-2px);
+}
+.empty-journal button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(8, 145, 178, 0.4);
+}
+
+/* Dark mode styles for empty journal button */
+.journal-page--dark .empty-journal button {
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5), 0 2px 4px rgba(236, 72, 153, 0.4);
+}
+
+.journal-page--dark .empty-journal button:hover {
+  background: linear-gradient(135deg, #a78bfa 0%, #f472b6 100%);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.6), 0 4px 8px rgba(236, 72, 153, 0.5);
+  transform: translateY(-2px);
+}
+
+.journal-page--dark .empty-journal button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+}
 
 .loading-spinner { text-align: center; padding: 2rem; color: #94a3b8; }
 

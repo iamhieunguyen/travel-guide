@@ -74,32 +74,12 @@ export default function PostDetails({
   const [locationSuggestions, setLocationSuggestions] = useState([]);
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [hasLoadedEditData, setHasLoadedEditData] = useState(false);
-  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedTags] = useState([]);
   
   // Update reorderedImages when image prop changes
   useEffect(() => {
     setReorderedImages(Array.isArray(image) ? image : [image]);
   }, [image]);
-  
-  // Danh sách tags
-  const availableTags = [
-    { id: 'beach', label: '🏖️ Biển', category: 'terrain' },
-    { id: 'mountain', label: '⛰️ Núi', category: 'terrain' },
-    { id: 'river', label: '🏞️ Sông', category: 'terrain' },
-    { id: 'forest', label: '🌲 Rừng', category: 'terrain' },
-    { id: 'cold', label: '❄️ Lạnh', category: 'weather' },
-    { id: 'hot', label: '🌡️ Nóng', category: 'weather' },
-    { id: 'rain', label: '🌧️ Mưa', category: 'weather' },
-    { id: 'sunny', label: '☀️ Nắng', category: 'weather' },
-  ];
-  
-  const toggleTag = (tagId) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
   
   // Debug locationData
   useEffect(() => {

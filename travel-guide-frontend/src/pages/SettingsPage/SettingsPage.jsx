@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { 
   User,
   Lock,
-  Bell,
   Map as MapIcon,
   Trash2,
   LogOut,
@@ -54,6 +53,9 @@ const translations = {
     emailCannotChange: 'Email không thể thay đổi',
     bio: 'Giới thiệu',
     bioPlaceholder: 'Viết vài dòng giới thiệu về bản thân...',
+    coverPhoto: 'Ảnh bìa',
+    coverPhotoDesc: 'Tùy chỉnh ảnh bìa của bạn',
+    changeCoverPhoto: 'Thay đổi ảnh bìa',
     saveChanges: 'Lưu thay đổi',
     accountSaved: 'Đã lưu thông tin tài khoản!',
     
@@ -135,6 +137,9 @@ const translations = {
     emailCannotChange: 'Email cannot be changed',
     bio: 'Bio',
     bioPlaceholder: 'Write a few lines about yourself...',
+    coverPhoto: 'Cover Photo',
+    coverPhotoDesc: 'Customize your cover photo',
+    changeCoverPhoto: 'Change Cover Photo',
     saveChanges: 'Save Changes',
     accountSaved: 'Account information saved!',
     
@@ -206,16 +211,13 @@ export default function SettingsPage() {
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState(DEFAULT_BIO);
   const [avatarUrl, setAvatarUrl] = useState(null);
+  const [coverPhotoUrl, setCoverPhotoUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const coverFileInputRef = useRef(null);
   
   // Privacy Settings
   const [defaultPrivacy, setDefaultPrivacy] = useState('public');
   const [showLocation, setShowLocation] = useState(true);
-  
-  // Notification Settings
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [newMemoryNotifications, setNewMemoryNotifications] = useState(true);
-  const [shareNotifications, setShareNotifications] = useState(true);
   
   // Map Settings
   const [mapType, setMapType] = useState('roadmap');
@@ -269,6 +271,9 @@ export default function SettingsPage() {
       }
       if (profile.avatarUrl) {
         setAvatarUrl(profile.avatarUrl);
+      }
+      if (profile.coverUrl) {
+        setCoverPhotoUrl(profile.coverUrl);
       }
     }
   }, [profile]);
@@ -347,7 +352,6 @@ export default function SettingsPage() {
   const settingsSections = [
     { id: 'account', label: t.account, icon: User },
     { id: 'privacy', label: t.privacy, icon: Shield },
-    { id: 'notifications', label: t.notifications, icon: Bell },
     { id: 'map', label: t.map, icon: MapIcon },
     { id: 'appearance', label: t.appearance, icon: Palette }
   ];
@@ -360,6 +364,54 @@ export default function SettingsPage() {
       </div>
 
       <div className="settings-content">
+        {/* Cover Photo Section */}
+        <div className="cover-photo-section">
+          <label className="cover-photo-label">{t.coverPhoto}</label>
+          <p className="cover-photo-desc">{t.coverPhotoDesc}</p>
+          <div 
+            className="cover-photo-container"
+            onClick={() => coverFileInputRef.current?.click()}
+          >
+            {coverPhotoUrl ? (
+              <img
+                src={coverPhotoUrl}
+                alt="Cover"
+                className="cover-photo-img"
+              />
+            ) : (
+              <div className="cover-photo-placeholder">
+                <Camera className="w-8 h-8" />
+                <span>{t.changeCoverPhoto}</span>
+              </div>
+            )}
+            <input
+              ref={coverFileInputRef}
+              type="file"
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                // TODO: Implement when backend API is ready
+                alert('Tính năng đang phát triển. API upload ảnh bìa sẽ sớm có mặt!');
+                e.target.value = '';
+                // try {
+                //   const res = await uploadCoverPhoto(file);
+                //   const updated = res?.profile || res;
+                //   if (updated?.coverUrl) {
+                //     setCoverPhotoUrl(updated.coverUrl);
+                //   }
+                // } catch (err) {
+                //   console.error('Upload cover photo error:', err);
+                //   alert(err.message || 'Không thể upload ảnh bìa');
+                // } finally {
+                //   e.target.value = '';
+                // }
+              }}
+            />
+          </div>
+        </div>
+
         <div className="avatar-section">
           <div className="avatar-container">
             {avatarUrl ? (
@@ -609,68 +661,6 @@ export default function SettingsPage() {
     </div>
   );
 
-  const renderNotificationsSection = () => (
-    <div className={`settings-section section-content section-entering`}>
-      <div className="section-header">
-        <h2>{t.notificationSettings}</h2>
-        <p className="section-description">{t.notificationDescription}</p>
-      </div>
-
-      <div className="settings-content">
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.emailNotifications}</h3>
-            <p>{t.emailNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={emailNotifications}
-                onChange={(e) => setEmailNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.newMemoryNotifications}</h3>
-            <p>{t.newMemoryNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={newMemoryNotifications}
-                onChange={(e) => setNewMemoryNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-
-        <div className="setting-item">
-          <div className="setting-info">
-            <h3>{t.shareNotifications}</h3>
-            <p>{t.shareNotificationsDesc}</p>
-          </div>
-          <div className="setting-control">
-            <label className="toggle-switch">
-              <input
-                type="checkbox"
-                checked={shareNotifications}
-                onChange={(e) => setShareNotifications(e.target.checked)}
-              />
-              <span className="toggle-slider"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderMapSection = () => (
     <div className={`settings-section section-content section-entering`}>
       <div className="section-header">
@@ -788,9 +778,6 @@ export default function SettingsPage() {
           )}
           {activeSection === 'privacy' && (
             <div key="privacy">{renderPrivacySection()}</div>
-          )}
-          {activeSection === 'notifications' && (
-            <div key="notifications">{renderNotificationsSection()}</div>
           )}
           {activeSection === 'map' && (
             <div key="map">{renderMapSection()}</div>

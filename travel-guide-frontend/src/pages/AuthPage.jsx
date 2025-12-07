@@ -1,10 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useLanguage } from "../context/LanguageContext";
 import Register from "../components/Register";
 import Login from "../components/Login";
 import "../index.css";
 
+const TEXT = {
+  vi: {
+    backToHome: 'Quay về trang chủ',
+    welcome: 'Xin chào, Chào mừng!',
+    noAccount: 'Chưa có tài khoản?',
+    signUp: 'Đăng ký',
+    welcomeBack: 'Chào mừng trở lại!',
+    haveAccount: 'Đã có tài khoản?',
+    login: 'Đăng nhập',
+  },
+  en: {
+    backToHome: 'Back to home',
+    welcome: 'Hello, Welcome!',
+    noAccount: "Don't have an account?",
+    signUp: 'Sign Up',
+    welcomeBack: 'Welcome back!',
+    haveAccount: 'Already have an account?',
+    login: 'Login',
+  },
+};
+
 export default function AuthPage() {
+  const { language } = useLanguage();
+  const L = TEXT[language] || TEXT.vi;
   const location = useLocation();
   const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
@@ -67,7 +91,7 @@ export default function AuthPage() {
               ? 'bg-cyan-500/90 hover:bg-cyan-500 text-white' 
               : 'bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800'
           }`}
-          title="Quay về trang chủ"
+          title={L.backToHome}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -91,18 +115,18 @@ export default function AuthPage() {
         {/* TOGGLE PANEL */}
         <div className="toggle-box">
           <div className="toggle-panel toggle-left">
-            <h1 className="text-3xl font-semibold mb-2">Xin chào, Chào mừng!</h1>
-            <p className="mb-4">Chưa có tài khoản?</p>
+            <h1 className="text-3xl font-semibold mb-2">{L.welcome}</h1>
+            <p className="mb-4">{L.noAccount}</p>
             <button className="btn" onClick={handleToggleMode}>
-              Đăng ký
+              {L.signUp}
             </button>
           </div>
 
           <div className="toggle-panel toggle-right">
-            <h1 className="text-3xl font-semibold mb-2">Chào mừng trở lại!</h1>
-            <p className="mb-4">Đã có tài khoản?</p>
+            <h1 className="text-3xl font-semibold mb-2">{L.welcomeBack}</h1>
+            <p className="mb-4">{L.haveAccount}</p>
             <button className="btn" onClick={handleToggleMode}>
-              Đăng nhập
+              {L.login}
             </button>
           </div>
         </div>

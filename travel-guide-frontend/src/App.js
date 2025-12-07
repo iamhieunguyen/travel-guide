@@ -12,7 +12,7 @@ import AuthPage from "./pages/AuthPage";
 import LandingPage from "./pages/LandingPage/LandingPage";
 import HomePage from "./pages/HomePage";
 import PersonalPage from './pages/PersonalPage/PersonalPage';
-import UserProfilePage from './pages/UserProfilePage/UserProfilePage';
+import PublicProfilePage from './pages/PublicProfilePage/PublicProfilePage';
 import SettingsPage from './pages/SettingsPage/SettingsPage';
 import SmartGalleryPage from './pages/SmartGalleryPage';
 import TagGalleryPage from './pages/TagGalleryPage';
@@ -59,7 +59,7 @@ export default function App() {
               <Route path="/home" element={<HomePage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/personal" element={<PersonalPage />} />
-              <Route path="/user/:userId" element={<UserProfilePage />} />
+              <Route path="/user/:userId" element={<PublicProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/gallery" element={<SmartGalleryPage />} />
               <Route path="/gallery/tag/:tagName" element={<TagGalleryPage />} />

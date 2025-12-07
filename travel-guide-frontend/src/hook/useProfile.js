@@ -89,6 +89,36 @@ export const useProfile = () => {
   }, []);
 
   /**
+   * Upload cover photo
+   */
+  const uploadCoverPhoto = useCallback(async (file) => {
+    try {
+      setUploading(true);
+      setError(null);
+
+      // Validate file
+      const validation = profileService.validateImageFile(file);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // Gửi file lên S3 + cập nhật coverKey trên backend
+      await profileService.uploadCoverPhoto(file);
+
+      // Sau khi upload xong, lấy lại profile mới từ API
+      const fresh = await profileService.getProfile();
+      setProfile(fresh);
+      return fresh;
+    } catch (err) {
+      console.error('Upload cover photo error:', err);
+      setError(err.message || 'Không thể upload ảnh bìa');
+      throw err;
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
+  /**
    * Change password
    */
   const changePassword = useCallback(async (oldPassword, newPassword) => {
@@ -128,6 +158,7 @@ export const useProfile = () => {
     fetchProfile,
     updateProfile,
     uploadAvatar,
+    uploadCoverPhoto,
     changePassword,
     clearError
   };

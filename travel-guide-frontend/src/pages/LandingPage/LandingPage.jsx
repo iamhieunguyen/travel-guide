@@ -861,10 +861,6 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            
-            <button className="lp-btn lp-btn-primary" style={{marginTop: '1.5rem'}} onClick={() => setShowMapModal(true)}>
-              {L.communityMap.cta}
-            </button>
           </div>
           
           <div className="map-visual">

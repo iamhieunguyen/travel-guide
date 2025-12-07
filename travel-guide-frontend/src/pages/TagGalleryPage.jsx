@@ -2,9 +2,45 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MapPin, ExternalLink } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 import galleryApi from '../services/galleryApi';
 
+const TEXT = {
+  vi: {
+    backToTrending: 'Quay lại Trending Tags',
+    photosWithTag: 'ảnh được gắn tag này',
+    allPhotosWithTag: 'Tất cả ảnh có chứa tag',
+    error: 'Có lỗi xảy ra',
+    tryAgain: 'Thử lại',
+    noPhotos: 'Chưa có ảnh nào',
+    noPhotosWithTag: 'Không tìm thấy ảnh nào với tag',
+    viewOtherTags: 'Xem các tag khác',
+    photoDetails: 'Chi tiết ảnh',
+    postedOn: 'Đăng vào',
+    tags: 'Tags:',
+    viewHome: 'Xem trang chủ',
+    loadError: 'Không thể tải ảnh. Vui lòng thử lại sau.',
+  },
+  en: {
+    backToTrending: 'Back to Trending Tags',
+    photosWithTag: 'photos tagged with this',
+    allPhotosWithTag: 'All photos containing tag',
+    error: 'An error occurred',
+    tryAgain: 'Try Again',
+    noPhotos: 'No photos yet',
+    noPhotosWithTag: 'No photos found with tag',
+    viewOtherTags: 'View other tags',
+    photoDetails: 'Photo Details',
+    postedOn: 'Posted on',
+    tags: 'Tags:',
+    viewHome: 'View Home',
+    loadError: 'Unable to load photos. Please try again later.',
+  },
+};
+
 export default function TagGalleryPage() {
+  const { language } = useLanguage();
+  const L = TEXT[language] || TEXT.vi;
   const { tagName } = useParams();
   const navigate = useNavigate();
   const [photos, setPhotos] = useState([]);
@@ -43,11 +79,11 @@ export default function TagGalleryPage() {
       setPhotos(uniquePhotos);
     } catch (err) {
       console.error('Error loading photos:', err);
-      setError('Không thể tải ảnh. Vui lòng thử lại sau.');
+      setError(L.loadError);
     } finally {
       setLoading(false);
     }
-  }, [tagName]);
+  }, [tagName, L.loadError]);
 
   useEffect(() => {
     loadPhotos();
@@ -64,7 +100,8 @@ export default function TagGalleryPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+    const locale = language === 'en' ? 'en-US' : 'vi-VN';
+    return new Date(dateString).toLocaleDateString(locale, {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
@@ -81,7 +118,7 @@ export default function TagGalleryPage() {
             className="flex items-center gap-2 text-white/80 hover:text-white transition-colors mb-6 group"
           >
             <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium">Quay lại Trending Tags</span>
+            <span className="font-medium">{L.backToTrending}</span>
           </button>
 
           <div className="flex items-center gap-4 mb-4">
@@ -95,10 +132,10 @@ export default function TagGalleryPage() {
                 #{tagName}
               </h1>
               <p className="text-white/70 text-base">
-                {photos.length} {photos.length === 1 ? 'ảnh' : 'ảnh'} được gắn tag này
+                {photos.length} {L.photosWithTag}
               </p>
               <p className="text-white/50 text-sm mt-1">
-                Tất cả ảnh có chứa tag "{tagName}"
+                {L.allPhotosWithTag} "{tagName}"
               </p>
             </div>
           </div>
@@ -117,27 +154,27 @@ export default function TagGalleryPage() {
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center">
             <div className="text-6xl mb-4">⚠️</div>
-            <h3 className="text-xl font-bold text-red-400 mb-2">Có lỗi xảy ra</h3>
+            <h3 className="text-xl font-bold text-red-400 mb-2">{L.error}</h3>
             <p className="text-red-300/80 mb-6">{error}</p>
             <button
               onClick={loadPhotos}
               className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-xl font-medium transition-colors"
             >
-              Thử lại
+              {L.tryAgain}
             </button>
           </div>
         ) : photos.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
             <div className="text-6xl mb-4">📷</div>
-            <h3 className="text-xl font-bold text-white mb-2">Chưa có ảnh nào</h3>
+            <h3 className="text-xl font-bold text-white mb-2">{L.noPhotos}</h3>
             <p className="text-white/60 mb-6">
-              Không tìm thấy ảnh nào với tag #{tagName}
+              {L.noPhotosWithTag} #{tagName}
             </p>
             <button
               onClick={() => navigate('/gallery')}
               className="bg-[#92ADA4] hover:bg-[#7d9a91] text-white px-6 py-3 rounded-xl font-medium transition-colors"
             >
-              Xem các tag khác
+              {L.viewOtherTags}
             </button>
           </div>
         ) : (
@@ -205,7 +242,7 @@ export default function TagGalleryPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b border-white/10">
               <h3 className="text-white font-bold text-lg line-clamp-1">
-                {selectedPhoto.title || 'Chi tiết ảnh'}
+                {selectedPhoto.title || L.photoDetails}
               </h3>
               <button
                 onClick={() => setSelectedPhoto(null)}
@@ -243,14 +280,14 @@ export default function TagGalleryPage() {
 
                 {selectedPhoto.createdAt && (
                   <p className="text-white/50 text-sm mb-4">
-                    Đăng vào {formatDate(selectedPhoto.createdAt)}
+                    {L.postedOn} {formatDate(selectedPhoto.createdAt)}
                   </p>
                 )}
 
                 {/* Tags */}
                 {(selectedPhoto.autoTags || selectedPhoto.tags) && (
                   <div className="mb-4">
-                    <h4 className="text-white/60 text-sm mb-2">Tags:</h4>
+                    <h4 className="text-white/60 text-sm mb-2">{L.tags}</h4>
                     <div className="flex flex-wrap gap-2">
                       {[...(selectedPhoto.autoTags || []), ...(selectedPhoto.tags || [])].map((tag, i) => (
                         <span
@@ -275,7 +312,7 @@ export default function TagGalleryPage() {
                     className="w-full bg-[#92ADA4] hover:bg-[#7d9a91] text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    Xem trang chủ
+                    {L.viewHome}
                   </button>
                 )}
               </div>

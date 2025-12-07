@@ -13,7 +13,9 @@ import {
   Heart,
   ChevronDown,
   CheckCircle2,
-  X
+  X,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -388,7 +390,7 @@ const TEXT = {
 export default function LandingPage() {
   const navigate = useNavigate();
   const { language } = useLanguage();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, toggleTheme } = useTheme();
   const [openFaq, setOpenFaq] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
   
@@ -501,6 +503,13 @@ export default function LandingPage() {
         </div>
         
         <div className="lp-nav-actions">
+          <button 
+            className="lp-btn lp-btn-ghost theme-toggle-btn"
+            onClick={toggleTheme}
+            title={isDarkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
+          >
+            {isDarkMode ? <Moon size={20} /> : <Sun size={20} />}
+          </button>
           <button 
             className="lp-btn lp-btn-ghost"
             onClick={() => navigate('/auth?mode=login')}

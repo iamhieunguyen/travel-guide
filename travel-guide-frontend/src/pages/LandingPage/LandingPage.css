@@ -12,18 +12,14 @@ html:has(#landing-page-wrapper) {
 
 /* --- WRAPPER ĐỂ CÔ LẬP STYLE --- */
 #landing-page-wrapper {
-  --lp-primary: #0d9488; 
-  --lp-accent: #2dd4bf;
+  --lp-primary: #2B7A9A; 
+  --lp-accent: #6BBCD6;
   --lp-text: #0f172a;
   --lp-text-light: #475569;
   --lp-bg-light: #f8fafc;
   
   min-height: 100vh;
-  background: 
-    linear-gradient(135deg, #ecfdf5 0%, #d1fae5 30%, #a7f3d0 60%, #6ee7b7 100%),
-    radial-gradient(circle at 20% 50%, rgba(129, 201, 103, 0.12) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(13, 148, 136, 0.08) 0%, transparent 50%);
-  background-size: 100% 100%, 100% 100%, 100% 100%;
+  background: linear-gradient(135deg, #1E5A7A 0%, #2B7A9A 25%, #4A9BB8 50%, #6BBCD6 75%, #8DD8E8 100%);
   background-attachment: fixed;
   /* Font stack ưu tiên tiếng Việt */
   font-family: 'Be Vietnam Pro', 'Segoe UI', 'Roboto', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Arial', sans-serif !important;
@@ -286,8 +282,8 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(13, 148, 136, 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(13, 148, 136, 0.15) 1px, transparent 1px);
+    linear-gradient(rgba(43, 122, 154, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43, 122, 154, 0.15) 1px, transparent 1px);
   background-size: 80px 80px;
   opacity: 0.4;
   animation: gridMove 20s linear infinite;
@@ -308,8 +304,8 @@ html:has(#landing-page-wrapper) {
   background: var(--lp-primary);
   border-radius: 50%;
   box-shadow: 
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 0 6px rgba(13, 148, 136, 0.1);
+    0 0 0 3px rgba(43, 122, 154, 0.2),
+    0 0 0 6px rgba(43, 122, 154, 0.1);
   animation: pinPulse 3s ease-in-out infinite;
 }
 
@@ -352,7 +348,7 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper .route-1 {
-  stroke: rgba(13, 148, 136, 0.5);
+  stroke: rgba(43, 122, 154, 0.5);
   animation-delay: 0s;
 }
 
@@ -361,7 +357,7 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper .route-2 {
-  stroke: rgba(45, 212, 191, 0.4);
+  stroke: rgba(107, 188, 214, 0.4);
   animation-delay: 2s;
 }
 
@@ -384,7 +380,7 @@ html:has(#landing-page-wrapper) {
   color: var(--lp-primary);
   opacity: 0.6;
   animation: markerFloat 6s ease-in-out infinite;
-  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(43, 122, 154, 0.3));
 }
 
 #landing-page-wrapper.landing-dark .map-marker {
@@ -402,9 +398,9 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   top: 10%;
   right: 10%;
-  color: rgba(13, 148, 136, 0.3);
+  color: rgba(43, 122, 154, 0.3);
   animation: compassRotate 20s linear infinite;
-  filter: drop-shadow(0 2px 8px rgba(13, 148, 136, 0.2));
+  filter: drop-shadow(0 2px 8px rgba(43, 122, 154, 0.2));
 }
 
 #landing-page-wrapper.landing-dark .compass-rose {
@@ -417,9 +413,9 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 30% 40%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 70% 60%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
-    radial-gradient(circle at 50% 80%, rgba(13, 148, 136, 0.06) 0%, transparent 50%);
+    radial-gradient(circle at 30% 40%, rgba(30, 90, 122, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(74, 155, 184, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 50% 80%, rgba(109, 188, 214, 0.06) 0%, transparent 50%);
   opacity: 0.6;
   animation: texturePulse 15s ease-in-out infinite;
 }
@@ -430,8 +426,8 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px),
-    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(13, 148, 136, 0.03) 2px, rgba(13, 148, 136, 0.03) 4px);
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(30, 90, 122, 0.03) 2px, rgba(30, 90, 122, 0.03) 4px),
+    repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(30, 90, 122, 0.03) 2px, rgba(30, 90, 122, 0.03) 4px);
   background-size: 40px 40px;
   opacity: 0.5;
   pointer-events: none;
@@ -442,9 +438,9 @@ html:has(#landing-page-wrapper) {
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(circle at 15% 25%, rgba(13, 148, 136, 0.1) 0%, transparent 25%),
-    radial-gradient(circle at 85% 75%, rgba(45, 212, 191, 0.08) 0%, transparent 30%),
-    radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 35%);
+    radial-gradient(circle at 15% 25%, rgba(30, 90, 122, 0.1) 0%, transparent 25%),
+    radial-gradient(circle at 85% 75%, rgba(74, 155, 184, 0.08) 0%, transparent 30%),
+    radial-gradient(circle at 50% 50%, rgba(109, 188, 214, 0.06) 0%, transparent 35%);
   opacity: 0.4;
   pointer-events: none;
   animation: mapGlow 20s ease-in-out infinite;
@@ -465,7 +461,7 @@ html:has(#landing-page-wrapper) {
   left: -10vw; 
   width: 500px; 
   height: 500px; 
-  background: rgba(16, 185, 129, 0.2); 
+  background: rgba(74, 155, 184, 0.2); 
   animation: blobFloat 25s ease-in-out infinite;
 }
 #landing-page-wrapper .lp-blob-2 { 
@@ -506,6 +502,40 @@ html:has(#landing-page-wrapper) {
 #landing-page-wrapper .lp-brand span { display: inline-block; }
 #landing-page-wrapper .lp-nav-actions { display: flex; gap: 1rem; align-items: center; }
 
+/* Theme Toggle Button - Override lp-btn styles */
+#landing-page-wrapper button.lp-btn.theme-toggle-btn,
+#landing-page-wrapper .theme-toggle-btn {
+  height: 40px !important;
+  width: 40px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease;
+  aspect-ratio: 1 / 1 !important; /* Đảm bảo tỷ lệ 1:1 */
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
+
+#landing-page-wrapper button.lp-btn.theme-toggle-btn:hover,
+#landing-page-wrapper .theme-toggle-btn:hover {
+  transform: scale(1.1);
+  border-radius: 50% !important; /* Đảm bảo vẫn tròn khi hover */
+  width: 40px !important; /* Giữ width cố định */
+  height: 40px !important; /* Giữ height cố định */
+  min-width: 40px !important;
+  max-width: 40px !important;
+}
+
+#landing-page-wrapper .theme-toggle-btn svg {
+  transition: transform 0.3s ease;
+}
+
+#landing-page-wrapper .theme-toggle-btn:hover svg {
+  transform: rotate(15deg);
+}
+
 /* --- BUTTONS --- */
 #landing-page-wrapper button.lp-btn {
   all: unset;
@@ -520,12 +550,12 @@ html:has(#landing-page-wrapper) {
   box-shadow: none; width: auto !important; aspect-ratio: auto !important;
 }
 #landing-page-wrapper .lp-btn-ghost { color: var(--lp-text-light); background: transparent; }
-#landing-page-wrapper .lp-btn-ghost:hover { color: var(--lp-primary); background: rgba(13, 148, 136, 0.1); }
+#landing-page-wrapper .lp-btn-ghost:hover { color: var(--lp-primary); background: rgba(43, 122, 154, 0.1); }
 #landing-page-wrapper.landing-dark .lp-btn-ghost:hover {
   color: #a78bfa;
   background: rgba(139, 92, 246, 0.1);
 }
-#landing-page-wrapper .lp-btn-primary { background: var(--lp-primary) !important; color: white !important; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3) !important; }
+#landing-page-wrapper .lp-btn-primary { background: var(--lp-primary) !important; color: white !important; box-shadow: 0 4px 12px rgba(43, 122, 154, 0.3) !important; }
 #landing-page-wrapper .lp-btn-primary:hover { background: var(--lp-accent) !important; transform: translateY(-2px); }
 #landing-page-wrapper.landing-dark .lp-btn-primary {
   background: linear-gradient(135deg, #8b5cf6, #ec4899) !important;
@@ -583,19 +613,40 @@ html:has(#landing-page-wrapper) {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(10px);
   border-radius: 50px;
-  border: 1px solid rgba(13, 148, 136, 0.2); 
+  border: 1px solid rgba(43, 122, 154, 0.2); 
   font-size: 0.85rem; 
   color: var(--lp-primary); 
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.1);
   transition: all 0.3s ease;
   width: fit-content;
 }
 
 #landing-page-wrapper .lp-badge:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 6px 20px rgba(43, 122, 154, 0.15);
   border-color: var(--lp-primary);
+}
+
+/* Dark Mode - Badge "Khám phá & Lưu giữ hành trình" */
+#landing-page-wrapper.landing-dark .lp-badge {
+  background: rgba(30, 41, 59, 0.4) !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  color: #a78bfa !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.2) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-badge:hover {
+  border-color: rgba(139, 92, 246, 0.6) !important;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.3) !important;
+}
+
+#landing-page-wrapper.landing-dark .lp-badge svg,
+#landing-page-wrapper.landing-dark .lp-badge .text-teal-600 {
+  color: #a78bfa !important;
+  stroke: #a78bfa !important;
+  fill: none !important;
 }
 
 #landing-page-wrapper .lp-title { 
@@ -615,6 +666,14 @@ html:has(#landing-page-wrapper) {
   -webkit-text-fill-color: transparent; 
   display: inline-block; 
   position: relative;
+}
+
+/* Dark Mode - Highlight "khoảnh khắc" */
+#landing-page-wrapper.landing-dark .lp-highlight {
+  background: linear-gradient(120deg, #8b5cf6, #ec4899, #a78bfa) !important;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 #landing-page-wrapper .lp-desc { 
@@ -637,13 +696,13 @@ html:has(#landing-page-wrapper) {
   height: 50px !important; 
   padding: 0 2rem !important; 
   font-size: 1rem !important;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.2) !important;
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.2) !important;
   transition: all 0.3s ease !important;
 }
 
 #landing-page-wrapper .lp-cta-btn:hover {
   transform: translateY(-3px) !important;
-  box-shadow: 0 8px 25px rgba(13, 148, 136, 0.3) !important;
+  box-shadow: 0 8px 25px rgba(43, 122, 154, 0.3) !important;
 }
 
 /* --- HERO CARDS WRAPPER - Grid Layout mới --- */
@@ -676,7 +735,7 @@ html:has(#landing-page-wrapper) {
   width: 400px;
   height: 400px;
   background: radial-gradient(circle, 
-    rgba(13, 148, 136, 0.15) 0%, 
+    rgba(43, 122, 154, 0.15) 0%, 
     transparent 70%);
   top: 10%;
   left: -5%;
@@ -714,7 +773,7 @@ html:has(#landing-page-wrapper) {
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 
     0 10px 30px -5px rgba(0,0,0,0.1),
-    0 0 0 1px rgba(13, 148, 136, 0.05);
+    0 0 0 1px rgba(43, 122, 154, 0.05);
   color: var(--lp-text);
   font-size: 0.95rem;
   font-weight: 600;
@@ -739,8 +798,8 @@ html:has(#landing-page-wrapper) {
   transform: translateY(-5px);
   box-shadow: 
     0 25px 50px -10px rgba(0,0,0,0.15),
-    0 0 0 2px rgba(13, 148, 136, 0.1),
-    0 0 40px rgba(13, 148, 136, 0.1);
+    0 0 0 2px rgba(43, 122, 154, 0.1),
+    0 0 40px rgba(43, 122, 154, 0.1);
   border-color: var(--lp-primary);
   background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%);
 }
@@ -766,7 +825,7 @@ html:has(#landing-page-wrapper) {
   width: 40px;
   height: 40px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  background: linear-gradient(135deg, rgba(43, 122, 154, 0.1), rgba(107, 188, 214, 0.05));
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -850,7 +909,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 20px; 
   box-shadow: 
     0 10px 30px -5px rgba(0,0,0,0.1),
-    0 0 0 1px rgba(13, 148, 136, 0.05);
+    0 0 0 1px rgba(43, 122, 154, 0.05);
   border: 2px solid rgba(255, 255, 255, 0.9);
   transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: pointer;
@@ -875,7 +934,7 @@ html:has(#landing-page-wrapper) {
   opacity: 0;
   transition: all 0.4s ease;
   z-index: 1;
-  filter: drop-shadow(0 2px 4px rgba(13, 148, 136, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(43, 122, 154, 0.3));
 }
 
 /* Route line effect - đường kết nối từ card đến background */
@@ -891,16 +950,16 @@ html:has(#landing-page-wrapper) {
   opacity: 0;
   transition: all 0.5s ease;
   z-index: 0;
-  box-shadow: 0 0 10px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 0 10px rgba(43, 122, 154, 0.4);
 }
 
 /* HOVER EFFECT - Theme Bản Đồ: Zoom vào điểm trên bản đồ */
 #landing-page-wrapper .lp-card:hover {
   transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
   box-shadow: 
-    0 40px 80px rgba(13, 148, 136, 0.35),
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 60px rgba(13, 148, 136, 0.25),
+    0 40px 80px rgba(43, 122, 154, 0.35),
+    0 0 0 3px rgba(43, 122, 154, 0.2),
+    0 0 60px rgba(43, 122, 154, 0.25),
     0 0 100px rgba(59, 130, 246, 0.15);
   border-color: var(--lp-primary);
   z-index: 100 !important;
@@ -956,7 +1015,7 @@ html:has(#landing-page-wrapper) {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(13, 148, 136, 0.4), transparent);
+  background: radial-gradient(circle, rgba(43, 122, 154, 0.4), transparent);
   opacity: 0;
   pointer-events: none;
   z-index: 1;
@@ -971,23 +1030,23 @@ html:has(#landing-page-wrapper) {
 #landing-page-wrapper .card-1:hover {
   transform: translateY(-32px) scale(1.15) rotate(0deg) !important;
   box-shadow: 
-    0 45px 90px rgba(13, 148, 136, 0.4),
-    0 0 0 4px rgba(13, 148, 136, 0.25),
-    0 0 70px rgba(13, 148, 136, 0.3),
+    0 45px 90px rgba(43, 122, 154, 0.4),
+    0 0 0 4px rgba(43, 122, 154, 0.25),
+    0 0 70px rgba(43, 122, 154, 0.3),
     0 0 120px rgba(59, 130, 246, 0.2);
 }
 
 #landing-page-wrapper .card-2:hover {
   transform: translateY(-28px) scale(1.1) rotate(-2deg) !important;
   box-shadow: 
-    0 40px 80px rgba(16, 185, 129, 0.35),
-    0 0 0 3px rgba(16, 185, 129, 0.2),
-    0 0 60px rgba(16, 185, 129, 0.25),
+    0 40px 80px rgba(74, 155, 184, 0.35),
+    0 0 0 3px rgba(74, 155, 184, 0.2),
+    0 0 60px rgba(74, 155, 184, 0.25),
     0 0 100px rgba(34, 197, 94, 0.15);
 }
 
 #landing-page-wrapper .card-2:hover::before {
-  border-bottom-color: #10b981;
+  border-bottom-color: #4A9BB8;
 }
 
 #landing-page-wrapper .card-3:hover {
@@ -1019,9 +1078,9 @@ html:has(#landing-page-wrapper) {
 #landing-page-wrapper .card-5:hover {
   transform: translateY(-30px) scale(1.12) rotate(0deg) !important;
   box-shadow: 
-    0 40px 80px rgba(13, 148, 136, 0.35),
-    0 0 0 3px rgba(13, 148, 136, 0.2),
-    0 0 60px rgba(13, 148, 136, 0.25),
+    0 40px 80px rgba(43, 122, 154, 0.35),
+    0 0 0 3px rgba(43, 122, 154, 0.2),
+    0 0 60px rgba(43, 122, 154, 0.25),
     0 0 100px rgba(59, 130, 246, 0.15);
 }
 
@@ -1080,7 +1139,7 @@ html:has(#landing-page-wrapper) {
   inset: 0;
   background: linear-gradient(
     180deg, 
-    rgba(13, 148, 136, 0.05) 0%,
+    rgba(43, 122, 154, 0.05) 0%,
     transparent 30%,
     transparent 70%,
     rgba(0,0,0,0.2) 100%
@@ -1094,7 +1153,7 @@ html:has(#landing-page-wrapper) {
   opacity: 1;
   background: linear-gradient(
     180deg, 
-    rgba(13, 148, 136, 0.1) 0%,
+    rgba(43, 122, 154, 0.1) 0%,
     transparent 30%,
     transparent 70%,
     rgba(0,0,0,0.25) 100%
@@ -1109,9 +1168,9 @@ html:has(#landing-page-wrapper) {
   border-radius: 15px;
   background: linear-gradient(
     135deg,
-    rgba(13, 148, 136, 0.3),
+    rgba(43, 122, 154, 0.3),
     rgba(59, 130, 246, 0.3),
-    rgba(13, 148, 136, 0.3)
+    rgba(43, 122, 154, 0.3)
   );
   opacity: 0;
   transition: opacity 0.5s ease;
@@ -1270,7 +1329,7 @@ html:has(#landing-page-wrapper) {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(10px);
   border-radius: 20px;
-  border: 2px solid rgba(13, 148, 136, 0.1);
+  border: 2px solid rgba(43, 122, 154, 0.1);
 }
 
 #landing-page-wrapper .hero-stat-mini {
@@ -1285,7 +1344,7 @@ html:has(#landing-page-wrapper) {
   width: 40px;
   height: 40px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.1), rgba(45, 212, 191, 0.05));
+  background: linear-gradient(135deg, rgba(43, 122, 154, 0.1), rgba(107, 188, 214, 0.05));
   border-radius: 12px;
   flex-shrink: 0;
 }
@@ -1337,7 +1396,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 20px;
   box-shadow: 
     0 8px 25px -5px rgba(0,0,0,0.08),
-    0 0 0 1px rgba(13, 148, 136, 0.06);
+    0 0 0 1px rgba(43, 122, 154, 0.06);
   padding: 1.75rem 2rem; 
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1359,7 +1418,7 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper .lp-stat-item:hover {
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.05) 0%, rgba(45, 212, 191, 0.03) 100%);
+  background: linear-gradient(135deg, rgba(43, 122, 154, 0.05) 0%, rgba(107, 188, 214, 0.03) 100%);
   transform: translateY(-3px);
 }
 
@@ -1368,7 +1427,7 @@ html:has(#landing-page-wrapper) {
   width: 44px;
   height: 44px;
   padding: 8px;
-  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12), rgba(45, 212, 191, 0.08));
+  background: linear-gradient(135deg, rgba(43, 122, 154, 0.12), rgba(107, 188, 214, 0.08));
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -1450,12 +1509,12 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .new-way {
   border: 2px solid var(--lp-primary);
-  box-shadow: 0 15px 40px rgba(13, 148, 136, 0.15);
+  box-shadow: 0 15px 40px rgba(43, 122, 154, 0.15);
 }
 
 #landing-page-wrapper .new-way:hover {
   transform: scale(1.05);
-  box-shadow: 0 20px 50px rgba(13, 148, 136, 0.25);
+  box-shadow: 0 20px 50px rgba(43, 122, 154, 0.25);
 }
 
 #landing-page-wrapper .comparison-label {
@@ -1474,7 +1533,7 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .comparison-label.highlight {
   background: linear-gradient(135deg, var(--lp-primary), var(--lp-accent));
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.4);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.4);
 }
 
 #landing-page-wrapper.landing-dark .comparison-label.highlight {
@@ -1594,7 +1653,7 @@ html:has(#landing-page-wrapper) {
   height: 8px;
   background: linear-gradient(90deg, var(--lp-primary), var(--lp-accent), var(--lp-primary));
   border-radius: 99px;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.3);
 }
 
 #landing-page-wrapper.landing-dark .track-line {
@@ -1612,7 +1671,7 @@ html:has(#landing-page-wrapper) {
   background: white;
   border: 4px solid var(--lp-primary);
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 12px rgba(43, 122, 154, 0.3);
   z-index: 2;
   animation: dotPulse 2s ease-in-out infinite;
 }
@@ -1648,7 +1707,7 @@ html:has(#landing-page-wrapper) {
   border-radius: 28px;
   padding: 2.5rem 2rem;
   box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-  border: 2px solid rgba(13, 148, 136, 0.15);
+  border: 2px solid rgba(43, 122, 154, 0.15);
   text-align: center;
   position: relative;
   transition: all 0.4s ease;
@@ -1668,7 +1727,7 @@ html:has(#landing-page-wrapper) {
 
 #landing-page-wrapper .timeline-card:hover {
   transform: translateY(-60px) scale(1.05); /* Nổi cao hơn khi hover */
-  box-shadow: 0 25px 60px rgba(13, 148, 136, 0.2);
+  box-shadow: 0 25px 60px rgba(43, 122, 154, 0.2);
   border-color: var(--lp-primary);
 }
 
@@ -1704,7 +1763,7 @@ html:has(#landing-page-wrapper) {
   align-items: center;
   justify-content: center;
   color: var(--lp-primary);
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.1);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.1);
   transition: all 0.3s;
 }
 
@@ -1811,7 +1870,7 @@ html:has(#landing-page-wrapper) {
   align-items: center;
   justify-content: center;
   color: var(--lp-primary);
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.3);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.3);
   border: 4px solid white;
 }
 
@@ -2029,7 +2088,7 @@ html:has(#landing-page-wrapper) {
   background: var(--lp-primary);
   border: 3px solid white;
   border-radius: 50%;
-  box-shadow: 0 4px 15px rgba(13, 148, 136, 0.5);
+  box-shadow: 0 4px 15px rgba(43, 122, 154, 0.5);
   animation: pinPulse 2s ease-in-out infinite;
 }
 
@@ -2283,16 +2342,16 @@ html:has(#landing-page-wrapper) {
     transform: scale(1);
     opacity: 0.6;
     box-shadow: 
-      0 0 0 3px rgba(13, 148, 136, 0.2),
-      0 0 0 6px rgba(13, 148, 136, 0.1);
+      0 0 0 3px rgba(43, 122, 154, 0.2),
+      0 0 0 6px rgba(43, 122, 154, 0.1);
   }
   50% {
     transform: scale(1.3);
     opacity: 1;
     box-shadow: 
-      0 0 0 5px rgba(13, 148, 136, 0.3),
-      0 0 0 10px rgba(13, 148, 136, 0.15),
-      0 0 20px rgba(13, 148, 136, 0.2);
+      0 0 0 5px rgba(43, 122, 154, 0.3),
+      0 0 0 10px rgba(43, 122, 154, 0.15),
+      0 0 20px rgba(43, 122, 154, 0.2);
   }
 }
 
@@ -2439,11 +2498,11 @@ html:has(#landing-page-wrapper) {
 
 @keyframes dotPulse {
   0%, 100% {
-    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.3);
+    box-shadow: 0 4px 12px rgba(43, 122, 154, 0.3);
     border-width: 4px;
   }
   50% {
-    box-shadow: 0 6px 25px rgba(13, 148, 136, 0.6), 0 0 0 8px rgba(13, 148, 136, 0.1);
+    box-shadow: 0 6px 25px rgba(43, 122, 154, 0.6), 0 0 0 8px rgba(43, 122, 154, 0.1);
     border-width: 5px;
   }
 }
@@ -2561,8 +2620,8 @@ html:has(#landing-page-wrapper) {
 }
 
 #landing-page-wrapper.landing-light .map-modal-close:hover {
-  background: rgba(13, 148, 136, 0.1);
-  border-color: rgba(13, 148, 136, 0.3);
+  background: rgba(43, 122, 154, 0.1);
+  border-color: rgba(43, 122, 154, 0.3);
   color: var(--lp-primary);
 }
 

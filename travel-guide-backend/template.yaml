@@ -615,6 +615,31 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  UploadCoverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: upload_cover.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          CF_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserProfilesTable
+      Events:
+        UploadCoverApi:
+          Type: Api
+          Properties:
+            Path: /profile/upload-cover
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
   ##############################
   # GALLERY & TRENDING FUNCTIONS
   ##############################

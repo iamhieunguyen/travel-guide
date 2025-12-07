@@ -60,6 +60,8 @@ def lambda_handler(event, context):
                 "username": None,
                 "avatarKey": None,
                 "avatarUrl": None,
+                "coverKey": None,
+                "coverUrl": None,
                 "bio": None,
                 "createdAt": None
             })
@@ -77,6 +79,18 @@ def lambda_handler(event, context):
                 profile["avatarUrl"] = avatar_url
             except Exception as e:
                 print(f"Error generating avatar URL: {e}")
+        
+        # Tạo presigned URL cho cover image nếu có
+        if profile.get("coverKey"):
+            try:
+                cover_url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': BUCKET_NAME, 'Key': profile["coverKey"]},
+                    ExpiresIn=3600
+                )
+                profile["coverUrl"] = cover_url
+            except Exception as e:
+                print(f"Error generating cover URL: {e}")
         
         # Convert Decimal to float
         for key, value in profile.items():

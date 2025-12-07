@@ -108,6 +108,7 @@ export default function HomePage() {
   const [likedPosts, setLikedPosts] = useState(new Set()); // Track liked posts
   const [hiddenPostIds, setHiddenPostIds] = useState(new Set()); // Track hidden posts
   const [tagFilter, setTagFilter] = useState(''); // Tag filter state
+  const [hoveredLocation, setHoveredLocation] = useState(null); // Track hovered location for tooltip
   const searchInputRef = useRef(null); // Ref for search input
   const mapType = user?.mapTypePref || 'roadmap';
 
@@ -664,6 +665,22 @@ export default function HomePage() {
       {/* Christmas Effects Overlay */}
       <ChristmasEffects />
       
+      {/* Fixed Location Tooltip */}
+      {hoveredLocation && (
+        <div 
+          className="fixed bg-gray-800 text-white text-sm rounded-lg px-3 py-2 shadow-2xl pointer-events-none" 
+          style={{ 
+            zIndex: 999999, 
+            maxWidth: '400px',
+            left: `${hoveredLocation.x}px`,
+            top: `${hoveredLocation.y}px`
+          }}
+        >
+          <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-800 transform rotate-45"></div>
+          {hoveredLocation.text}
+        </div>
+      )}
+      
       <div className="flex p-3 h-screen overflow-hidden">
         {/* Left Sidebar - Icon only with hover expand - Fixed to left edge */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
@@ -1029,7 +1046,7 @@ export default function HomePage() {
                   const authorInitial = authorDisplayName?.charAt(0)?.toUpperCase() || 'U';
                   
                   return (
-                    <div key={post.articleId} className={`${isDarkMode ? 'bg-[#02182E]/80 backdrop-blur-lg border border-white/15' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg border border-white/15'} rounded-[32px] shadow-lg overflow-hidden p-8`}>
+                    <div key={post.articleId} className={`${isDarkMode ? 'bg-[#02182E]/80 backdrop-blur-lg border border-white/15' : 'bg-gradient-to-br from-[#85C4E4]/60 to-[#CCDEE4]/50 backdrop-blur-lg border border-white/15'} rounded-[32px] shadow-lg p-8`} style={{ overflow: 'visible' }}>
                       {/* User Info - Inside white container */}
                       <div className="flex items-center justify-between mb-4">
                         <div 
@@ -1058,14 +1075,20 @@ export default function HomePage() {
                               {authorDisplayName}
                             </p>
                             {(post.location?.name || post.location || post.locationName) && (
-                              <div className={`flex items-center text-sm group relative ${isDarkMode ? 'text-white' : 'text-gray-500'}`}>
+                              <div 
+                                className={`flex items-center text-sm ${isDarkMode ? 'text-white' : 'text-gray-500'}`}
+                                onMouseEnter={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setHoveredLocation({
+                                    text: post.location?.name || post.location || post.locationName,
+                                    x: rect.left,
+                                    y: rect.bottom + 8
+                                  });
+                                }}
+                                onMouseLeave={() => setHoveredLocation(null)}
+                              >
                                 <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
                                 <span className="line-clamp-1 font-normal cursor-pointer">
-                                  {post.location?.name || post.location || post.locationName}
-                                </span>
-                                {/* Tooltip on hover */}
-                                <span className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-sm rounded-xl px-4 py-2.5 shadow-2xl max-w-md whitespace-normal pointer-events-none" style={{ zIndex: 99999 }}>
-                                  <span className="absolute -bottom-1 left-4 w-2.5 h-2.5 bg-gray-900 transform rotate-45"></span>
                                   {post.location?.name || post.location || post.locationName}
                                 </span>
                               </div>

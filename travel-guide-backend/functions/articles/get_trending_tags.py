@@ -1,6 +1,18 @@
 """
 Get trending tags from GalleryTrendsTable
 Simple scan and sort by count
+
+Returns tags sorted by popularity (count = number of photos containing each tag)
+Example response:
+{
+  "items": [
+    {"tag_name": "Beach", "count": 150, "cover_image": "...", "last_updated": "..."},
+    {"tag_name": "Mountain", "count": 89, "cover_image": "...", "last_updated": "..."}
+  ],
+  "total_tags": 245
+}
+
+Note: count represents the number of photos that have this tag, not the number of tags per photo
 """
 import os
 import json
@@ -59,7 +71,7 @@ def lambda_handler(event, context):
         for tag in top_tags:
             trending_tags.append({
                 'tag_name': tag.get('tag_name', '').title(),
-                'count': decimal_to_native(tag.get('count', 0)),
+                'count': decimal_to_native(tag.get('count', 0)),  # Number of photos with this tag
                 'cover_image': tag.get('cover_image'),
                 'last_updated': tag.get('last_updated', '')
             })

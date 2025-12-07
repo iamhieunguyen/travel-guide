@@ -268,10 +268,26 @@ def detect_labels_in_image(bucket, key):
 
 
 def extract_article_id_from_key(s3_key):
-    """Extract article ID from S3 key"""
+    """Extract article ID from S3 key
+    
+    Supports two formats:
+    - Old: articles/{articleId}.jpg → articleId
+    - New: articles/{articleId}_{imageId}.jpg → articleId
+    """
     try:
-        filename = s3_key.split('/')[-1]
-        article_id = filename.rsplit('.', 1)[0]
+        filename = s3_key.split('/')[-1]  # e.g., "abc123_def456.jpg" or "abc123.jpg"
+        name_without_ext = filename.rsplit('.', 1)[0]  # e.g., "abc123_def456" or "abc123"
+        
+        # Check if it's new format with underscore (articleId_imageId)
+        if '_' in name_without_ext:
+            # New format: articleId_imageId → extract articleId (FIRST part before first underscore)
+            article_id = name_without_ext.split('_')[0]
+            print(f"  Extracted articleId (new format): {article_id}")
+        else:
+            # Old format: just articleId
+            article_id = name_without_ext
+            print(f"  Extracted articleId (old format): {article_id}")
+        
         return article_id
     except Exception as e:
         print(f"Failed to extract article ID: {e}")
@@ -399,6 +415,12 @@ def lambda_handler(event, context):
                         results['skipped'] += 1
                         continue
                     
+                    # Skip folder/prefix objects (they end with /)
+                    if key.endswith('/'):
+                        print(f"Skipping folder object: {key}")
+                        results['skipped'] += 1
+                        continue
+                    
                     # Extract article ID
                     article_id = extract_article_id_from_key(key)
                     if not article_id:
@@ -433,7 +455,13 @@ def lambda_handler(event, context):
                             from save_to_gallery import save_photo_to_gallery, update_trending_tags
                             tag_names = [label['name'] for label in labels_data]
                             image_url = key  # S3 key
-                            save_photo_to_gallery(article_id, image_url, tag_names, status='public')
+                            
+                            # Use full S3 key as unique photo_id to avoid overwriting
+                            # For articles/abc123_img1.jpg → photo_id = 'articles/abc123_img1.jpg'
+                            # This ensures each image has a unique record in GalleryPhotosTable
+                            photo_id = key  # Use S3 key as unique identifier
+                            
+                            save_photo_to_gallery(photo_id, image_url, tag_names, status='public', article_id=article_id)
                             update_trending_tags(tag_names, image_url)
                             print("✓ Saved to Gallery tables")
                         except Exception as gallery_error:

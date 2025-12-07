@@ -1,8 +1,16 @@
 import React, { useEffect, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './MapView.css';
+
+// Fix for default marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
 
 // Fix icon marker mặc định
 const DefaultIcon = L.icon({
@@ -27,7 +35,7 @@ function createArticleIcon(imageUrl) {
           width: 50px;
           height: 50px;
           border-radius: 50%;
-          border: 3px solid #0891b2;
+          border: 3px solid #8b5cf6;
           overflow: hidden;
           box-shadow: 0 4px 12px rgba(0,0,0,0.3);
           background: white;
@@ -43,7 +51,7 @@ function createArticleIcon(imageUrl) {
               object-fit: cover;
               display: block;
             "
-            onerror="this.src='https://placehold.co/50x50/0891b2/white?text=📍'"
+            onerror="this.src='https://placehold.co/50x50/8b5cf6/white?text=📍'"
           />
         </div>
         <div style="
@@ -55,7 +63,7 @@ function createArticleIcon(imageUrl) {
           height: 0;
           border-left: 8px solid transparent;
           border-right: 8px solid transparent;
-          border-top: 12px solid #0891b2;
+          border-top: 12px solid #8b5cf6;
         "></div>
       </div>
     `,
@@ -65,34 +73,42 @@ function createArticleIcon(imageUrl) {
   });
 }
 
-const UserLocationIcon = L.divIcon({
-  className: 'user-location-marker',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-});
-
-// Component quan trọng: Fix lỗi map không hiện khi chuyển tab
-function MapController({ markers, userLocation }) {
+// Component để disable tất cả tương tác
+function DisableInteraction() {
   const map = useMap();
-  
+
   useEffect(() => {
-    // 1. Buộc Leaflet tính lại kích thước khung hình
-    // Đợi 1 tick để đảm bảo container đã render xong
+    // Disable tất cả tương tác
+    map.dragging.disable();
+    map.touchZoom.disable();
+    map.doubleClickZoom.disable();
+    map.scrollWheelZoom.disable();
+    map.boxZoom.disable();
+    map.keyboard.disable();
+    
+    // Disable zoom controls
+    if (map.zoomControl) {
+      map.removeControl(map.zoomControl);
+    }
+
+    // Set view to show toàn bộ thế giới (zoom level 2)
+    map.setView([20, 0], 2);
+
+    // Force invalidate size để đảm bảo map render đúng
     setTimeout(() => {
-        map.invalidateSize();
+      map.invalidateSize();
     }, 100);
 
-    // 2. Auto-zoom nếu có markers
-    const points = [...markers];
-    if (userLocation?.lat && userLocation?.lng) {
-      points.push({ lat: userLocation.lat, lng: userLocation.lng });
-    }
-
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map(m => [m.lat, m.lng]));
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }, [markers, map, userLocation]);
+    return () => {
+      // Re-enable khi unmount (nếu cần)
+      map.dragging.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+      map.scrollWheelZoom.enable();
+      map.boxZoom.enable();
+      map.keyboard.enable();
+    };
+  }, [map]);
 
   return null;
 }
@@ -115,8 +131,8 @@ function getTileConfig(mapType) {
   }
 }
 
-export default function MapView({ locations = [], onMarkerClick, userLocation, mapType = 'roadmap' }) {
-  const defaultCenter = [16.047079, 108.206230]; 
+export default function StaticMapView({ locations = [], mapType = 'roadmap' }) {
+  const defaultCenter = [20, 0]; // Center để thấy toàn bộ thế giới
   const tileConfig = useMemo(() => getTileConfig(mapType), [mapType]);
 
   const validMarkers = locations.filter(
@@ -131,12 +147,30 @@ export default function MapView({ locations = [], onMarkerClick, userLocation, m
   }));
 
   return (
-    // Bỏ class wrapper phức tạp, dùng style inline để chắc chắn hiện
-    <div className="map-container-wrapper" style={{ height: '600px', width: '100%', position: 'relative', zIndex: 1, display: 'block' }}>
+    <div 
+      className="map-container-wrapper" 
+      style={{ 
+        height: '100%', 
+        width: '100%', 
+        position: 'relative', 
+        zIndex: 1, 
+        display: 'block', 
+        borderRadius: '24px', 
+        overflow: 'hidden',
+        minHeight: '500px'
+      }}
+    >
       <MapContainer 
         center={defaultCenter} 
-        zoom={6} 
-        style={{ height: '100%', width: '100%', borderRadius: '16px' }}
+        zoom={2} 
+        style={{ height: '100%', width: '100%', borderRadius: '24px', minHeight: '500px' }}
+        zoomControl={false}
+        dragging={false}
+        touchZoom={false}
+        doubleClickZoom={false}
+        scrollWheelZoom={false}
+        boxZoom={false}
+        keyboard={false}
         whenReady={(map) => {
           // Đảm bảo map render đúng kích thước
           setTimeout(() => {
@@ -149,38 +183,18 @@ export default function MapView({ locations = [], onMarkerClick, userLocation, m
           url={tileConfig.url}
         />
         
-        <MapController markers={validMarkers} userLocation={userLocation} />
+        <DisableInteraction />
 
         {validMarkers.map((marker) => (
           <Marker 
             key={marker.id} 
             position={[marker.lat, marker.lng]}
             icon={marker.image ? createArticleIcon(marker.image) : DefaultIcon}
-            eventHandlers={{
-              click: () => onMarkerClick && onMarkerClick(marker),
-            }}
-          >
-            <Popup className="custom-popup">
-              <div className="popup-content">
-                {marker.image && <img src={marker.image} alt={marker.title} className="popup-img" />}
-                <div className="popup-info">
-                  <h4>{marker.title}</h4>
-                  <span>{new Date(marker.date).toLocaleDateString('vi-VN')}</span>
-                </div>
-              </div>
-            </Popup>
-          </Marker>
+            interactive={false}
+          />
         ))}
-
-        {userLocation?.lat && userLocation?.lng && (
-          <Marker 
-            position={[userLocation.lat, userLocation.lng]}
-            icon={UserLocationIcon}
-          >
-            <Popup>Vị trí của bạn</Popup>
-          </Marker>
-        )}
       </MapContainer>
     </div>
   );
 }
+

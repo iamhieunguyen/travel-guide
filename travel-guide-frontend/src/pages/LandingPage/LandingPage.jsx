@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Map, 
@@ -12,229 +12,428 @@ import {
   Globe,
   Heart,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  X
 } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import MapView from '../../components/map/MapView';
+import StaticMapView from '../../components/map/StaticMapView';
 import './LandingPage.css';
 import { useScrollAnimation } from './useScrollAnimation';
 
-export default function LandingPage() {
-  const navigate = useNavigate();
-  const { language } = useLanguage();
-  const [openFaq, setOpenFaq] = useState(null);
-  useScrollAnimation(); // Kích hoạt scroll animations
-
-  const TEXT = {
-    vi: {
+const TEXT = {
+  vi: {
+    nav: {
       login: 'Đăng nhập',
-      signup: 'Đăng ký ngay',
+      signup: 'Đăng ký ngay'
+    },
+    hero: {
       badge: 'Khám phá & Lưu giữ hành trình',
       title1: 'Lưu giữ từng',
       titleHighlight: 'khoảnh khắc',
       title2: 'trên bản đồ cuộc đời',
-      desc: 'Không chỉ là những bức ảnh, đó là những câu chuyện. Tạo bản đồ ký ức của riêng bạn, đánh dấu những nơi đã đi qua và chia sẻ niềm đam mê xê dịch.',
+      description: 'Không chỉ là những bức ảnh, đó là những câu chuyện. Tạo bản đồ ký ức của riêng bạn, đánh dấu những nơi đã đi qua và chia sẻ niềm đam mê xê dịch.',
       ctaStart: 'Bắt đầu miễn phí',
       ctaExplore: 'Dạo quanh một vòng',
-      users: 'Người dùng',
-      countries: 'Quốc gia',
-      moments: 'Khoảnh khắc',
-      communityInfo: 'Những khoảnh khắc thật từ cộng đồng MemoryMap',
-      whyTitle: 'Tại sao chọn MemoryMap?',
-      whyDesc: 'Những tính năng được thiết kế dành riêng cho người yêu du lịch.',
-      feature1Title: 'Bản đồ tương tác',
-      feature1Desc: 'Ghim mọi điểm đến trên bản đồ thế giới 3D sống động. Xem lại lộ trình di chuyển của bạn một cách trực quan.',
-      feature2Title: 'Riêng tư tuyệt đối',
-      feature2Desc: 'Chế độ "Chỉ mình tôi" cho những khoảnh khắc riêng tư. Dữ liệu được mã hóa an toàn tuyệt đối.',
-      feature3Title: 'Album ảnh thông minh',
-      feature3Desc: 'Tự động sắp xếp ảnh theo địa điểm và thời gian. Tạo nên cuốn nhật ký hành trình kỹ thuật số.',
-      feature4Title: 'Cộng đồng xê dịch',
-      feature4Desc: 'Kết nối với những người cùng đam mê. Khám phá những địa điểm ẩn ("hidden gems") từ cộng đồng.',
-      feature5Title: 'Truy cập mọi nơi',
-      feature5Desc: 'Đồng bộ hóa dữ liệu trên mọi thiết bị: Máy tính, điện thoại, máy tính bảng. Ký ức luôn bên bạn.',
-      feature6Title: 'Hoàn toàn miễn phí',
-      feature6Desc: 'Bắt đầu hành trình của bạn mà không tốn chi phí. Nâng cấp chỉ khi bạn cần thêm dung lượng lưu trữ.',
-      differentTitle: 'Hơn cả một thư viện ảnh',
-      differentDesc: 'MemoryMap không chỉ lưu ảnh, mà còn lưu giữ cả câu chuyện và hành trình của bạn.',
-      oldWay: 'Cách cũ',
-      oldWayTitle: 'Thư viện ảnh thông thường',
-      oldWay1: 'Ảnh lưu lộn xộn trong điện thoại',
-      oldWay2: 'Quên mất chụp ở đâu, khi nào',
-      oldWay3: 'Không thể chia sẻ theo lộ trình',
-      oldWay4: 'Dễ mất dữ liệu khi đổi máy',
-      newWay: 'Cách mới',
-      newWayTitle: 'MemoryMap',
-      newWay1: 'Tự động sắp xếp theo địa điểm',
-      newWay2: 'Gắn chính xác vị trí & thời gian',
-      newWay3: 'Xem lại hành trình trên bản đồ',
-      newWay4: 'Đồng bộ đám mây an toàn',
-      howTitle: 'Hành trình của bạn bắt đầu từ đây',
-      howDesc: '3 bước đơn giản để biến những khoảnh khắc thành bản đồ ký ức vĩnh cửu.',
-      step1Title: 'Tạo tài khoản',
-      step1Desc: 'Đăng ký miễn phí chỉ với Email hoặc Google. Không cần thẻ tín dụng.',
-      step2Title: 'Chia sẻ khoảnh khắc',
-      step2Desc: 'Tải ảnh lên, ghim vị trí và viết câu chuyện của riêng bạn.',
-      step3Title: 'Khám phá bản đồ',
-      step3Desc: 'Nhìn lại toàn bộ hành trình trên bản đồ tương tác 3D.',
-      exploreTitle: 'Khám phá thế giới cùng MemoryMap',
-      exploreDesc: 'Hơn 1 triệu ký ức được lưu giữ tại hơn 50 quốc gia trên toàn thế giới.',
-      asia: 'Châu Á',
-      asiaDesc: 'Từ phố cổ Hội An đến Phú Sĩ huyền thoại',
-      europe: 'Châu Âu',
-      europeDesc: 'Paris lãng mạn, Venice thơ mộng, Alps hùng vĩ',
-      americas: 'Châu Mỹ',
-      americasDesc: 'Grand Canyon, Machu Picchu, New York sôi động',
-      oceania: 'Châu Đại Dương',
-      oceaniaDesc: 'Rạn san hô Great Barrier, Sydney Opera House, New Zealand kỳ vĩ',
-      countriesLabel: 'quốc gia',
-      postsLabel: 'bài viết',
-      exploreBtn: 'Bắt đầu khám phá',
-      mapBadge: 'Trực quan & Tương tác',
-      mapTitle: 'Nhìn thấy thế giới của bạn',
-      mapDesc: 'Mỗi điểm đỏ là một ký ức. Mỗi đường kẻ là một hành trình. Kết nối các khoảnh khắc để tạo nên câu chuyện riêng của bạn trên bản đồ toàn cầu.',
-      mapFeature1: 'Zoom & khám phá mọi góc nhìn',
-      mapFeature2: 'Lọc theo thời gian & địa điểm',
-      mapFeature3: 'Chia sẻ bản đồ với bạn bè',
-      mapDemoBtn: 'Xem bản đồ demo',
-      faqTitle: 'Câu hỏi thường gặp',
-      faq1Q: 'MemoryMap có miễn phí không?',
-      faq1A: 'Có! Chúng tôi cung cấp gói miễn phí vĩnh viễn với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên Premium nếu cần lưu trữ không giới hạn.',
-      faq2Q: 'Ảnh của tôi có được bảo mật không?',
-      faq2A: 'Tuyệt đối an toàn. Dữ liệu của bạn được mã hóa và lưu trữ trên hệ thống đám mây bảo mật cao cấp.',
-      faq3Q: 'Tôi có thể chia sẻ bản đồ với bạn bè không?',
-      faq3A: 'Được chứ. Bạn có thể chia sẻ link profile công khai hoặc chia sẻ từng bài viết cụ thể lên mạng xã hội.',
-      faq4Q: 'Làm sao để bắt đầu?',
-      faq4A: 'Chỉ cần nhấn nút "Đăng ký ngay" ở góc trên bên phải, điền thông tin và bạn đã sẵn sàng!',
-      ctaTitle: 'Sẵn sàng viết tiếp câu chuyện của bạn?',
-      ctaDesc: 'Tham gia cùng hơn 10,000 người dùng đang lưu giữ hành trình mỗi ngày.',
-      ctaBtn: 'Tạo tài khoản miễn phí',
-      footerProduct: 'Sản phẩm',
-      footerFeatures: 'Tính năng',
-      footerPricing: 'Bảng giá',
-      footerRoadmap: 'Roadmap',
-      footerCompany: 'Công ty',
-      footerAbout: 'Về chúng tôi',
-      footerBlog: 'Blog',
-      footerCareers: 'Tuyển dụng',
-      footerSupport: 'Hỗ trợ',
-      footerHelp: 'Trung tâm trợ giúp',
-      footerTerms: 'Điều khoản',
-      footerPrivacy: 'Bảo mật',
+      stats: {
+        users: 'Người dùng',
+        countries: 'Quốc gia',
+        moments: 'Khoảnh khắc'
+      },
+      communityInfo: 'Những khoảnh khắc thật từ cộng đồng MemoryMap'
     },
-    en: {
+    cards: {
+      card1: 'Buổi sáng tuyệt vời tại tháp Eiffel... 🥐',
+      card2: 'Phố cổ đầy màu sắc và ánh đèn lồng 🏮',
+      card3: 'Thiên nhiên hùng vĩ và hồ nước trong xanh 🏔️',
+      card4: 'Thiên đường nhiệt đới với văn hóa độc đáo 🌴',
+      card5: 'Hoàng hôn tuyệt đẹp trên biển Aegean 🌅',
+      card6: 'Văn hóa truyền thống và kiến trúc cổ kính 🏯'
+    },
+    features: {
+      title: 'Tại sao chọn MemoryMap?',
+      subtitle: 'Những tính năng được thiết kế dành riêng cho người yêu du lịch.',
+      map: {
+        title: 'Bản đồ tương tác',
+        desc: 'Ghim mọi điểm đến trên bản đồ thế giới 3D sống động. Xem lại lộ trình di chuyển của bạn một cách trực quan.'
+      },
+      privacy: {
+        title: 'Riêng tư tuyệt đối',
+        desc: 'Chế độ "Chỉ mình tôi" cho những khoảnh khắc riêng tư. Dữ liệu được mã hóa an toàn tuyệt đối.'
+      },
+      album: {
+        title: 'Album ảnh thông minh',
+        desc: 'Tự động sắp xếp ảnh theo địa điểm và thời gian. Tạo nên cuốn nhật ký hành trình kỹ thuật số.'
+      },
+      community: {
+        title: 'Cộng đồng xê dịch',
+        desc: 'Kết nối với những người cùng đam mê. Khám phá những địa điểm ẩn ("hidden gems") từ cộng đồng.'
+      },
+      access: {
+        title: 'Truy cập mọi nơi',
+        desc: 'Đồng bộ hóa dữ liệu trên mọi thiết bị: Máy tính, điện thoại, máy tính bảng. Ký ức luôn bên bạn.'
+      },
+      free: {
+        title: 'Hoàn toàn miễn phí',
+        desc: 'Bắt đầu hành trình của bạn mà không tốn chi phí. Nâng cấp chỉ khi bạn cần thêm dung lượng lưu trữ.'
+      }
+    },
+    comparison: {
+      title: 'Hơn cả một thư viện ảnh',
+      subtitle: 'MemoryMap không chỉ lưu ảnh, mà còn lưu giữ cả câu chuyện và hành trình của bạn.',
+      oldWay: 'Cách cũ',
+      oldTitle: 'Thư viện ảnh thông thường',
+      oldPoints: [
+        'Ảnh lưu lộn xộn trong điện thoại',
+        'Quên mất chụp ở đâu, khi nào',
+        'Không thể chia sẻ theo lộ trình',
+        'Dễ mất dữ liệu khi đổi máy'
+      ],
+      newWay: 'Cách mới',
+      newTitle: 'MemoryMap',
+      newPoints: [
+        'Tự động sắp xếp theo địa điểm',
+        'Gắn chính xác vị trí & thời gian',
+        'Xem lại hành trình trên bản đồ',
+        'Đồng bộ đám mây an toàn'
+      ]
+    },
+    howItWorks: {
+      title: 'Hành trình của bạn bắt đầu từ đây',
+      subtitle: '3 bước đơn giản để biến những khoảnh khắc thành bản đồ ký ức vĩnh cửu.',
+      step1: {
+        title: 'Tạo tài khoản',
+        desc: 'Đăng ký miễn phí chỉ với Email hoặc Google. Không cần thẻ tín dụng.'
+      },
+      step2: {
+        title: 'Chia sẻ khoảnh khắc',
+        desc: 'Tải ảnh lên, ghim vị trí và viết câu chuyện của riêng bạn.'
+      },
+      step3: {
+        title: 'Khám phá bản đồ',
+        desc: 'Nhìn lại toàn bộ hành trình trên bản đồ tương tác 3D.'
+      }
+    },
+    explore: {
+      title: 'Khám phá thế giới cùng MemoryMap',
+      subtitle: 'Hơn 1 triệu ký ức được lưu giữ tại hơn 50 quốc gia trên toàn thế giới.',
+      asia: {
+        title: 'Châu Á',
+        desc: 'Từ phố cổ Hội An đến Phú Sĩ huyền thoại',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      europe: {
+        title: 'Châu Âu',
+        desc: 'Paris lãng mạn, Venice thơ mộng, Alps hùng vĩ',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      americas: {
+        title: 'Châu Mỹ',
+        desc: 'Grand Canyon, Machu Picchu, New York sôi động',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      oceania: {
+        title: 'Châu Đại Dương',
+        desc: 'Rạn san hô Great Barrier, Sydney Opera House, New Zealand kỳ vĩ',
+        countries: 'quốc gia',
+        posts: 'bài viết'
+      },
+      cta: 'Bắt đầu khám phá'
+    },
+    communityMap: {
+      badge: 'Trực quan & Tương tác',
+      title: 'Nhìn thấy thế giới của bạn',
+      desc: 'Mỗi điểm đỏ là một ký ức. Mỗi đường kẻ là một hành trình. Kết nối các khoảnh khắc để tạo nên câu chuyện riêng của bạn trên bản đồ toàn cầu.',
+      features: [
+        'Zoom & khám phá mọi góc nhìn',
+        'Lọc theo thời gian & địa điểm',
+        'Chia sẻ bản đồ với bạn bè'
+      ],
+      cta: 'Xem bản đồ demo'
+    },
+    faq: {
+      title: 'Câu hỏi thường gặp',
+      items: [
+        {
+          q: 'MemoryMap có miễn phí không?',
+          a: 'Có! Chúng tôi cung cấp gói miễn phí vĩnh viễn với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên Premium nếu cần lưu trữ không giới hạn.'
+        },
+        {
+          q: 'Ảnh của tôi có được bảo mật không?',
+          a: 'Tuyệt đối an toàn. Dữ liệu của bạn được mã hóa và lưu trữ trên hệ thống đám mây bảo mật cao cấp.'
+        },
+        {
+          q: 'Tôi có thể chia sẻ bản đồ với bạn bè không?',
+          a: 'Được chứ. Bạn có thể chia sẻ link profile công khai hoặc chia sẻ từng bài viết cụ thể lên mạng xã hội.'
+        },
+        {
+          q: 'Làm sao để bắt đầu?',
+          a: 'Chỉ cần nhấn nút \'Đăng ký ngay\' ở góc trên bên phải, điền thông tin và bạn đã sẵn sàng!'
+        }
+      ]
+    },
+    footerCta: {
+      title: 'Sẵn sàng viết tiếp câu chuyện của bạn?',
+      subtitle: 'Tham gia cùng hơn 10,000 người dùng đang lưu giữ hành trình mỗi ngày.',
+      cta: 'Tạo tài khoản miễn phí'
+    },
+    footer: {
+      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      product: {
+        title: 'Sản phẩm',
+        features: 'Tính năng',
+        pricing: 'Bảng giá',
+        roadmap: 'Roadmap'
+      },
+      company: {
+        title: 'Công ty',
+        about: 'Về chúng tôi',
+        blog: 'Blog',
+        careers: 'Tuyển dụng'
+      },
+      support: {
+        title: 'Hỗ trợ',
+        help: 'Trung tâm trợ giúp',
+        terms: 'Điều khoản',
+        privacy: 'Bảo mật'
+      }
+    }
+  },
+  en: {
+    nav: {
       login: 'Login',
-      signup: 'Sign Up Now',
-      badge: 'Explore & Preserve Journeys',
+      signup: 'Sign Up'
+    },
+    hero: {
+      badge: 'Explore & Preserve Your Journey',
       title1: 'Preserve every',
       titleHighlight: 'moment',
-      title2: 'on the map of life',
-      desc: 'Not just photos, but stories. Create your own memory map, mark the places you\'ve been, and share your passion for travel.',
-      ctaStart: 'Start for free',
-      ctaExplore: 'Take a tour',
-      users: 'Users',
-      countries: 'Countries',
-      moments: 'Moments',
-      communityInfo: 'Real moments from the MemoryMap community',
-      whyTitle: 'Why choose MemoryMap?',
-      whyDesc: 'Features designed specifically for travel enthusiasts.',
-      feature1Title: 'Interactive Map',
-      feature1Desc: 'Pin every destination on a vibrant 3D world map. Visually review your travel routes.',
-      feature2Title: 'Absolute Privacy',
-      feature2Desc: '"Just me" mode for private moments. Your data is absolutely securely encrypted.',
-      feature3Title: 'Smart Photo Album',
-      feature3Desc: 'Automatically organize photos by location and time. Create your digital travel journal.',
-      feature4Title: 'Travel Community',
-      feature4Desc: 'Connect with like-minded people. Discover hidden gems from the community.',
-      feature5Title: 'Access Anywhere',
-      feature5Desc: 'Sync data across all devices: Computer, phone, tablet. Your memories are always with you.',
-      feature6Title: 'Completely Free',
-      feature6Desc: 'Start your journey at no cost. Upgrade only when you need more storage.',
-      differentTitle: 'More than a photo library',
-      differentDesc: 'MemoryMap doesn\'t just store photos, but also preserves your stories and journeys.',
-      oldWay: 'Old Way',
-      oldWayTitle: 'Regular Photo Library',
-      oldWay1: 'Photos stored chaotically on phone',
-      oldWay2: 'Forget where and when photos were taken',
-      oldWay3: 'Cannot share by route',
-      oldWay4: 'Easy to lose data when changing devices',
-      newWay: 'New Way',
-      newWayTitle: 'MemoryMap',
-      newWay1: 'Automatically organize by location',
-      newWay2: 'Accurately attach location & time',
-      newWay3: 'Review journey on map',
-      newWay4: 'Secure cloud sync',
-      howTitle: 'Your journey starts here',
-      howDesc: '3 simple steps to turn moments into an eternal memory map.',
-      step1Title: 'Create Account',
-      step1Desc: 'Sign up for free with just Email or Google. No credit card required.',
-      step2Title: 'Share Moments',
-      step2Desc: 'Upload photos, pin locations, and write your own stories.',
-      step3Title: 'Explore Map',
-      step3Desc: 'Look back at your entire journey on an interactive 3D map.',
-      exploreTitle: 'Explore the world with MemoryMap',
-      exploreDesc: 'Over 1 million memories stored in over 50 countries worldwide.',
-      asia: 'Asia',
-      asiaDesc: 'From ancient Hoi An to legendary Mount Fuji',
-      europe: 'Europe',
-      europeDesc: 'Romantic Paris, poetic Venice, majestic Alps',
-      americas: 'Americas',
-      americasDesc: 'Grand Canyon, Machu Picchu, vibrant New York',
-      oceania: 'Oceania',
-      oceaniaDesc: 'Great Barrier Reef, Sydney Opera House, magnificent New Zealand',
-      countriesLabel: 'countries',
-      postsLabel: 'posts',
-      exploreBtn: 'Start exploring',
-      mapBadge: 'Visual & Interactive',
-      mapTitle: 'See your world',
-      mapDesc: 'Each red dot is a memory. Each line is a journey. Connect moments to create your own story on a global map.',
-      mapFeature1: 'Zoom & explore every angle',
-      mapFeature2: 'Filter by time & location',
-      mapFeature3: 'Share map with friends',
-      mapDemoBtn: 'View map demo',
-      faqTitle: 'Frequently Asked Questions',
-      faq1Q: 'Is MemoryMap free?',
-      faq1A: 'Yes! We offer a permanently free plan with full basic features. You can upgrade to Premium if you need unlimited storage.',
-      faq2Q: 'Are my photos secure?',
-      faq2A: 'Absolutely secure. Your data is encrypted and stored on a high-end secure cloud system.',
-      faq3Q: 'Can I share maps with friends?',
-      faq3A: 'Of course. You can share your public profile link or share specific posts on social media.',
-      faq4Q: 'How to get started?',
-      faq4A: 'Just click the "Sign Up Now" button in the top right corner, fill in your information and you\'re ready!',
-      ctaTitle: 'Ready to continue your story?',
-      ctaDesc: 'Join over 10,000 users preserving journeys every day.',
-      ctaBtn: 'Create free account',
-      footerProduct: 'Product',
-      footerFeatures: 'Features',
-      footerPricing: 'Pricing',
-      footerRoadmap: 'Roadmap',
-      footerCompany: 'Company',
-      footerAbout: 'About Us',
-      footerBlog: 'Blog',
-      footerCareers: 'Careers',
-      footerSupport: 'Support',
-      footerHelp: 'Help Center',
-      footerTerms: 'Terms',
-      footerPrivacy: 'Privacy',
+      title2: 'on your life map',
+      description: 'More than just photos, these are stories. Create your own memory map, mark the places you\'ve been, and share your passion for travel.',
+      ctaStart: 'Start Free',
+      ctaExplore: 'Take a Tour',
+      stats: {
+        users: 'Users',
+        countries: 'Countries',
+        moments: 'Moments'
+      },
+      communityInfo: 'Real moments from the MemoryMap community'
     },
-  };
+    cards: {
+      card1: 'Wonderful morning at the Eiffel Tower... 🥐',
+      card2: 'Colorful ancient town with lantern lights 🏮',
+      card3: 'Majestic nature and crystal clear lakes 🏔️',
+      card4: 'Tropical paradise with unique culture 🌴',
+      card5: 'Beautiful sunset over the Aegean Sea 🌅',
+      card6: 'Traditional culture and ancient architecture 🏯'
+    },
+    features: {
+      title: 'Why Choose MemoryMap?',
+      subtitle: 'Features designed specifically for travel lovers.',
+      map: {
+        title: 'Interactive Map',
+        desc: 'Pin every destination on a vibrant 3D world map. Visualize your travel routes intuitively.'
+      },
+      privacy: {
+        title: 'Absolute Privacy',
+        desc: '"Only Me" mode for private moments. Data is encrypted with absolute security.'
+      },
+      album: {
+        title: 'Smart Photo Album',
+        desc: 'Automatically organize photos by location and time. Create a digital travel journal.'
+      },
+      community: {
+        title: 'Travel Community',
+        desc: 'Connect with like-minded travelers. Discover hidden gems from the community.'
+      },
+      access: {
+        title: 'Access Anywhere',
+        desc: 'Sync data across all devices: Computer, phone, tablet. Memories always with you.'
+      },
+      free: {
+        title: 'Completely Free',
+        desc: 'Start your journey at no cost. Upgrade only when you need more storage.'
+      }
+    },
+    comparison: {
+      title: 'More Than a Photo Library',
+      subtitle: 'MemoryMap doesn\'t just store photos, it preserves your stories and journeys.',
+      oldWay: 'Old Way',
+      oldTitle: 'Regular Photo Library',
+      oldPoints: [
+        'Photos scattered in your phone',
+        'Forget where and when photos were taken',
+        'Can\'t share by route',
+        'Easy to lose data when changing devices'
+      ],
+      newWay: 'New Way',
+      newTitle: 'MemoryMap',
+      newPoints: [
+        'Auto-organize by location',
+        'Precise location & time tagging',
+        'Review journey on map',
+        'Secure cloud sync'
+      ]
+    },
+    howItWorks: {
+      title: 'Your Journey Starts Here',
+      subtitle: '3 simple steps to turn moments into an eternal memory map.',
+      step1: {
+        title: 'Create Account',
+        desc: 'Sign up free with Email or Google. No credit card required.'
+      },
+      step2: {
+        title: 'Share Moments',
+        desc: 'Upload photos, pin locations, and write your own story.'
+      },
+      step3: {
+        title: 'Explore Map',
+        desc: 'Review your entire journey on an interactive 3D map.'
+      }
+    },
+    explore: {
+      title: 'Explore the World with MemoryMap',
+      subtitle: 'Over 1 million memories preserved in more than 50 countries worldwide.',
+      asia: {
+        title: 'Asia',
+        desc: 'From Hoi An ancient town to legendary Mount Fuji',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      europe: {
+        title: 'Europe',
+        desc: 'Romantic Paris, dreamy Venice, majestic Alps',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      americas: {
+        title: 'Americas',
+        desc: 'Grand Canyon, Machu Picchu, vibrant New York',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      oceania: {
+        title: 'Oceania',
+        desc: 'Great Barrier Reef, Sydney Opera House, magnificent New Zealand',
+        countries: 'countries',
+        posts: 'posts'
+      },
+      cta: 'Start Exploring'
+    },
+    communityMap: {
+      badge: 'Visual & Interactive',
+      title: 'See Your World',
+      desc: 'Each red dot is a memory. Each line is a journey. Connect moments to create your own story on the global map.',
+      features: [
+        'Zoom & explore every angle',
+        'Filter by time & location',
+        'Share map with friends'
+      ],
+      cta: 'View Demo Map'
+    },
+    faq: {
+      title: 'Frequently Asked Questions',
+      items: [
+        {
+          q: 'Is MemoryMap free?',
+          a: 'Yes! We offer a forever-free plan with all basic features. You can upgrade to Premium if you need unlimited storage.'
+        },
+        {
+          q: 'Are my photos secure?',
+          a: 'Absolutely safe. Your data is encrypted and stored on a high-security cloud system.'
+        },
+        {
+          q: 'Can I share my map with friends?',
+          a: 'Of course. You can share your public profile link or share specific posts on social media.'
+        },
+        {
+          q: 'How do I get started?',
+          a: 'Just click the \'Sign Up\' button in the top right corner, fill in your information, and you\'re ready!'
+        }
+      ]
+    },
+    footerCta: {
+      title: 'Ready to Continue Your Story?',
+      subtitle: 'Join over 10,000 users preserving their journeys every day.',
+      cta: 'Create Free Account'
+    },
+    footer: {
+      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      product: {
+        title: 'Product',
+        features: 'Features',
+        pricing: 'Pricing',
+        roadmap: 'Roadmap'
+      },
+      company: {
+        title: 'Company',
+        about: 'About Us',
+        blog: 'Blog',
+        careers: 'Careers'
+      },
+      support: {
+        title: 'Support',
+        help: 'Help Center',
+        terms: 'Terms',
+        privacy: 'Privacy'
+      }
+    }
+  }
+};
+
+export default function LandingPage() {
+  const navigate = useNavigate();
+  const { language } = useLanguage();
+  const { isDarkMode } = useTheme();
+  const [openFaq, setOpenFaq] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+  
+  useScrollAnimation();
 
   const L = TEXT[language] || TEXT.vi;
 
-  // Đồng bộ chế độ sáng/tối với HomePage thông qua localStorage
-  const [themeMode, setThemeMode] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('homeThemeMode');
-    return stored === 'dark' ? 'dark' : 'light';
-  });
-  const isDarkMode = themeMode === 'dark';
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('homeThemeMode');
-    if (stored && stored !== themeMode) {
-      setThemeMode(stored === 'dark' ? 'dark' : 'light');
+  // Demo locations for map
+  const demoLocations = [
+    {
+      id: 1,
+      title: 'Paris, France',
+      location: { lat: 48.8566, lng: 2.3522 },
+      image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=200&q=80',
+      date: new Date('2024-06-15')
+    },
+    {
+      id: 2,
+      title: 'Tokyo, Japan',
+      location: { lat: 35.6762, lng: 139.6503 },
+      image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=200&q=80',
+      date: new Date('2024-07-20')
+    },
+    {
+      id: 3,
+      title: 'New York, USA',
+      location: { lat: 40.7128, lng: -74.0060 },
+      image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=200&q=80',
+      date: new Date('2024-08-10')
+    },
+    {
+      id: 4,
+      title: 'Sydney, Australia',
+      location: { lat: -33.8688, lng: 151.2093 },
+      image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=200&q=80',
+      date: new Date('2024-09-05')
+    },
+    {
+      id: 5,
+      title: 'Rio de Janeiro, Brazil',
+      location: { lat: -22.9068, lng: -43.1729 },
+      image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=200&q=80',
+      date: new Date('2024-10-12')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // sync một lần khi vào trang
+  ];
 
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
@@ -306,13 +505,13 @@ export default function LandingPage() {
             className="lp-btn lp-btn-ghost"
             onClick={() => navigate('/auth?mode=login')}
           >
-            {L.login}
+            {L.nav.login}
           </button>
           <button 
             className="lp-btn lp-btn-primary"
             onClick={() => navigate('/auth?mode=signup')}
           >
-            {L.signup}
+            {L.nav.signup}
           </button>
         </div>
       </nav>
@@ -324,16 +523,16 @@ export default function LandingPage() {
           <div className="hero-content-wrapper scroll-fade-in">
           <div className="lp-badge">
             <Compass size={18} className="text-teal-600" />
-            <span>{L.badge}</span>
+            <span>{L.hero.badge}</span>
           </div>
           
           <h1 className="lp-title">
-            {L.title1} <span className="lp-highlight">{L.titleHighlight}</span><br className="desktop-br"/>
-            {L.title2}
+            {L.hero.title1} <span className="lp-highlight">{L.hero.titleHighlight}</span><br className="desktop-br"/>
+            {L.hero.title2}
           </h1>
           
           <p className="lp-desc">
-            {L.desc}
+            {L.hero.description}
           </p>
 
           <div className="lp-cta-group">
@@ -341,13 +540,7 @@ export default function LandingPage() {
               className="lp-btn lp-btn-primary lp-cta-btn"
               onClick={() => navigate('/auth?mode=signup')}
             >
-              {L.ctaStart} <ArrowRight size={20} style={{marginLeft: '8px'}}/>
-            </button>
-            <button 
-              className="lp-btn lp-btn-outline lp-cta-btn"
-              onClick={() => navigate('/home')} 
-            >
-              {L.ctaExplore}
+              {L.hero.ctaStart} <ArrowRight size={20} style={{marginLeft: '8px'}}/>
             </button>
           </div>
 
@@ -357,23 +550,29 @@ export default function LandingPage() {
                 <Users size={24} className="mini-stat-icon" />
                 <div>
                   <div className="mini-stat-number">10,000+</div>
-                  <div className="mini-stat-label">{L.users}</div>
+                  <div className="mini-stat-label">{L.hero.stats.users}</div>
                 </div>
               </div>
               <div className="hero-stat-mini">
                 <Globe size={24} className="mini-stat-icon" />
                 <div>
                   <div className="mini-stat-number">50+</div>
-                  <div className="mini-stat-label">{L.countries}</div>
+                  <div className="mini-stat-label">{L.hero.stats.countries}</div>
                 </div>
               </div>
               <div className="hero-stat-mini">
                 <Camera size={24} className="mini-stat-icon" />
                 <div>
                   <div className="mini-stat-number">1M+</div>
-                  <div className="mini-stat-label">{L.moments}</div>
+                  <div className="mini-stat-label">{L.hero.stats.moments}</div>
                 </div>
               </div>
+            </div>
+
+            {/* Community info - Moved here */}
+            <div className="visual-info scroll-fade-in-delay">
+              <Compass size={20} className="info-icon" />
+              <p>{L.hero.communityInfo}</p>
             </div>
         </div>
 
@@ -394,7 +593,7 @@ export default function LandingPage() {
               <span className="lp-year">2024</span>
                     </div>
             </div>
-            <p className="lp-card-text">Buổi sáng tuyệt vời tại tháp Eiffel... 🥐</p>
+            <p className="lp-card-text">{L.cards.card1}</p>
                 </div>
           </div>
 
@@ -411,7 +610,7 @@ export default function LandingPage() {
                       <span className="lp-year">2024</span>
                     </div>
                   </div>
-                  <p className="lp-card-text">Phố cổ đầy màu sắc và ánh đèn lồng 🏮</p>
+                  <p className="lp-card-text">{L.cards.card2}</p>
             </div>
           </div>
 
@@ -429,7 +628,7 @@ export default function LandingPage() {
                       <span className="lp-year">2024</span>
                     </div>
                   </div>
-                  <p className="lp-card-text">Thiên nhiên hùng vĩ và hồ nước trong xanh 🏔️</p>
+                  <p className="lp-card-text">{L.cards.card3}</p>
             </div>
           </div>
 
@@ -446,7 +645,7 @@ export default function LandingPage() {
                       <span className="lp-year">2024</span>
                     </div>
                   </div>
-                  <p className="lp-card-text">Thiên đường nhiệt đới với văn hóa độc đáo 🌴</p>
+                  <p className="lp-card-text">{L.cards.card4}</p>
             </div>
           </div>
 
@@ -464,7 +663,7 @@ export default function LandingPage() {
                       <span className="lp-year">2024</span>
                     </div>
                   </div>
-                  <p className="lp-card-text">Hoàng hôn tuyệt đẹp trên biển Aegean 🌅</p>
+                  <p className="lp-card-text">{L.cards.card5}</p>
             </div>
           </div>
 
@@ -481,16 +680,10 @@ export default function LandingPage() {
                       <span className="lp-year">2024</span>
                     </div>
                   </div>
-                  <p className="lp-card-text">Văn hóa truyền thống và kiến trúc cổ kính 🏯</p>
+                  <p className="lp-card-text">{L.cards.card6}</p>
                 </div>
             </div>
           </div>
-          
-            {/* Community info */}
-            <div className="visual-info scroll-fade-in-delay">
-            <Compass size={20} className="info-icon" />
-            <p>{L.communityInfo}</p>
-            </div>
           </div>
         </div>
       </header>
@@ -498,51 +691,51 @@ export default function LandingPage() {
       {/* Features Section */}
       <section className="lp-features">
         <div className="lp-section-header">
-          <h2>{L.whyTitle}</h2>
-          <p>{L.whyDesc}</p>
+          <h2>{L.features.title}</h2>
+          <p>{L.features.subtitle}</p>
         </div>
         <div className="lp-grid">
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Map size={28} />
             </div>
-            <h3>{L.feature1Title}</h3>
-            <p>{L.feature1Desc}</p>
+            <h3>{L.features.map.title}</h3>
+            <p>{L.features.map.desc}</p>
           </div>
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Shield size={28} />
             </div>
-            <h3>{L.feature2Title}</h3>
-            <p>{L.feature2Desc}</p>
+            <h3>{L.features.privacy.title}</h3>
+            <p>{L.features.privacy.desc}</p>
           </div>
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Camera size={28} />
             </div>
-            <h3>{L.feature3Title}</h3>
-            <p>{L.feature3Desc}</p>
+            <h3>{L.features.album.title}</h3>
+            <p>{L.features.album.desc}</p>
           </div>
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Users size={28} />
             </div>
-            <h3>{L.feature4Title}</h3>
-            <p>{L.feature4Desc}</p>
+            <h3>{L.features.community.title}</h3>
+            <p>{L.features.community.desc}</p>
           </div>
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Globe size={28} />
             </div>
-            <h3>{L.feature5Title}</h3>
-            <p>{L.feature5Desc}</p>
+            <h3>{L.features.access.title}</h3>
+            <p>{L.features.access.desc}</p>
           </div>
           <div className="lp-feature-item">
             <div className="lp-icon-box">
               <Heart size={28} />
             </div>
-            <h3>{L.feature6Title}</h3>
-            <p>{L.feature6Desc}</p>
+            <h3>{L.features.free.title}</h3>
+            <p>{L.features.free.desc}</p>
           </div>
         </div>
       </section>
@@ -550,20 +743,19 @@ export default function LandingPage() {
       {/* Why Different Section - NEW */}
       <section className="lp-why-different">
         <div className="lp-section-header">
-          <h2>{L.differentTitle}</h2>
-          <p>{L.differentDesc}</p>
+          <h2>{L.comparison.title}</h2>
+          <p>{L.comparison.subtitle}</p>
         </div>
         
         <div className="comparison-grid">
           <div className="comparison-item old-way">
-            <div className="comparison-label">{L.oldWay}</div>
+            <div className="comparison-label">{L.comparison.oldWay}</div>
             <div className="comparison-icon">📱</div>
-            <h3>{L.oldWayTitle}</h3>
+            <h3>{L.comparison.oldTitle}</h3>
             <ul className="comparison-list">
-              <li>❌ {L.oldWay1}</li>
-              <li>❌ {L.oldWay2}</li>
-              <li>❌ {L.oldWay3}</li>
-              <li>❌ {L.oldWay4}</li>
+              {L.comparison.oldPoints.map((point, idx) => (
+                <li key={idx}>❌ {point}</li>
+              ))}
             </ul>
           </div>
 
@@ -572,14 +764,13 @@ export default function LandingPage() {
           </div>
 
           <div className="comparison-item new-way">
-            <div className="comparison-label highlight">{L.newWay}</div>
+            <div className="comparison-label highlight">{L.comparison.newWay}</div>
             <div className="comparison-icon">🗺️</div>
-            <h3>{L.newWayTitle}</h3>
+            <h3>{L.comparison.newTitle}</h3>
             <ul className="comparison-list">
-              <li>✅ {L.newWay1}</li>
-              <li>✅ {L.newWay2}</li>
-              <li>✅ {L.newWay3}</li>
-              <li>✅ {L.newWay4}</li>
+              {L.comparison.newPoints.map((point, idx) => (
+                <li key={idx}>✅ {point}</li>
+              ))}
             </ul>
           </div>
         </div>
@@ -588,8 +779,8 @@ export default function LandingPage() {
       {/* How it works - Timeline Design */}
       <section className="lp-how-it-works">
         <div className="lp-section-header">
-          <h2>{L.howTitle}</h2>
-          <p>{L.howDesc}</p>
+          <h2>{L.howItWorks.title}</h2>
+          <p>{L.howItWorks.subtitle}</p>
         </div>
         
         <div className="timeline-wrapper">
@@ -610,8 +801,8 @@ export default function LandingPage() {
                 <div className="card-icon">
                   <Users size={36} strokeWidth={2.5} />
                 </div>
-                <h3>{L.step1Title}</h3>
-                <p>{L.step1Desc}</p>
+                <h3>{L.howItWorks.step1.title}</h3>
+                <p>{L.howItWorks.step1.desc}</p>
               </div>
             </div>
 
@@ -622,8 +813,8 @@ export default function LandingPage() {
                 <div className="card-icon">
                   <Camera size={36} strokeWidth={2.5} />
                 </div>
-                <h3>{L.step2Title}</h3>
-                <p>{L.step2Desc}</p>
+                <h3>{L.howItWorks.step2.title}</h3>
+                <p>{L.howItWorks.step2.desc}</p>
               </div>
             </div>
 
@@ -634,127 +825,11 @@ export default function LandingPage() {
                 <div className="card-icon">
                   <Map size={36} strokeWidth={2.5} />
                 </div>
-                <h3>{L.step3Title}</h3>
-                <p>{L.step3Desc}</p>
+                <h3>{L.howItWorks.step3.title}</h3>
+                <p>{L.howItWorks.step3.desc}</p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Explore Destinations - NEW DESIGN */}
-      <section className="lp-explore">
-        <div className="lp-section-header">
-          <h2>{L.exploreTitle}</h2>
-          <p>{L.exploreDesc}</p>
-        </div>
-
-        <div className="explore-grid">
-          {/* Châu Á */}
-          <div className="explore-card">
-            <div className="explore-image">
-              <img src="https://images.unsplash.com/photo-1528127269322-539801943592?auto=format&fit=crop&w=800&q=80" alt="Asia" />
-              <div className="explore-overlay"></div>
-            </div>
-            <div className="explore-content">
-              <div className="explore-icon">
-                <Globe size={24} />
-              </div>
-              <h3>{L.asia}</h3>
-              <p className="explore-desc">{L.asiaDesc}</p>
-              <div className="explore-stats">
-                <span className="stat-item">
-                  <MapPin size={16} />
-                  <strong>12</strong> {L.countriesLabel}
-                </span>
-                <span className="stat-item">
-                  <Camera size={16} />
-                  <strong>2.4k</strong> {L.postsLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Châu Âu */}
-          <div className="explore-card">
-            <div className="explore-image">
-              <img src="https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=800&q=80" alt="Europe" />
-              <div className="explore-overlay"></div>
-            </div>
-            <div className="explore-content">
-              <div className="explore-icon">
-                <Globe size={24} />
-              </div>
-              <h3>{L.europe}</h3>
-              <p className="explore-desc">{L.europeDesc}</p>
-              <div className="explore-stats">
-                <span className="stat-item">
-                  <MapPin size={16} />
-                  <strong>18</strong> {L.countriesLabel}
-                </span>
-                <span className="stat-item">
-                  <Camera size={16} />
-                  <strong>3.8k</strong> {L.postsLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Châu Mỹ */}
-          <div className="explore-card">
-            <div className="explore-image">
-              <img src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=800&q=80" alt="Americas" />
-              <div className="explore-overlay"></div>
-            </div>
-            <div className="explore-content">
-              <div className="explore-icon">
-                <Globe size={24} />
-              </div>
-              <h3>{L.americas}</h3>
-              <p className="explore-desc">{L.americasDesc}</p>
-              <div className="explore-stats">
-                <span className="stat-item">
-                  <MapPin size={16} />
-                  <strong>8</strong> {L.countriesLabel}
-                </span>
-                <span className="stat-item">
-                  <Camera size={16} />
-                  <strong>1.9k</strong> {L.postsLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Châu Đại Dương */}
-          <div className="explore-card">
-            <div className="explore-image">
-              <img src="https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&w=800&q=80" alt="Oceania" />
-              <div className="explore-overlay"></div>
-            </div>
-            <div className="explore-content">
-              <div className="explore-icon">
-                <Globe size={24} />
-              </div>
-              <h3>{L.oceania}</h3>
-              <p className="explore-desc">{L.oceaniaDesc}</p>
-              <div className="explore-stats">
-                <span className="stat-item">
-                  <MapPin size={16} />
-                  <strong>5</strong> {L.countriesLabel}
-                </span>
-                <span className="stat-item">
-                  <Camera size={16} />
-                  <strong>890</strong> {L.postsLabel}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="lp-center-btn">
-          <button className="lp-btn lp-btn-primary" onClick={() => navigate('/home')}>
-            {L.exploreBtn}
-          </button>
         </div>
       </section>
 
@@ -764,41 +839,28 @@ export default function LandingPage() {
           <div className="map-text">
             <span className="map-badge">
               <Map size={18} />
-              <span>{L.mapBadge}</span>
+              <span>{L.communityMap.badge}</span>
             </span>
-            <h2>{L.mapTitle}</h2>
-            <p>{L.mapDesc}</p>
+            <h2>{L.communityMap.title}</h2>
+            <p>{L.communityMap.desc}</p>
             
             <div className="map-features">
-              <div className="map-feature-item">
-                <CheckCircle2 size={20} />
-                <span>{L.mapFeature1}</span>
-              </div>
-              <div className="map-feature-item">
-                <CheckCircle2 size={20} />
-                <span>{L.mapFeature2}</span>
-              </div>
-              <div className="map-feature-item">
-                <CheckCircle2 size={20} />
-                <span>{L.mapFeature3}</span>
-              </div>
+              {L.communityMap.features.map((feature, idx) => (
+                <div key={idx} className="map-feature-item">
+                  <CheckCircle2 size={20} />
+                  <span>{feature}</span>
+                </div>
+              ))}
             </div>
             
-            <button className="lp-btn lp-btn-primary" style={{marginTop: '1.5rem'}} onClick={() => navigate('/home')}>
-              {L.mapDemoBtn}
+            <button className="lp-btn lp-btn-primary" style={{marginTop: '1.5rem'}} onClick={() => setShowMapModal(true)}>
+              {L.communityMap.cta}
             </button>
           </div>
           
           <div className="map-visual">
             <div className="map-mockup">
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?auto=format&fit=crop&w=800&q=80" alt="World Map" />
-              <div className="map-pins">
-                <div className="pin pin-1"></div>
-                <div className="pin pin-2"></div>
-                <div className="pin pin-3"></div>
-                <div className="pin pin-4"></div>
-                <div className="pin pin-5"></div>
-              </div>
+              <StaticMapView locations={demoLocations} />
             </div>
           </div>
         </div>
@@ -807,15 +869,10 @@ export default function LandingPage() {
       {/* FAQ Section */}
       <section className="lp-faq">
         <div className="lp-section-header">
-          <h2>{L.faqTitle}</h2>
+          <h2>{L.faq.title}</h2>
         </div>
         <div className="faq-container">
-          {[
-            { q: L.faq1Q, a: L.faq1A },
-            { q: L.faq2Q, a: L.faq2A },
-            { q: L.faq3Q, a: L.faq3A },
-            { q: L.faq4Q, a: L.faq4A }
-          ].map((item, idx) => (
+          {L.faq.items.map((item, idx) => (
             <div key={idx} className={`faq-item ${openFaq === idx ? 'open' : ''}`} onClick={() => toggleFaq(idx)}>
               <div className="faq-question">
                 <h3>{item.q}</h3>
@@ -831,13 +888,13 @@ export default function LandingPage() {
 
       {/* CTA Footer */}
       <section className="lp-footer-cta">
-        <h2>{L.ctaTitle}</h2>
-        <p>{L.ctaDesc}</p>
+        <h2>{L.footerCta.title}</h2>
+        <p>{L.footerCta.subtitle}</p>
         <button 
           className="lp-btn lp-btn-primary lp-cta-btn-large"
           onClick={() => navigate('/auth?mode=signup')}
         >
-          {L.ctaBtn}
+          {L.footerCta.cta}
         </button>
       </section>
 
@@ -849,30 +906,82 @@ export default function LandingPage() {
               <Leaf size={24} />
               <span>MemoryMap</span>
             </div>
-            <p>© 2025 MemoryMap Inc. All rights reserved.</p>
+            <p>{L.footer.copyright}</p>
           </div>
           <div className="footer-links">
             <div className="link-col">
-              <h4>{L.footerProduct}</h4>
-              <span className="footer-link">{L.footerFeatures}</span>
-              <span className="footer-link">{L.footerPricing}</span>
-              <span className="footer-link">{L.footerRoadmap}</span>
+              <h4>{L.footer.product.title}</h4>
+              <span className="footer-link">{L.footer.product.features}</span>
+              <span className="footer-link">{L.footer.product.pricing}</span>
+              <span className="footer-link">{L.footer.product.roadmap}</span>
             </div>
             <div className="link-col">
-              <h4>{L.footerCompany}</h4>
-              <span className="footer-link">{L.footerAbout}</span>
-              <span className="footer-link">{L.footerBlog}</span>
-              <span className="footer-link">{L.footerCareers}</span>
+              <h4>{L.footer.company.title}</h4>
+              <span className="footer-link">{L.footer.company.about}</span>
+              <span className="footer-link">{L.footer.company.blog}</span>
+              <span className="footer-link">{L.footer.company.careers}</span>
             </div>
             <div className="link-col">
-              <h4>{L.footerSupport}</h4>
-              <span className="footer-link">{L.footerHelp}</span>
-              <span className="footer-link">{L.footerTerms}</span>
-              <span className="footer-link">{L.footerPrivacy}</span>
+              <h4>{L.footer.support.title}</h4>
+              <span className="footer-link">{L.footer.support.help}</span>
+              <span className="footer-link">{L.footer.support.terms}</span>
+              <span className="footer-link">{L.footer.support.privacy}</span>
             </div>
           </div>
         </div>
       </footer>
+
+      {/* Map Demo Modal */}
+      {showMapModal && (
+        <div 
+          className="map-modal-overlay" 
+          onClick={() => setShowMapModal(false)}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div 
+            className="map-modal-content" 
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              width: '90%', 
+              maxWidth: '1200px', 
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            <div className="map-modal-header">
+              <h2>{L.communityMap.title}</h2>
+              <button 
+                className="map-modal-close" 
+                onClick={() => setShowMapModal(false)}
+                aria-label="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="map-modal-body">
+              <MapView 
+                locations={demoLocations}
+                mapType="roadmap"
+                userLocation={null}
+                onMarkerClick={(marker) => {
+                  console.log('Marker clicked:', marker);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

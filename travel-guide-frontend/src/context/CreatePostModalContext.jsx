@@ -1,5 +1,5 @@
 // context/CreatePostModalContext.jsx
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import api, { createArticleWithMultipleUploads } from "../services/article";
 
@@ -14,7 +14,79 @@ export function CreatePostModalProvider({ children }) {
   const [editPostData, setEditPostData] = useState(null);
   const [caption, setCaption] = useState("");
   const [privacy, setPrivacy] = useState("public");
+  const [isPosting, setIsPosting] = useState(false);
+  
+  // Quản lý Cooldown
+  const [cooldownTime, setCooldownTime] = useState(0);
+  const intervalRef = useRef(null); // Sử dụng useRef để quản lý interval
+
   const { getIdToken, refreshAuth, user } = useAuth();
+
+  // Hàm xử lý việc khởi động Cooldown Timer - Tinh tế và cô đọng hơn
+  const startCooldownTimer = useCallback((waitTime) => {
+    // 1. Dừng timer cũ nếu có
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    // 2. Lưu thời gian kết thúc vào localStorage để tránh bypass bằng refresh
+    const endTime = Date.now() + (waitTime * 1000);
+    localStorage.setItem('postCooldown', JSON.stringify({ endTime }));
+    
+    // 3. Thiết lập thời gian chờ
+    setCooldownTime(waitTime);
+    
+    // 4. Bắt đầu đếm ngược mượt mà
+    intervalRef.current = setInterval(() => {
+      setCooldownTime(prev => {
+        if (prev <= 1) {
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+          }
+          // Xóa cooldown khỏi localStorage khi hết thời gian
+          localStorage.removeItem('postCooldown');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // 5. Hiển thị thông báo (nếu có sẵn)
+    if (window.showSuccessToast) {
+      const message = `⏱️ Vui lòng đợi ${waitTime}s trước khi đăng bài tiếp`;
+      window.showSuccessToast(message);
+    }
+    
+    console.log(`⏱️ Rate Limit: Bắt đầu đếm ngược ${waitTime}s`);
+  }, []);
+
+  // Load cooldown from localStorage on mount
+  useEffect(() => {
+    const savedCooldown = localStorage.getItem('postCooldown');
+    if (savedCooldown) {
+      const { endTime } = JSON.parse(savedCooldown);
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+      
+      if (remaining > 0) {
+        console.log(`⏱️ Khôi phục cooldown: ${remaining}s còn lại`);
+        startCooldownTimer(remaining);
+      } else {
+        // Cooldown đã hết, xóa khỏi localStorage
+        localStorage.removeItem('postCooldown');
+      }
+    }
+  }, [startCooldownTimer]);
+
+  // Cleanup effect
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
 
   const openModal = useCallback(() => {
     if (!getIdToken()) {
@@ -40,12 +112,19 @@ export function CreatePostModalProvider({ children }) {
     setStep(2); // Skip to PostDetails step
     setEditMode(true);
     setEditPostData(post);
-    // Set image from post
-    if (post.imageKey) {
+    // Set images from post - support both single and multiple images
+    if (post.imageKeys && post.imageKeys.length > 0) {
+      // Multiple images
+      const imageUrls = post.imageKeys.map(key => 
+        key.startsWith('http') ? key : `https://${process.env.REACT_APP_CF_DOMAIN}/${key}`
+      );
+      setImage(imageUrls);
+    } else if (post.imageKey) {
+      // Single image (backward compatibility)
       const imageUrl = post.imageKey.startsWith('http') 
         ? post.imageKey 
         : `https://${process.env.REACT_APP_CF_DOMAIN}/${post.imageKey}`;
-      setImage(imageUrl);
+      setImage([imageUrl]); // Wrap in array for consistency
     }
   }, [getIdToken]);
 
@@ -74,6 +153,24 @@ export function CreatePostModalProvider({ children }) {
   }, []);
 
   const handleShare = useCallback(async (postData) => {
+    // Check if already posting
+    if (isPosting) {
+      console.log('⚠️ Already posting, ignoring duplicate request');
+      return;
+    }
+    
+    // Check cooldown
+    if (cooldownTime > 0) {
+      // Sử dụng thông báo trực tiếp từ state để tăng tính đồng bộ
+      const remainingTime = Math.max(1, cooldownTime);
+      if (window.showSuccessToast) {
+        window.showSuccessToast(`Vui lòng đợi ${remainingTime}s trước khi đăng bài tiếp`);
+      }
+      return;
+    }
+    
+    setIsPosting(true);
+    
     try {
       console.log('📤 handleShare - Starting...', postData);
       console.log('🔧 Edit mode:', editMode);
@@ -103,8 +200,27 @@ export function CreatePostModalProvider({ children }) {
           locationName: postData.location.name || `${postData.location.lat}, ${postData.location.lng}`,
         };
         
+        // If images are provided (reordered), extract the keys and send them
+        if (postData.image && Array.isArray(postData.image) && postData.image.length > 0) {
+          // Extract image keys from URLs (remove CloudFront domain)
+          const imageKeys = postData.image.map(url => {
+            if (url.includes(process.env.REACT_APP_CF_DOMAIN)) {
+              // Extract key from CloudFront URL
+              return url.split(`${process.env.REACT_APP_CF_DOMAIN}/`)[1];
+            }
+            return url; // If already a key, use as is
+          });
+          updateData.imageKeys = imageKeys;
+          console.log('📸 Updating image order:', imageKeys);
+        }
+        
         const result = await api.updateArticle(editPostData.articleId, updateData);
         console.log('✅ Update success:', result);
+        
+        // ✅ Invalidate cache để user thấy bài đã update ngay
+        console.log('🗑️ Invalidating cache after update...');
+        api.invalidateArticlesCache();
+        
         return result;
       }
       
@@ -143,6 +259,11 @@ export function CreatePostModalProvider({ children }) {
           tags: []
         });
         console.log('✅ Upload success:', result);
+        
+        // ✅ Invalidate cache để user thấy bài mới ngay lập tức
+        console.log('🗑️ Invalidating cache after creating new post...');
+        api.invalidateArticlesCache();
+        
         return result;
       } else {
         console.error('❌ Images are not valid data URLs!');
@@ -154,11 +275,43 @@ export function CreatePostModalProvider({ children }) {
       console.error('Error details:', {
         name: error.name,
         message: error.message,
-        stack: error.stack
+        stack: error.stack,
+        status: error.status
       });
+      
+      // ✨ Xử lý Rate Limiting (429) - Chặn spam hiệu quả ✨
+      if (error.status === 429 || error.message?.includes('đợi')) {
+        // Extract wait time from error message
+        const match = error.message.match(/(\d+)s/);
+        const waitTime = match ? parseInt(match[1]) : 30;
+        
+        console.log(`🚫 Rate limit hit! Cooldown: ${waitTime}s`);
+        
+        // Gọi hàm xử lý Cooldown tập trung
+        startCooldownTimer(waitTime);
+
+        // Không ném lỗi nữa, chỉ return để tránh hiển thị lỗi 2 lần
+        return;
+      }
+      // ------------------------------------------------------------------------------------
+      
+      // Hiển thị thông báo lỗi cho các lỗi khác
+      if (window.showSuccessToast) {
+        const errorMsg = error.status === 401
+          ? '🔒 Vui lòng đăng nhập lại'
+          : error.status === 400
+          ? `❌ ${error.message || 'Dữ liệu không hợp lệ'}`
+          : error.status === 500
+          ? '⚠️ Lỗi server, vui lòng thử lại sau'
+          : `❌ ${error.message || 'Có lỗi xảy ra'}`;
+        window.showSuccessToast(errorMsg);
+      }
+      
       throw error;
+    } finally {
+      setIsPosting(false);
     }
-  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData]);
+  }, [getIdToken, refreshAuth, dataURLToFile, editMode, editPostData, isPosting, cooldownTime, startCooldownTimer]);
 
   return (
     <CreatePostModalContext.Provider
@@ -179,7 +332,9 @@ export function CreatePostModalProvider({ children }) {
         caption,
         setCaption,
         privacy,
-        setPrivacy
+        setPrivacy,
+        isPosting,
+        cooldownTime
       }}
     >
       {children}

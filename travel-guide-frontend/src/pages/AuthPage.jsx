@@ -10,9 +10,17 @@ export default function AuthPage() {
   const params = new URLSearchParams(location.search);
   const mode = params.get("mode") || "login";
 
-  const [isRegister, setIsRegister] = useState(mode === "register");
+  const [isRegister, setIsRegister] = useState(mode === "register" || mode === "signup");
   const [animating, setAnimating] = useState(false);
   const containerRef = useRef(null);
+
+  // Cập nhật isRegister khi mode trong URL thay đổi
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const currentMode = urlParams.get("mode") || "login";
+    const shouldBeRegister = currentMode === "register" || currentMode === "signup";
+    setIsRegister(shouldBeRegister);
+  }, [location.search]);
 
   useEffect(() => {
     if (!containerRef.current) return;

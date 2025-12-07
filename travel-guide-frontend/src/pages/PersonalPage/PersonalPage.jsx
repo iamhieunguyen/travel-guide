@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   MapPin, 
   Plus,
@@ -18,10 +18,12 @@ import { useAuth } from '../../hook/useAuth';
 import useProfile from '../../hook/useProfile';
 import { useCreatePostModal } from '../../context/CreatePostModalContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/article';
 import DateRangePicker from '../../components/DateRangePicker/DateRangePicker';
 import MapView from '../../components/map/MapView';
 import PostMap from '../../components/PostMap';
+import '../HomePage.css';
 import './PersonalPage.css';
 
 const resolveImageUrl = (key) => {
@@ -95,22 +97,24 @@ export default function PersonalPage() {
   const { openModal, refreshKey } = useCreatePostModal();
   const { profile } = useProfile();
   const { language } = useLanguage();
-
-  // Đồng bộ chế độ sáng/tối với HomePage thông qua localStorage
-  const [themeMode, setThemeMode] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('homeThemeMode');
-    return stored === 'dark' ? 'dark' : 'light';
-  });
-  const isDarkMode = themeMode === 'dark';
+  const { isDarkMode } = useTheme();
 
   const [memories, setMemories] = useState([]);
   const [favoriteMemories, setFavoriteMemories] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState('grid');
   const [privacyFilter, setPrivacyFilter] = useState('all');
-  const [dateRange, setDateRange] = useState(null); 
+  const [dateRange, setDateRange] = useState(null);
+  
+  // Kiểm tra URL params để tự động chọn tab "Đã quan tâm"
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'favorites') {
+      setPrivacyFilter('favorites');
+    }
+  }, [searchParams]); 
   const [selectedMemory, setSelectedMemory] = useState(null);
   const [likedIds, setLikedIds] = useState(new Set());
   const [userLocation, setUserLocation] = useState(null);
@@ -118,9 +122,11 @@ export default function PersonalPage() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const showLocation = user?.showLocationPref ?? true; // chỉ điều khiển marker vị trí hiện tại
   const mapType = user?.mapTypePref || 'roadmap';
-  const authorDisplayName =
-    user?.displayName || user?.username || user?.email?.split('@')[0] || 'User';
+  // Lấy thông tin author từ selectedMemory nếu có (cho favorites), nếu không thì dùng user hiện tại
+  const authorDisplayName = selectedMemory?.authorDisplayName || 
+    (user?.displayName || user?.username || user?.email?.split('@')[0] || 'User');
   const authorInitial = authorDisplayName.charAt(0).toUpperCase();
+  const authorAvatar = selectedMemory?.authorAvatar || null;
   const modalImages = selectedMemory
     ? selectedMemory.imageKeys && selectedMemory.imageKeys.length
       ? selectedMemory.imageKeys
@@ -198,14 +204,7 @@ export default function PersonalPage() {
   }, [memories]);
 
   // Cập nhật lại themeMode nếu localStorage thay đổi (khi user đã toggle ở Home trước đó)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('homeThemeMode');
-    if (stored && stored !== themeMode) {
-      setThemeMode(stored === 'dark' ? 'dark' : 'light');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // chỉ cần sync một lần khi vào trang
+  // Theme is now managed by ThemeContext - no need for local useEffect
 
   // Redirect nếu chưa đăng nhập
   useEffect(() => {
@@ -403,6 +402,11 @@ export default function PersonalPage() {
             locationName = item.location.name;
           }
 
+          // Lấy thông tin author từ API response
+          const authorDisplayName = item.username || item.authorDisplayName || item.ownerDisplayName || `User_${item.ownerId?.substring(0, 6)}` || 'User';
+          const authorAvatar = item.authorAvatar || item.ownerAvatar || null;
+          const authorId = item.ownerId || item.authorId || null;
+
           return {
             id: item.articleId,
             imageKeys: Array.isArray(item.imageKeys)
@@ -421,6 +425,10 @@ export default function PersonalPage() {
             date: new Date(item.createdAt),
             scope: item.visibility || 'public',
             likeCount: item.favoriteCount || 0,
+            // Thông tin author
+            authorId: authorId,
+            authorDisplayName: authorDisplayName,
+            authorAvatar: authorAvatar,
           };
         });
 
@@ -433,18 +441,22 @@ export default function PersonalPage() {
   }, [user]);
 
   return (
-    <div className={`journal-page ${isDarkMode ? 'journal-page--dark' : 'journal-page--light'}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]'}`}>
+      <div className={`journal-page ${isDarkMode ? 'journal-page--dark' : 'journal-page--light'}`} style={{ background: 'transparent' }}>
       <header className="journal-header">
-        <div className="journal-cover">
-          <div className="overlay-gradient"></div>
-          <div className="header-controls">
-            <button onClick={() => navigate('/home')} className="icon-btn glass">
-              <ArrowLeft size={20} />
-            </button>
-            <button onClick={() => navigate('/settings')} className="icon-btn glass">
-              <MoreHorizontal size={20} />
-            </button>
-          </div>
+        <div className="header-controls">
+          <button 
+            onClick={() => navigate('/home')} 
+            className={`header-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3 rounded-2xl`}
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <button 
+            onClick={() => navigate('/settings')} 
+            className={`header-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3 rounded-2xl`}
+          >
+            <MoreHorizontal size={20} />
+          </button>
         </div>
 
         <div className="journal-profile">
@@ -488,18 +500,18 @@ export default function PersonalPage() {
         <nav className="journal-toolbar">
           <div className="view-switcher">
             <button 
-              className={`view-tab ${viewMode === 'grid' ? 'active' : ''}`}
+              className={`sidebar-nav-button ${isDarkMode ? 'dark-mode' : 'light-mode'} ${viewMode === 'grid' ? 'active' : ''} flex items-center gap-2 px-4 py-2`}
               onClick={() => setViewMode('grid')}
             >
               <LayoutGrid size={18} />
-                <span>{L.gridView}</span>
+              <span>{L.gridView}</span>
             </button>
             <button 
-              className={`view-tab ${viewMode === 'map' ? 'active' : ''}`}
+              className={`sidebar-nav-button ${isDarkMode ? 'dark-mode' : 'light-mode'} ${viewMode === 'map' ? 'active' : ''} flex items-center gap-2 px-4 py-2`}
               onClick={() => setViewMode('map')}
             >
               <Map size={18} />
-                <span>{L.mapView}</span>
+              <span>{L.mapView}</span>
             </button>
           </div>
 
@@ -565,7 +577,12 @@ export default function PersonalPage() {
                     </button>
                   </div>
                 ) : (
-                  <button onClick={openModal}>{L.writeFirst}</button>
+                  <button 
+                    onClick={openModal}
+                    className={`sidebar-nav-button ${isDarkMode ? 'dark-mode' : 'light-mode'} px-6 py-3`}
+                  >
+                    {L.writeFirst}
+                  </button>
                 )}
               </div>
             ) : (
@@ -582,22 +599,8 @@ export default function PersonalPage() {
                       {memory.image && (
                         <div className="card-image">
                           <img src={memory.image} alt={memory.title} loading="lazy" />
-                          <div className="card-overlay">
-                            <span className={`privacy-tag ${memory.scope}`}>
-                              {memory.scope === 'public' ? (
-                                <Globe size={14} />
-                              ) : (
-                                <Lock size={14} />
-                              )}
-                            </span>
-                            {likedIds.has(memory.id) && (
-                              <span className="favorite-tag">
-                                <Heart size={13} />
-                            </span>
-                          )}
                         </div>
-                        </div>
-                        )}
+                      )}
                     </div>
                   ))}
                 </div>
@@ -607,9 +610,9 @@ export default function PersonalPage() {
             {viewMode === 'map' && (
               <div className="map-view-container">
                 {filteredMemories.length === 0 && (
-                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 px-4 py-2 rounded-full shadow-md text-sm text-gray-500">
                     {L.noLocations}
-                   </div>
+                  </div>
                 )}
                 <MapView 
                   locations={filteredMemories} 
@@ -651,7 +654,7 @@ export default function PersonalPage() {
                   <div className="modal-top-bar">
                     <span className="modal-date">
                       {formatDate(selectedMemory.date)}
-                      <span style={{ margin: '0 6px' }}>•</span>
+                      <span className="date-separator-dot"></span>
                       {selectedMemory.date.toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
                         minute: '2-digit',
@@ -683,42 +686,28 @@ export default function PersonalPage() {
                     <button 
                       type="button"
                       onClick={() => toggleLike(selectedMemory.id)}
-                      className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-2xl transition-colors group ${
-                        likedIds.has(selectedMemory.id)
-                          ? 'bg-[#92ADA4] hover:bg-[#7d9a91]'
-                          : 'bg-[#f5f5f5] hover:bg-[#92ADA4]'
-                      }`}
+                      className={`like-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} ${likedIds.has(selectedMemory.id) ? 'liked' : ''} flex-1 flex items-center justify-center gap-2 px-6 py-3`}
                     >
-                      <Heart 
-                        className={`w-5 h-5 transition-colors ${
-                          likedIds.has(selectedMemory.id)
-                            ? 'text-white fill-white'
-                            : 'text-gray-700 group-hover:text-white'
-                        }`}
-                      />
-                      <span className={`font-medium text-sm transition-colors ${
-                        likedIds.has(selectedMemory.id)
-                          ? 'text-white'
-                          : 'text-gray-700 group-hover:text-white'
-                      }`}>
+                      <Heart className="w-5 h-5" />
+                      <span className="font-medium text-sm">
                         {likedIds.has(selectedMemory.id) ? L.liked : L.like}
                       </span>
                     </button>
 
                     <button 
                       type="button"
-                      className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                      className={`action-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3`}
                     >
-                      <Share2 className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
+                      <Share2 className="w-5 h-5" />
                     </button>
 
                     <div className="relative">
                       <button 
                         type="button"
-                        className="p-3 bg-[#f5f5f5] hover:bg-[#92ADA4] rounded-2xl transition-colors group"
+                        className={`action-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3`}
                         onClick={() => setOpenMenuId(selectedMemory.id)}
                       >
-                        <MoreHorizontal className="w-5 h-5 text-gray-700 group-hover:text-white transition-colors" />
+                        <MoreHorizontal className="w-5 h-5" />
                       </button>
 
                       {openMenuId === selectedMemory.id && (
@@ -756,7 +745,11 @@ export default function PersonalPage() {
                   <div className="modal-body">
                     <div className="modal-author">
                       <div className="modal-author-avatar">
-                        {profile?.avatarUrl ? (
+                        {authorAvatar ? (
+                          <img src={authorAvatar} alt={authorDisplayName} />
+                        ) : selectedMemory?.authorDisplayName ? (
+                          <span>{authorInitial}</span>
+                        ) : profile?.avatarUrl ? (
                           <img src={profile.avatarUrl} alt={authorDisplayName} />
                         ) : (
                           <span>{authorInitial}</span>
@@ -783,7 +776,6 @@ export default function PersonalPage() {
                     <Heart className="w-4 h-4" />
                     <span>{selectedMemory.likeCount || 0} {L.likeCount}</span>
                   </div>
-
                 </div>
               </div>
             </div>
@@ -798,6 +790,7 @@ export default function PersonalPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

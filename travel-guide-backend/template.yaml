@@ -217,20 +217,20 @@ Resources:
   # DATA LAYER
   ##############################
 
-  # SNS Topic for user notifications
-  ProcessingNotificationTopic:
+  # SNS Topic for admin notifications only (for critical moderation alerts)
+  AdminNotificationTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: !Sub '${AWS::StackName}-processing-notifications'
-      DisplayName: Image Processing Notifications
+      TopicName: !Sub '${AWS::StackName}-admin-notifications'
+      DisplayName: Admin Notifications for Critical Content
 
-  # SNS subscription for email (update this email in deployment)
-  ProcessingNotificationEmailSubscription:
+  # SNS subscription for admin email
+  AdminNotificationEmailSubscription:
     Type: AWS::SNS::Subscription
     Properties:
       Protocol: email
-      TopicArn: !Ref ProcessingNotificationTopic
-      Endpoint: khiem120805@gmail.com  # CHANGE THIS TO YOUR EMAIL
+      TopicArn: !Ref AdminNotificationTopic
+      Endpoint: khiem120805@gmail.com  # Admin email for critical alerts
 
   ArticleImagesBucket:
     Type: AWS::S3::Bucket
@@ -252,7 +252,6 @@ Resources:
         RestrictPublicBuckets: true
       NotificationConfiguration:
         QueueConfigurations:
-          # Send ObjectCreated events to Image Validator (first in pipeline)
           - Event: s3:ObjectCreated:*
             Queue: !GetAtt ImageValidatorQueue.Arn
             Filter:
@@ -274,6 +273,8 @@ Resources:
           AttributeType: S
         - AttributeName: ownerId
           AttributeType: S
+        - AttributeName: status
+          AttributeType: S
       KeySchema:
         - AttributeName: articleId
           KeyType: HASH
@@ -289,6 +290,14 @@ Resources:
         - IndexName: gsi_owner_createdAt
           KeySchema:
             - AttributeName: ownerId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: gsi_status_createdAt
+          KeySchema:
+            - AttributeName: status
               KeyType: HASH
             - AttributeName: createdAt
               KeyType: RANGE
@@ -343,9 +352,57 @@ Resources:
         - AttributeName: userId
           KeyType: HASH
 
+  # Location Cache Table for reverse geocoding results
+  LocationCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: geohash
+          AttributeType: S
+      KeySchema:
+        - AttributeName: geohash
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      Tags:
+        - Key: Purpose
+          Value: ReverseGeocodingCache
+
+  ##############################
+  # AWS LOCATION SERVICE
+  ##############################
+  
+  # Place Index for global geocoding (using Esri provider for best global coverage)
+  TravelGuidePlaceIndex:
+    Type: AWS::Location::PlaceIndex
+    Properties:
+      IndexName: TravelGuidePlaceIndex
+      DataSource: Esri  # Best for global coverage
+      DataSourceConfiguration:
+        IntendedUse: SingleUse  # For geocoding only
+      Description: Place index for reverse geocoding with global coverage
+      PricingPlan: RequestBasedUsage
+
   ##############################
   # AUTH (COGNITO)
   ##############################
+  AutoVerifySESEmailFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: auto_verify_ses_email.lambda_handler
+      Timeout: 10
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - ses:VerifyEmailIdentity
+              Resource: '*'
+
+
   UserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -366,6 +423,18 @@ Resources:
           Required: true
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
+      LambdaConfig:
+        PostConfirmation: !GetAtt AutoVerifySESEmailFunction.Arn
+  
+  # Permission for Cognito to invoke the Lambda
+  CognitoInvokeAutoVerifyPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref AutoVerifySESEmailFunction
+      Principal: cognito-idp.amazonaws.com
+      Action: lambda:InvokeFunction
+      SourceArn: !GetAtt UserPool.Arn
+
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -375,6 +444,7 @@ Resources:
       GenerateSecret: false
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
+
 
   ##############################
   # AUTH FUNCTIONS
@@ -568,6 +638,42 @@ Resources:
             Path: /gallery/trending
             Method: GET
 
+  GetArticlesByTagFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_articles_by_tag.lambda_handler
+      Timeout: 30
+      MemorySize: 512
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref GalleryPhotosTable
+      Events:
+        GetArticlesByTagApi:
+          Type: Api
+          Properties:
+            Path: /gallery/articles
+            Method: GET
+
+  BackfillGalleryTrendsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: backfill_gallery_trends.lambda_handler
+      Timeout: 300  # 5 minutes for large datasets
+      MemorySize: 1024
+      Environment:
+        Variables:
+          GALLERY_PHOTOS_TABLE: !Ref GalleryPhotosTable
+          GALLERY_TRENDS_TABLE: !Ref GalleryTrendsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryPhotosTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref GalleryTrendsTable
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################
@@ -581,11 +687,22 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
       Events:
         CreateArticleApi:
           Type: Api
@@ -650,11 +767,22 @@ Resources:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
           BUCKET_NAME: !Ref ArticleImagesBucket
+          PLACE_INDEX_NAME: !Ref TravelGuidePlaceIndex
+          LOCATION_CACHE_TABLE: !Ref LocationCacheTable
+          USE_AWS_LOCATION: 'true'
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref LocationCacheTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - geo:SearchPlaceIndexForPosition
+                - geo:SearchPlaceIndexForText
+              Resource: !GetAtt TravelGuidePlaceIndex.IndexArn
       Events:
         UpdateArticleApi:
           Type: Api
@@ -725,6 +853,8 @@ Resources:
           Properties:
             Path: /upload-url
             Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
 
   ##############################
   # FAVORITES FUNCTIONS
@@ -929,7 +1059,6 @@ Resources:
           MIN_CONFIDENCE: "70.0"
           MAX_LABELS: "5"
           THUMBNAIL_QUEUE_URL: !Ref ThumbnailQueue
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref ArticleImagesBucket
@@ -972,11 +1101,16 @@ Resources:
           BUCKET_NAME: !Ref ArticleImagesBucket
           MODERATION_CONFIDENCE: "75.0"
           DETECT_LABELS_QUEUE_URL: !Ref DetectLabelsQueue
+          ADMIN_SNS_TOPIC_ARN: !Ref AdminNotificationTopic
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
       Policies:
         - S3CrudPolicy:
             BucketName: !Ref ArticleImagesBucket
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
         - SQSPollerPolicy:
             QueueName: !GetAtt ContentModerationQueue.QueueName
         - Version: '2012-10-17'
@@ -989,6 +1123,21 @@ Resources:
               Action:
                 - sqs:SendMessage
               Resource: !GetAtt DetectLabelsQueue.Arn
+            - Effect: Allow
+              Action:
+                - sns:Publish
+              Resource: !Ref AdminNotificationTopic
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+                - ses:GetIdentityVerificationAttributes
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+                - cognito-idp:ListUsers
+              Resource: !GetAtt UserPool.Arn
       Events:
         ContentModerationSQSEvent:
           Type: SQS
@@ -1119,6 +1268,81 @@ Resources:
       ConfigKey: 'config/label_priority_config.json'
 
   ##############################
+  # FOLDER STRUCTURE CREATOR (Custom Resource)
+  ##############################
+
+  FolderCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: S3FolderCreationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub '${ArticleImagesBucket.Arn}/*'
+
+  FolderCreatorFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-folder-creator'
+      Runtime: python3.11
+      Role: !GetAtt FolderCreatorRole.Arn
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          s3 = boto3.client('s3')
+          
+          def handler(event, context):
+              try:
+                  bucket = event['ResourceProperties']['BucketName']
+                  folders = event['ResourceProperties']['Folders']
+                  
+                  # Create folder structure
+                  for folder in folders:
+                      # Ensure folder ends with /
+                      if not folder.endswith('/'):
+                          folder += '/'
+                      
+                      # Create empty object to represent folder
+                      s3.put_object(
+                          Bucket=bucket,
+                          Key=folder,
+                          Body=b''
+                      )
+                      print(f"✓ Created folder: {folder}")
+                  
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {'FoldersCreated': True})
+              except Exception as e:
+                  print(f"Error: {e}")
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
+  FolderCreationCustomResource:
+    Type: Custom::FolderCreator
+    Properties:
+      ServiceToken: !GetAtt FolderCreatorFunction.Arn
+      BucketName: !Ref ArticleImagesBucket
+      Folders:
+        - 'articles/'
+        - 'thumbnails/'
+        - 'avatars/'
+        - 'config/'
+
+  ##############################
   # NOTIFICATION FUNCTION
   ##############################
 
@@ -1131,11 +1355,15 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
-          SNS_TOPIC_ARN: !Ref ProcessingNotificationTopic
+          USER_POOL_ID: !Ref UserPool
+          USER_PROFILES_TABLE: !Ref UserProfilesTable
           CLOUDFRONT_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
+          SENDER_EMAIL: hieunxse180069@fpt.edu.vn  # CHANGE THIS to your verified SES email
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
         - DynamoDBCrudPolicy:
             TableName: !Ref ArticlesTable
         - SQSPollerPolicy:
@@ -1144,12 +1372,17 @@ Resources:
           Statement:
             - Effect: Allow
               Action:
-                - sns:Publish
-              Resource: !Ref ProcessingNotificationTopic
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: '*'
             - Effect: Allow
               Action:
                 - logs:GetLogEvents
               Resource: 'arn:aws:logs:*:*:*'
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
       Events:
         NotificationSQSEvent:
           Type: SQS

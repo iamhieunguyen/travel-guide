@@ -1,19 +1,19 @@
 /* --- BASE STYLES --- */
 .journal-page {
   min-height: 100vh;
-  background-color: #fdfbf7;
+  background: transparent; /* Background được set ở wrapper div */
   color: #2c3e50;
   font-family: 'Inter', sans-serif;
 }
 
 /* THEME VARIANTS */
 .journal-page--light {
-  background-color: #fdfbf7;
+  background: transparent;
   color: #2c3e50;
 }
 
 .journal-page--dark {
-  background-color: #020617;
+  background: transparent;
   color: #e5e7eb;
 }
 
@@ -22,26 +22,16 @@
   border-bottom-color: rgba(148, 163, 184, 0.3);
 }
 
-.journal-page--dark .view-switcher {
-  background: #020617;
-}
-
-.journal-page--dark .view-tab {
-  color: #94a3b8;
-}
-
-.journal-page--dark .view-tab.active {
-  background: #020617;
-  color: #2dd4bf;
-}
+/* CSS cũ đã được thay thế bởi styles từ HomePage.css */
 
 .journal-page--dark .memory-stream {
   color: #e5e7eb;
 }
 
 .journal-page--dark .journal-card {
-  background: #020617;
-  border-color: #1f2937;
+  background: rgba(2, 24, 46, 0.8);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .journal-page--dark .card-title {
@@ -80,35 +70,63 @@
   color: #cbd5f5;
 }
 
+/* Dark Mode - Modal date và privacy nổi bật hơn */
+.journal-page--dark .modal-date {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
+  box-shadow: 
+    0 4px 12px rgba(139, 92, 246, 0.3),
+    0 0 20px rgba(139, 92, 246, 0.15);
+}
+
+.journal-page--dark .modal-privacy.public {
+  background: rgba(6, 182, 212, 0.2);
+  color: #67e8f9;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
+  box-shadow: 
+    0 4px 12px rgba(6, 182, 212, 0.3),
+    0 0 20px rgba(6, 182, 212, 0.15);
+}
+
+.journal-page--dark .modal-privacy.private {
+  background: rgba(236, 72, 153, 0.2);
+  color: #f9a8d4;
+  border: 1px solid rgba(236, 72, 153, 0.4);
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
+  box-shadow: 
+    0 4px 12px rgba(236, 72, 153, 0.3),
+    0 0 20px rgba(236, 72, 153, 0.15);
+}
+
 /* --- HEADER --- */
-.journal-header { position: relative; margin-bottom: 1rem; }
-
-.journal-cover {
-  height: 280px;
-  background: url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?ixlib=rb-4.0.3&auto=format&fit=crop&w=2021&q=80') center/cover no-repeat;
-  position: relative;
-  border-radius: 0 0 40px 40px;
-  overflow: hidden;
+.journal-header { 
+  position: relative; 
+  margin-bottom: 2rem; 
+  padding-top: 1rem;
 }
 
-.overlay-gradient { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.4)); }
-
-.header-controls { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; }
-
-.icon-btn.glass {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  width: 44px; height: 44px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease;
+.header-controls { 
+  position: relative; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center;
+  padding: 0 1rem;
+  margin-bottom: 2rem;
 }
-.icon-btn.glass:hover { background: white; color: #333; }
 
 /* --- PROFILE SECTION --- */
 .journal-profile {
-  display: flex; flex-direction: column; align-items: center;
-  margin-top: -60px; position: relative; z-index: 10; text-align: center;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
+  margin-top: 0; 
+  position: relative; 
+  z-index: 10; 
+  text-align: center;
+  padding: 0 1rem;
 }
 
 .avatar-container { position: relative; }
@@ -174,19 +192,19 @@
   position: sticky;
   top: 0;
   z-index: 90;
-  background: rgba(253, 251, 247, 0.95);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
   padding: 1rem 0;
   margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(0,0,0,0.03);
-  transition: background 0.3s ease, border-color 0.3s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  transition: all 0.3s ease;
 }
 
 .journal-page--dark .toolbar-sticky-wrapper {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  background: rgba(2, 24, 46, 0.8);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .journal-toolbar {
@@ -200,55 +218,27 @@
   gap: 1rem;
 }
 
-/* View Switcher (Left side) */
+/* View Switcher (Left side) - Container giống filter-group */
 .view-switcher {
   display: flex;
-  background: #f1f5f9;
-  padding: 4px;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.5rem;
   border-radius: 12px;
   transition: background 0.3s ease;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .journal-page--dark .view-switcher {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.15);
 }
 
+/* View tab sử dụng sidebar-nav-button từ HomePage.css - Button vẫn bo góc */
 .view-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  font-weight: 600;
-  color: #64748b;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-}
-
-.journal-page--dark .view-tab {
-  color: #94a3b8;
-}
-
-.view-tab.active {
-  background: white;
-  color: #0891b2;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-.journal-page--dark .view-tab.active {
-  background: rgba(13, 148, 136, 0.2);
-  color: #2dd4bf;
-  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
-  border: 1px solid rgba(13, 148, 136, 0.3);
-}
-
-.journal-page--dark .view-tab:hover:not(.active) {
-  color: #cbd5e1;
-  background: rgba(148, 163, 184, 0.1);
+  /* Styles được áp dụng từ sidebar-nav-button class */
 }
 
 /* Filter Group (Right side) */
@@ -262,6 +252,14 @@
   transition: background 0.3s ease;
 }
 
+/* Light Mode - Filter Group có khung */
+.journal-page--light .filter-group {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 0.5rem;
+}
+
+/* Dark Mode - Filter Group có khung */
 .journal-page--dark .filter-group {
   background: rgba(30, 41, 59, 0.4);
   border: 1px solid rgba(148, 163, 184, 0.15);
@@ -275,6 +273,7 @@
 }
 
 .pill {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -285,43 +284,131 @@
   font-size: 0.85rem;
   color: #64748b;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: visible;
+  isolation: isolate;
+  box-sizing: border-box;
+  min-width: fit-content;
 }
 
 .journal-page--dark .pill {
   border-color: rgba(148, 163, 184, 0.3);
   color: #94a3b8;
-  background: rgba(30, 41, 59, 0.4);
+  background: transparent;
 }
 
-.pill:hover {
-  border-color: #0891b2;
-  color: #0891b2;
+/* Light Mode - Pill hover có gradient border */
+.pill:hover:not(.active) {
+  background: white !important;
+  color: #00ff88;
+  border: none !important; /* Bỏ border để background phủ đầy */
+  padding: 8px 18px !important; /* Tăng padding để background lớn hơn, phủ đầy */
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
 }
 
-.journal-page--dark .pill:hover {
-  border-color: #2dd4bf;
-  color: #2dd4bf;
-  background: rgba(13, 148, 136, 0.15);
+.pill:hover:not(.active)::after {
+  display: none !important; /* Bỏ border gradient để không có hiệu ứng lỗi */
+  content: none !important;
 }
 
+/* Dark Mode - Pill hover có gradient border */
+.journal-page--dark .pill:hover:not(.active) {
+  background: rgba(17, 24, 39, 0.95) !important;
+  color: #a78bfa;
+  border: none !important; /* Bỏ border để background phủ đầy */
+  padding: 8px 18px !important; /* Tăng padding để background lớn hơn, phủ đầy */
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+.journal-page--dark .pill:hover:not(.active)::after {
+  display: none !important; /* Bỏ border gradient để không có hiệu ứng lỗi */
+  content: none !important;
+}
+
+/* Light Mode - Pill active */
 .pill.active {
-  background: #0891b2;
-  border-color: #0891b2;
+  background: linear-gradient(135deg, #0d9488 0%, #2dd4bf 100%);
+  border: none !important; /* Bỏ border để không có khoảng trống */
+  padding: 8px 18px !important; /* Tăng padding để background lớn hơn, phủ đầy */
   color: white;
+  box-shadow: 
+    0 8px 20px rgba(13, 148, 136, 0.5),
+    0 12px 28px rgba(45, 212, 191, 0.4),
+    0 0 40px rgba(13, 148, 136, 0.3),
+    0 0 60px rgba(13, 148, 136, 0.2);
 }
 
+/* Dark Mode - Pill active */
 .journal-page--dark .pill.active {
-  background: linear-gradient(135deg, #0891b2 0%, #2dd4bf 100%);
-  border-color: #2dd4bf;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  border: none !important; /* Bỏ border để không có khoảng trống */
+  padding: 8px 18px !important; /* Tăng padding để background lớn hơn, phủ đầy */
   color: white;
-  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.4);
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
 }
 
 /* --- Date Picker Wrapper --- */
 .date-filter-wrapper {
   position: relative;
   z-index: 50; /* Đảm bảo popup hiện lên trên các phần tử khác */
+}
+
+/* Style cho DateRangePicker - Base styles */
+.date-filter-wrapper .picker-trigger {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px !important; /* Khớp với border-radius của gradient border */
+}
+
+/* Light Mode - Picker trigger hover có gradient border giống nút Đã quan tâm */
+.journal-page--light .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value) {
+  background: white;
+  color: #00ff88;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(0, 255, 136, 0.5),
+    0 12px 28px rgba(0, 255, 136, 0.4),
+    0 0 40px rgba(0, 255, 136, 0.3),
+    0 0 60px rgba(0, 255, 136, 0.2);
+}
+
+/* Light Mode - Icon color khi hover */
+.journal-page--light .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value) svg {
+  color: #00ff88;
+}
+
+/* Gradient border using pseudo-element - Light mode hover */
+.journal-page--light .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value)::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #00ff88 0%, #39ff14 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
 }
 
 /* Style cho DateRangePicker trong chế độ tối */
@@ -331,21 +418,53 @@
   color: #94a3b8;
 }
 
-.journal-page--dark .date-filter-wrapper .picker-trigger:hover {
-  background: rgba(30, 41, 59, 0.8);
-  border-color: #2dd4bf;
-  color: #cbd5e1;
+/* Dark Mode - Picker trigger hover có gradient border giống nút Đã quan tâm */
+.journal-page--dark .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value) {
+  background: rgba(17, 24, 39, 0.95);
+  color: #a78bfa;
+  border: none;
+  box-shadow: 
+    0 8px 20px rgba(139, 92, 246, 0.5),
+    0 12px 28px rgba(236, 72, 153, 0.4),
+    0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+/* Dark Mode - Icon color khi hover */
+.journal-page--dark .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value) svg {
+  color: #a78bfa;
+}
+
+/* Gradient border using pseudo-element - Dark mode hover */
+.journal-page--dark .date-filter-wrapper .picker-trigger:hover:not(.active):not(.has-value)::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  z-index: -1;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: exclude;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 2px;
 }
 
 .journal-page--dark .date-filter-wrapper .picker-trigger.active {
-  border-color: #2dd4bf;
-  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2);
+  border-color: #a78bfa !important; /* purple-400 thay vì màu xanh lá */
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important; /* purple shadow */
 }
 
 .journal-page--dark .date-filter-wrapper .picker-trigger.has-value {
-  color: #2dd4bf;
-  background: rgba(13, 148, 136, 0.15);
-  border-color: rgba(45, 212, 191, 0.4);
+  color: #a78bfa !important; /* purple-400 thay vì màu xanh lá */
+  background: rgba(139, 92, 246, 0.15) !important; /* purple background */
+  border-color: rgba(167, 139, 250, 0.4) !important; /* purple border */
 }
 
 .journal-page--dark .date-filter-wrapper .clear-btn {
@@ -533,18 +652,19 @@
 }
 
 .journal-card {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
   width: 100%; /* chiếm hết chiều rộng của cột grid (320px ở desktop) */
-  border-radius: 24px;
-  border: 1px solid #f2f4f7;
-  box-shadow: 0 15px 35px rgba(15, 23, 42, 0.06);
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.35s ease, box-shadow 0.35s ease;
 }
 .journal-card:hover {
   transform: translateY(-6px);
-  box-shadow: 0 25px 45px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 25px 45px rgba(0, 0, 0, 0.15);
 }
 
 .card-image {
@@ -980,6 +1100,7 @@
   border-radius: 999px;
   white-space: nowrap;
 }
+
 .modal-top-bar {
   display: flex;
   gap: 0.75rem;
@@ -994,22 +1115,68 @@
   gap: 6px;
   background: #f1f5f9;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: 0.75rem; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
 }
 
 .modal-date {
   background: #eff6ff;
   color: #1d4ed8;
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
+}
+
+/* Thẻ chấm nhỏ phân cách ngày và giờ - Hình tròn hoàn hảo */
+.modal-date .date-separator-dot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  min-width: 4px;
+  min-height: 4px;
+  max-width: 4px;
+  max-height: 4px;
+  border-radius: 50%;
+  background: rgba(100, 116, 139, 0.4);
+  margin: 0 10px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  line-height: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  /* Đảm bảo không có gì ảnh hưởng đến kích thước */
+  font-size: 0;
+  overflow: hidden;
+}
+
+/* Dark Mode - Thẻ chấm nhỏ với màu phù hợp */
+.journal-page--dark .modal-date .date-separator-dot {
+  background: rgba(167, 139, 250, 0.4);
+  width: 4px;
+  height: 4px;
+  min-width: 4px;
+  min-height: 4px;
+  max-width: 4px;
+  max-height: 4px;
+  aspect-ratio: 1 / 1;
+  line-height: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  font-size: 0;
+  overflow: hidden;
 }
 
 .modal-privacy.public {
   background: #ecfeff;
   color: #0e7490;
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
 }
 
 .modal-privacy.private {
   background: #fee2e2;
   color: #b91c1c;
+  border-radius: 0.75rem !important; /* rounded-xl - Giống với các nút quan tâm, chia sẻ, 3 chấm */
 }
 
 .modal-map-wrapper {

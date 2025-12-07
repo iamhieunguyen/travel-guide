@@ -51,6 +51,13 @@ def _convert_decimal(obj):
     return obj
 
 
+def _has_image(item):
+    """Check if article has at least one image"""
+    image_key = item.get('imageKey')
+    image_keys = item.get('imageKeys') or []
+    return bool(image_key) or len(image_keys) > 0
+
+
 def lambda_handler(event, context):
     method = (
         event.get("httpMethod")
@@ -85,15 +92,26 @@ def lambda_handler(event, context):
             key_condition = "ownerId = :owner_id"
             expression_attribute_values[":owner_id"] = user_id
         else:
-            # Mặc định: chỉ tìm trong bài public
-            index_name = "gsi_visibility_createdAt"
-            key_condition = "visibility = :visibility"
-            expression_attribute_values[":visibility"] = "public"
+            # Mặc định: tìm trong bài public
+            # Note: We can't use GSI for this because old articles have visibility=unknown
+            # We'll need to scan or use a different approach
+            # For now, let's use scan with filter for better compatibility
+            index_name = None  # Will use scan instead
+            key_condition = None
 
         # ------------------------------
         # 2) Xây FilterExpression (q, tags, bbox...)
         # ------------------------------
         filter_parts = []
+
+        # NEW: Filter by status for public searches (not for "mine" scope)
+        if scope != "mine" or not user_id:
+            expression_attribute_names["#status"] = "status"
+            expression_attribute_values[":approved"] = "approved"
+            # Use OR to include legacy articles without status field
+            filter_parts.append(
+                "(#status = :approved OR attribute_not_exists(#status))"
+            )
 
         # Tìm theo text: title / content / locationName (case-insensitive)
         if q:
@@ -160,23 +178,24 @@ def lambda_handler(event, context):
                 filter_expression = " AND ".join(filter_parts)
 
         # ------------------------------
-        # 3) Gọi DynamoDB query
+        # 3) Gọi DynamoDB query hoặc scan
         # ------------------------------
-        query_params = {
-            "IndexName": index_name,
-            "KeyConditionExpression": key_condition,
-            "ExpressionAttributeValues": expression_attribute_values,
-            "ScanIndexForward": False,  # mới nhất trước
-            "Limit": limit,
-        }
+        if index_name and key_condition:
+            # Use query with GSI
+            query_params = {
+                "IndexName": index_name,
+                "KeyConditionExpression": key_condition,
+                "ExpressionAttributeValues": expression_attribute_values,
+                "ScanIndexForward": False,  # mới nhất trước
+                "Limit": limit,
+            }
 
-        if expression_attribute_names:
-            query_params["ExpressionAttributeNames"] = expression_attribute_names
-        if filter_expression:
-            query_params["FilterExpression"] = filter_expression
-        if next_token:
-            # nextToken từ FE là chuỗi JSON của LastEvaluatedKey
-            query_params["ExclusiveStartKey"] = json.loads(next_token)
+            if expression_attribute_names:
+                query_params["ExpressionAttributeNames"] = expression_attribute_names
+            if filter_expression:
+                query_params["FilterExpression"] = filter_expression
+            if next_token:
+                query_params["ExclusiveStartKey"] = json.loads(next_token)
 
         # Debug logging
         print(f"📊 Query params:")

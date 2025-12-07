@@ -12,14 +12,17 @@ import {
   Camera,
   Eye,
   EyeOff,
-  Shield
+  Shield,
+  Palette,
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import BackButton from '../../components/personal/BackButton';
 import PrivacyDropdown from '../../components/settings/PrivacyDropdown';
 import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
 import useProfile from '../../hook/useProfile';
 import { useLanguage } from '../../context/LanguageContext';
+import { useTheme } from '../../context/ThemeContext';
+import '../HomePage.css';
 import './SettingsPage.css';
 
 // Translations
@@ -35,6 +38,12 @@ const translations = {
     notifications: 'Thông báo',
     map: 'Bản đồ',
     appearance: 'Giao diện',
+    appearanceSettings: 'Cài đặt giao diện',
+    appearanceDescription: 'Tùy chỉnh giao diện và chủ đề của ứng dụng',
+    theme: 'Chế độ sáng/tối',
+    themeDesc: 'Chuyển đổi giữa chế độ sáng và tối',
+    lightMode: 'Chế độ sáng',
+    darkMode: 'Chế độ tối',
     
     // Account Section
     accountInfo: 'Thông tin tài khoản',
@@ -71,8 +80,6 @@ const translations = {
     mapDescription: 'Tùy chỉnh trải nghiệm bản đồ của bạn',
     mapType: 'Loại bản đồ',
     mapTypeDesc: 'Chọn loại bản đồ bạn muốn hiển thị',
-    autoZoom: 'Tự động phóng to',
-    autoZoomDesc: 'Tự động phóng to khi chọn địa điểm',
     language: 'Ngôn ngữ',
     languageDesc: 'Chọn ngôn ngữ hiển thị',
     
@@ -112,6 +119,12 @@ const translations = {
     notifications: 'Notifications',
     map: 'Map',
     appearance: 'Appearance',
+    appearanceSettings: 'Appearance Settings',
+    appearanceDescription: 'Customize the app interface and theme',
+    theme: 'Light/Dark Mode',
+    themeDesc: 'Switch between light and dark themes',
+    lightMode: 'Light Mode',
+    darkMode: 'Dark Mode',
     
     // Account Section
     accountInfo: 'Account Information',
@@ -148,8 +161,6 @@ const translations = {
     mapDescription: 'Customize your map experience',
     mapType: 'Map Type',
     mapTypeDesc: 'Choose the map type you want to display',
-    autoZoom: 'Auto Zoom',
-    autoZoomDesc: 'Automatically zoom when selecting a location',
     language: 'Language',
     languageDesc: 'Choose display language',
     
@@ -187,13 +198,7 @@ export default function SettingsPage() {
   const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
   const { profile, updateProfile: updateProfileApi, uploadAvatar } = useProfile();
   const { language } = useLanguage();
-  // Đồng bộ chế độ sáng/tối với HomePage thông qua localStorage
-  const [themeMode, setThemeMode] = useState(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('homeThemeMode');
-    return stored === 'dark' ? 'dark' : 'light';
-  });
-  const isDarkMode = themeMode === 'dark';
+  const { isDarkMode, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState('account');
   
   // Account Settings
@@ -214,7 +219,6 @@ export default function SettingsPage() {
   
   // Map Settings
   const [mapType, setMapType] = useState('roadmap');
-  const [autoZoom, setAutoZoom] = useState(true);
   
   // Password Change
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -344,7 +348,8 @@ export default function SettingsPage() {
     { id: 'account', label: t.account, icon: User },
     { id: 'privacy', label: t.privacy, icon: Shield },
     { id: 'notifications', label: t.notifications, icon: Bell },
-    { id: 'map', label: t.map, icon: MapIcon }
+    { id: 'map', label: t.map, icon: MapIcon },
+    { id: 'appearance', label: t.appearance, icon: Palette }
   ];
 
   const renderAccountSection = () => (
@@ -364,9 +369,9 @@ export default function SettingsPage() {
                 className="settings-avatar-img"
               />
             ) : (
-            <div className="avatar-placeholder">
-              {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
-            </div>
+              <div className="avatar-placeholder">
+                {(displayName || user?.displayName || user?.username || user?.email)?.[0]?.toUpperCase() || 'U'}
+              </div>
             )}
             <input
               ref={fileInputRef}
@@ -691,41 +696,52 @@ export default function SettingsPage() {
           </div>
         </div>
 
+      </div>
+    </div>
+  );
+
+  const renderAppearanceSection = () => (
+    <div className={`settings-section section-content section-entering`}>
+      <div className="section-header">
+        <h2>{t.appearanceSettings}</h2>
+        <p className="section-description">{t.appearanceDescription}</p>
+      </div>
+
+      <div className="settings-content">
         <div className="setting-item">
           <div className="setting-info">
-            <h3>{t.autoZoom}</h3>
-            <p>{t.autoZoomDesc}</p>
+            <h3>{t.theme}</h3>
+            <p>{t.themeDesc}</p>
           </div>
           <div className="setting-control">
             <label className="toggle-switch">
               <input
                 type="checkbox"
-                checked={autoZoom}
-                onChange={(e) => setAutoZoom(e.target.checked)}
+                checked={isDarkMode}
+                onChange={toggleTheme}
               />
               <span className="toggle-slider"></span>
             </label>
+            <span className="setting-value" style={{ marginLeft: '12px' }}>
+              {isDarkMode ? t.darkMode : t.lightMode}
+            </span>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Sync theme khi vào trang
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const stored = localStorage.getItem('homeThemeMode');
-    if (stored && stored !== themeMode) {
-      setThemeMode(stored === 'dark' ? 'dark' : 'light');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // chỉ cần đọc một lần khi mount
-
   return (
-    <div className={`settings-page ${isDarkMode ? 'dark-mode' : ''}`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gradient-to-br from-[#000A14] via-[#01101E] via-[#011628] via-[#011C32] to-[#02182E]' : 'bg-gradient-to-br from-[#1E5A7A] via-[#2B7A9A] via-[#4A9BB8] via-[#6BBCD6] to-[#8DD8E8]'}`}>
+      <div className={`settings-page ${isDarkMode ? 'dark-mode' : ''}`} style={{ background: 'transparent' }}>
       <header className="settings-header">
         <div className="header-content">
-          <BackButton onClick={() => navigate('/personal')} />
+          <button 
+            onClick={() => navigate('/personal')} 
+            className={`header-button-gradient ${isDarkMode ? 'dark-mode' : 'light-mode'} p-3 rounded-2xl`}
+          >
+            <ArrowLeft size={20} />
+          </button>
           <h1>{t.title}</h1>
         </div>
       </header>
@@ -749,13 +765,19 @@ export default function SettingsPage() {
           </nav>
 
           <div className="sidebar-footer">
-            <button className="save-all-btn" onClick={handleSaveSettings}>
-              <Save className="w-4 h-4" />
-              {t.saveAllSettings}
+            <button 
+              className={`sidebar-nav-button save-all-button-gradient w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
+              onClick={handleSaveSettings}
+            >
+              <Save className="w-7 h-7" />
+              <span className="font-medium text-base">{t.saveAllSettings}</span>
             </button>
-            <button className="logout-btn" onClick={handleLogout}>
-              <LogOut className="w-4 h-4" />
-              {t.logout}
+            <button 
+              className={`logout-button-gradient w-full flex items-center space-x-4 p-3 ${isDarkMode ? 'dark-mode' : 'light-mode'}`}
+              onClick={handleLogout}
+            >
+              <LogOut className="w-7 h-7" />
+              <span className="font-medium text-base">{t.logout}</span>
             </button>
           </div>
         </aside>
@@ -772,6 +794,9 @@ export default function SettingsPage() {
           )}
           {activeSection === 'map' && (
             <div key="map">{renderMapSection()}</div>
+          )}
+          {activeSection === 'appearance' && (
+            <div key="appearance">{renderAppearanceSection()}</div>
           )}
         </main>
       </div>
@@ -799,6 +824,7 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

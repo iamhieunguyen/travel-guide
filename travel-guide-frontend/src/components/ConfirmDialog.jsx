@@ -1,5 +1,45 @@
 // components/ConfirmDialog.jsx
+import { useState, useEffect } from 'react';
+
 export default function ConfirmDialog({ message, onConfirm, onCancel }) {
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === 'undefined') return 'vi';
+    return localStorage.getItem('appLanguage') || 'vi';
+  });
+
+  // Listen for language changes
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const newLang = localStorage.getItem('appLanguage') || 'vi';
+      setLanguage(newLang);
+    };
+
+    // Check language on mount and when storage changes
+    handleStorageChange();
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically in case storage event doesn't fire
+    const interval = setInterval(handleStorageChange, 100);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const TEXT = {
+    vi: {
+      cancel: 'Hủy',
+      ok: 'OK',
+    },
+    en: {
+      cancel: 'Cancel',
+      ok: 'OK',
+    },
+  };
+
+  const L = TEXT[language] || TEXT.vi;
+
   return (
     <>
       {/* Backdrop */}
@@ -66,7 +106,7 @@ export default function ConfirmDialog({ message, onConfirm, onCancel }) {
               e.target.style.backgroundColor = 'white';
             }}
           >
-            Cancel
+            {L.cancel}
           </button>
           
           <button
@@ -95,7 +135,7 @@ export default function ConfirmDialog({ message, onConfirm, onCancel }) {
               e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)';
             }}
           >
-            OK
+            {L.ok}
           </button>
         </div>
       </div>

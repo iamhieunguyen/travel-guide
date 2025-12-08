@@ -21,6 +21,7 @@ import MapTypeDropdown from '../../components/settings/MapTypeDropdown';
 import useProfile from '../../hook/useProfile';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { changePassword } from '../../services/cognito';
 import '../HomePage.css';
 import './SettingsPage.css';
 
@@ -294,7 +295,7 @@ export default function SettingsPage() {
   // Get translations based on language
   const t = translations[language] || translations.vi;
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
       alert(t.passwordMismatch);
       return;
@@ -303,12 +304,26 @@ export default function SettingsPage() {
       alert(t.passwordTooShort);
       return;
     }
-    // TODO: Implement password change
-    console.log('Changing password');
-    setShowPasswordForm(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    
+    try {
+      await changePassword(currentPassword, newPassword);
+      
+      // Show success toast
+      if (window.showSuccessToast) {
+        window.showSuccessToast(t.passwordChanged);
+      } else {
+        alert(t.passwordChanged);
+      }
+      
+      // Reset form
+      setShowPasswordForm(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert(error.message || (language === 'en' ? 'Failed to change password' : 'Không thể đổi mật khẩu'));
+    }
   };
 
   const handleSaveSettings = async () => {

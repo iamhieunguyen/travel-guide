@@ -388,20 +388,24 @@ Resources:
   ##############################
   # AUTH (COGNITO)
   ##############################
-  AutoVerifySESEmailFunction:
+  PostConfirmationFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: functions/auth/
-      Handler: auto_verify_ses_email.lambda_handler
+      Handler: post_confirmation.lambda_handler
       Timeout: 10
+      Environment:
+        Variables:
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
       Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserProfilesTable
         - Version: '2012-10-17'
           Statement:
             - Effect: Allow
               Action:
                 - ses:VerifyEmailIdentity
               Resource: '*'
-
 
   UserPool:
     Type: AWS::Cognito::UserPool
@@ -424,13 +428,13 @@ Resources:
       EmailConfiguration:
         EmailSendingAccount: COGNITO_DEFAULT
       LambdaConfig:
-        PostConfirmation: !GetAtt AutoVerifySESEmailFunction.Arn
+        PostConfirmation: !GetAtt PostConfirmationFunction.Arn
   
   # Permission for Cognito to invoke the Lambda
-  CognitoInvokeAutoVerifyPermission:
+  CognitoInvokePostConfirmationPermission:
     Type: AWS::Lambda::Permission
     Properties:
-      FunctionName: !Ref AutoVerifySESEmailFunction
+      FunctionName: !Ref PostConfirmationFunction
       Principal: cognito-idp.amazonaws.com
       Action: lambda:InvokeFunction
       SourceArn: !GetAtt UserPool.Arn

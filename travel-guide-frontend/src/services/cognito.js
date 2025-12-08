@@ -193,6 +193,43 @@ export const refreshToken = async () => {
   });
 };
 
+// Đổi mật khẩu
+export const changePassword = async (currentPassword, newPassword) => {
+  const API_BASE = (
+    process.env.REACT_APP_API_BASE ||
+    process.env.REACT_APP_API_GATEWAY_URL ||
+    ""
+  ).replace(/\/+$/, "");
+
+  if (!API_BASE) {
+    throw new Error('API configuration error');
+  }
+
+  const idToken = localStorage.getItem("idToken");
+  if (!idToken) {
+    throw new Error('Not authenticated');
+  }
+
+  const response = await fetch(`${API_BASE}/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${idToken}`
+    },
+    body: JSON.stringify({
+      currentPassword,
+      newPassword
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || errorData.message || 'Failed to change password');
+  }
+
+  return response.json();
+};
+
 // Export tất cả các function với tên duy nhất
 export {
   getCurrentCognitoUser,

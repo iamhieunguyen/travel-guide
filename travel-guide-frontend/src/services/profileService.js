@@ -96,9 +96,9 @@ export const uploadAvatar = async (file) => {
       throw new Error('File phải là ảnh');
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 10 * 1024 * 1024; // 10MB
     if (file.size > maxSize) {
-      throw new Error('File không được vượt quá 5MB');
+      throw new Error('File không được vượt quá 10MB');
     }
 
     // Step 1: Get presigned URL
@@ -112,6 +112,11 @@ export const uploadAvatar = async (file) => {
 
     // Step 3: Update profile with avatar key
     const updatedProfile = await updateProfile({ avatarKey });
+
+    // Step 4: Clear articles cache to force reload with new avatar
+    if (typeof window !== 'undefined' && window.invalidateArticlesCache) {
+      window.invalidateArticlesCache();
+    }
 
     return updatedProfile;
   } catch (error) {
@@ -185,7 +190,7 @@ export const uploadCoverPhoto = async (file) => {
     }
 
     // Step 1: Get presigned URL
-    const { uploadUrl, coverKey } = await getCoverUploadUrl(
+    const { uploadUrl, coverImageKey } = await getCoverUploadUrl(
       file.name,
       file.type
     );
@@ -193,8 +198,13 @@ export const uploadCoverPhoto = async (file) => {
     // Step 2: Upload to S3
     await uploadCoverToS3(uploadUrl, file, file.type);
 
-    // Step 3: Update profile with cover key
-    const updatedProfile = await updateProfile({ coverKey });
+    // Step 3: Update profile with cover image key
+    const updatedProfile = await updateProfile({ coverImageKey });
+
+    // Step 4: Clear articles cache to force reload with new cover
+    if (typeof window !== 'undefined' && window.invalidateArticlesCache) {
+      window.invalidateArticlesCache();
+    }
 
     return updatedProfile;
   } catch (error) {
@@ -279,9 +289,9 @@ export const validateImageFile = (file) => {
     return { valid: false, error: 'Chỉ hỗ trợ JPG, PNG, WEBP' };
   }
 
-  const maxSize = 5 * 1024 * 1024; // 5MB
+  const maxSize = 10 * 1024 * 1024; // 10MB
   if (file.size > maxSize) {
-    return { valid: false, error: 'File không được vượt quá 5MB' };
+    return { valid: false, error: 'File không được vượt quá 10MB' };
   }
 
   const minSize = 10 * 1024; // 10KB

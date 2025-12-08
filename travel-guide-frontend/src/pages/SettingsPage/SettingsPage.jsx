@@ -201,7 +201,7 @@ const DEFAULT_BIO = 'Lưu giữ những mảnh ghép của cuộc đời.';
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout, authChecked, updateDisplayName, updateProfileBio, updateShowLocationPref, updateDefaultPrivacyPref, updateMapTypePref } = useAuth();
-  const { profile, updateProfile: updateProfileApi, uploadAvatar } = useProfile();
+  const { profile, updateProfile: updateProfileApi, uploadAvatar, uploadCoverPhoto } = useProfile();
   const { language } = useLanguage();
   const { isDarkMode, toggleTheme } = useTheme();
   const [activeSection, setActiveSection] = useState('account');
@@ -272,8 +272,8 @@ export default function SettingsPage() {
       if (profile.avatarUrl) {
         setAvatarUrl(profile.avatarUrl);
       }
-      if (profile.coverUrl) {
-        setCoverPhotoUrl(profile.coverUrl);
+      if (profile.coverImageUrl) {
+        setCoverPhotoUrl(profile.coverImageUrl);
       }
     }
   }, [profile]);
@@ -392,21 +392,28 @@ export default function SettingsPage() {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
-                // TODO: Implement when backend API is ready
-                alert('Tính năng đang phát triển. API upload ảnh bìa sẽ sớm có mặt!');
-                e.target.value = '';
-                // try {
-                //   const res = await uploadCoverPhoto(file);
-                //   const updated = res?.profile || res;
-                //   if (updated?.coverUrl) {
-                //     setCoverPhotoUrl(updated.coverUrl);
-                //   }
-                // } catch (err) {
-                //   console.error('Upload cover photo error:', err);
-                //   alert(err.message || 'Không thể upload ảnh bìa');
-                // } finally {
-                //   e.target.value = '';
-                // }
+                try {
+                  // Show loading toast
+                  if (window.showSuccessToast) {
+                    window.showSuccessToast(language === 'en' ? 'Uploading cover photo...' : 'Đang tải ảnh bìa lên...');
+                  }
+                  
+                  const res = await uploadCoverPhoto(file);
+                  const updated = res?.profile || res;
+                  if (updated?.coverImageUrl) {
+                    setCoverPhotoUrl(updated.coverImageUrl);
+                  }
+                  
+                  // Show success toast
+                  if (window.showSuccessToast) {
+                    window.showSuccessToast(language === 'en' ? 'Cover photo updated!' : 'Đã cập nhật ảnh bìa!');
+                  }
+                } catch (err) {
+                  console.error('Upload cover photo error:', err);
+                  alert(err.message || (language === 'en' ? 'Unable to upload cover photo' : 'Không thể upload ảnh bìa'));
+                } finally {
+                  e.target.value = '';
+                }
               }}
             />
           </div>

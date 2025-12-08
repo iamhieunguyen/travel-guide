@@ -278,18 +278,27 @@ def lambda_handler(event, context):
         print("DEBUG update_item result =", response)
 
         item = response["Attributes"]
-        processed_item = {}
-        for k, v in item.items():
-            if isinstance(v, Decimal):
-                # Xử lý chuyển Decimal về float/int cho JSON response
-                processed_item[k] = float(v) if v % 1 != 0 else int(v)
-            else:
-                processed_item[k] = v
-
+        
+        # Recursive function to convert Decimal
+        def convert_decimal(obj):
+            if isinstance(obj, Decimal):
+                return float(obj) if obj % 1 != 0 else int(obj)
+            elif isinstance(obj, dict):
+                return {k: convert_decimal(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_decimal(i) for i in obj]
+            return obj
+        
+        processed_item = convert_decimal(item)
+        
+        print("✅ Article updated successfully:", article_id)
         return ok(200, processed_item)
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON decode error: {e}")
         return error(400, "Invalid JSON in request body")
     except Exception as e:
-        print(f"Error in update_article: {e}")
-        return error(500, "Internal server error")
+        print(f"❌ Error in update_article: {e}")
+        import traceback
+        traceback.print_exc()
+        return error(500, f"Internal server error: {str(e)}")

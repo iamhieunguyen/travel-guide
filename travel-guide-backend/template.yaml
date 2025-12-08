@@ -593,6 +593,27 @@ Resources:
             Auth:
               Authorizer: CognitoAuthorizer
 
+  GetCoverUploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/auth/
+      Handler: get_cover_upload_url.lambda_handler
+      Timeout: 10
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref ArticleImagesBucket
+      Events:
+        GetCoverUploadUrlApi:
+          Type: Api
+          Properties:
+            Path: /profile/cover-upload-url
+            Method: POST
+            Auth:
+              Authorizer: CognitoAuthorizer
+
   ChangePasswordFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -611,31 +632,6 @@ Resources:
           Type: Api
           Properties:
             Path: /auth/change-password
-            Method: POST
-            Auth:
-              Authorizer: CognitoAuthorizer
-
-  UploadCoverFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: functions/auth/
-      Handler: upload_cover.lambda_handler
-      Timeout: 10
-      Environment:
-        Variables:
-          BUCKET_NAME: !Ref ArticleImagesBucket
-          PROFILES_TABLE_NAME: !Ref UserProfilesTable
-          CF_DOMAIN: !GetAtt CloudFrontDistribution.DomainName
-      Policies:
-        - S3CrudPolicy:
-            BucketName: !Ref ArticleImagesBucket
-        - DynamoDBCrudPolicy:
-            TableName: !Ref UserProfilesTable
-      Events:
-        UploadCoverApi:
-          Type: Api
-          Properties:
-            Path: /profile/upload-cover
             Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
@@ -699,6 +695,7 @@ Resources:
             TableName: !Ref GalleryPhotosTable
         - DynamoDBCrudPolicy:
             TableName: !Ref GalleryTrendsTable
+
   ##############################
   # ARTICLE FUNCTIONS (CRUD + SEARCH + UPLOAD URL)
   ##############################
@@ -770,9 +767,15 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ArticlesTable
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          BUCKET_NAME: !Ref ArticleImagesBucket
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
       Events:
         ListArticlesApi:
           Type: Api
@@ -880,6 +883,42 @@ Resources:
             Method: POST
             Auth:
               Authorizer: CognitoAuthorizer
+
+  ##############################
+  # USER PUBLIC PROFILE FUNCTION
+  ##############################
+  GetUserArticlesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: functions/articles/
+      Handler: get_user_articles.lambda_handler
+      Timeout: 15
+      MemorySize: 256
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ArticlesTable
+          PROFILES_TABLE_NAME: !Ref UserProfilesTable
+          USER_POOL_ID: !Ref UserPool
+          BUCKET_NAME: !Ref ArticleImagesBucket
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref ArticlesTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref UserProfilesTable
+        - S3ReadPolicy:
+            BucketName: !Ref ArticleImagesBucket
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminGetUser
+              Resource: !GetAtt UserPool.Arn
+      Events:
+        GetUserArticlesApi:
+          Type: Api
+          Properties:
+            Path: /users/{userId}/articles
+            Method: GET
 
   ##############################
   # FAVORITES FUNCTIONS
@@ -1365,6 +1404,7 @@ Resources:
         - 'articles/'
         - 'thumbnails/'
         - 'avatars/'
+        - 'covers/'
         - 'config/'
 
   ##############################
@@ -1539,6 +1579,16 @@ Resources:
                 Forward: none
             Compress: true
           - PathPattern: "avatars/*"
+            TargetOriginId: S3OriginImages
+            ViewerProtocolPolicy: redirect-to-https
+            AllowedMethods: [GET, HEAD]
+            CachedMethods: [GET, HEAD]
+            ForwardedValues:
+              QueryString: false
+              Cookies:
+                Forward: none
+            Compress: true
+          - PathPattern: "covers/*"
             TargetOriginId: S3OriginImages
             ViewerProtocolPolicy: redirect-to-https
             AllowedMethods: [GET, HEAD]

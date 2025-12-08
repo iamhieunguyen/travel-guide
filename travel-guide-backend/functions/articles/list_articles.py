@@ -5,9 +5,14 @@ from decimal import Decimal
 from cors import ok, error, options
 
 dynamodb = boto3.resource("dynamodb")
+s3_client = boto3.client('s3')
 
 TABLE_NAME = os.environ["TABLE_NAME"]
+PROFILES_TABLE_NAME = os.environ.get("PROFILES_TABLE_NAME")
+BUCKET_NAME = os.environ.get("BUCKET_NAME", "")
+
 table = dynamodb.Table(TABLE_NAME)
+profiles_table = dynamodb.Table(PROFILES_TABLE_NAME) if PROFILES_TABLE_NAME else None
 
 def _get_user_id(event):
     headers = event.get("headers") or {}
@@ -56,6 +61,64 @@ def _convert_decimal(obj):
     elif isinstance(obj, list):
         return [_convert_decimal(item) for item in obj]
     return obj
+
+
+def _get_user_profile(user_id, profile_cache):
+    """Get user profile information from cache or UserProfilesTable"""
+    # Check cache first
+    if user_id in profile_cache:
+        return profile_cache[user_id]
+    
+    try:
+        if profiles_table:
+            response = profiles_table.get_item(Key={'userId': user_id})
+            if 'Item' in response:
+                profile = response['Item']
+                
+                # Generate presigned URLs for avatar and cover if they exist
+                avatar_url = None
+                cover_url = None
+                
+                if profile.get('avatarKey') and BUCKET_NAME:
+                    try:
+                        avatar_url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': BUCKET_NAME, 'Key': profile['avatarKey']},
+                            ExpiresIn=3600
+                        )
+                    except Exception as e:
+                        print(f"Error generating avatar URL for {user_id}: {e}")
+                
+                if profile.get('coverImageKey') and BUCKET_NAME:
+                    try:
+                        cover_url = s3_client.generate_presigned_url(
+                            'get_object',
+                            Params={'Bucket': BUCKET_NAME, 'Key': profile['coverImageKey']},
+                            ExpiresIn=3600
+                        )
+                    except Exception as e:
+                        print(f"Error generating cover URL for {user_id}: {e}")
+                
+                result = {
+                    'displayName': profile.get('username'),  # Use username as displayName
+                    'username': profile.get('username'),
+                    'avatarUrl': avatar_url,
+                    'coverImageUrl': cover_url,
+                    'bio': profile.get('bio')
+                }
+                
+                # Cache the result
+                profile_cache[user_id] = result
+                return result
+        
+        # Return None if no profile found
+        profile_cache[user_id] = None
+        return None
+        
+    except Exception as e:
+        print(f"Error getting user profile for {user_id}: {e}")
+        profile_cache[user_id] = None
+        return None
 
 
 def lambda_handler(event, context):
@@ -129,7 +192,10 @@ def lambda_handler(event, context):
         items = response['Items']
         next_key = response.get('LastEvaluatedKey')
 
-        # Chuyển Decimal sang float/int cho frontend (recursive)
+        # Cache for user profiles to avoid duplicate queries
+        profile_cache = {}
+
+        # Chuyển Decimal sang float/int cho frontend (recursive) + enrich profile info
         processed_items = []
         for item in items:
             processed_item = _convert_decimal(item)
@@ -137,6 +203,17 @@ def lambda_handler(event, context):
             # Backward compatibility: treat articles without status as approved
             if 'status' not in processed_item:
                 processed_item['status'] = 'approved'
+            
+            # Enrich with owner profile information
+            owner_id = processed_item.get('ownerId')
+            if owner_id:
+                owner_profile = _get_user_profile(owner_id, profile_cache)
+                if owner_profile:
+                    processed_item['ownerDisplayName'] = owner_profile.get('displayName')
+                    processed_item['ownerUsername'] = owner_profile.get('username')
+                    processed_item['ownerAvatarUrl'] = owner_profile.get('avatarUrl')
+                    processed_item['ownerCoverImageUrl'] = owner_profile.get('coverImageUrl')
+                    processed_item['ownerBio'] = owner_profile.get('bio')
             
             processed_items.append(processed_item)
 
@@ -146,6 +223,7 @@ def lambda_handler(event, context):
         if next_key:
             result['nextToken'] = json.dumps(next_key)
 
+        print(f"✅ Returned {len(processed_items)} articles with enriched profile info")
         return ok(200, result)
 
     except Exception as e:

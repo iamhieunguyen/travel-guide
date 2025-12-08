@@ -254,6 +254,23 @@ export default function HomePage() {
       if (tag && posts.length > 0) {
         console.log('🏷️ First post tags:', posts[0].tags, 'autoTags:', posts[0].autoTags);
       }
+      
+      // Debug: Check if posts have owner profile info
+      if (posts.length > 0) {
+        console.log('👤 First post owner info:', {
+          ownerId: posts[0].ownerId,
+          ownerDisplayName: posts[0].ownerDisplayName,
+          ownerUsername: posts[0].ownerUsername,
+          ownerAvatarUrl: posts[0].ownerAvatarUrl,  // Show actual URL
+          ownerCoverImageUrl: posts[0].ownerCoverImageUrl,  // Show actual URL
+          ownerBio: posts[0].ownerBio
+        });
+        
+        // Test if avatar URL is accessible
+        if (posts[0].ownerAvatarUrl) {
+          console.log('🔗 Avatar URL:', posts[0].ownerAvatarUrl);
+        }
+      }
 
       if (token) {
         setPosts(prev => [...prev, ...posts]);
@@ -1048,17 +1065,30 @@ export default function HomePage() {
                             }}
                           >
                             <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#92ADA4] overflow-hidden">
-                              {isOwner && profile?.avatarUrl ? (
-                                <img
-                                  src={profile.avatarUrl}
-                                  alt={authorDisplayName}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-white font-bold text-base">
-                                  {authorInitial}
-                                </span>
-                              )}
+                              {/* Determine avatar URL safely */}
+                              {(() => {
+                                const avatarUrl = (isOwner && profile?.avatarUrl) || post.ownerAvatarUrl;
+                                
+                                if (avatarUrl) {
+                                  return (
+                                    <img
+                                      src={avatarUrl}
+                                      alt={authorDisplayName}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        // Replace with placeholder on error
+                                        e.target.outerHTML = `<span class="text-white font-bold text-base flex items-center justify-center w-full h-full">${authorInitial}</span>`;
+                                      }}
+                                    />
+                                  );
+                                }
+                                
+                                return (
+                                  <span className="text-white font-bold text-base">
+                                    {authorInitial}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                           <div 

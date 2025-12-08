@@ -54,7 +54,7 @@ def lambda_handler(event, context):
         body = json.loads(event.get("body", "{}"))
         
         # Các trường được phép update
-        allowed_fields = ["username", "bio", "avatarKey"]
+        allowed_fields = ["username", "bio", "avatarKey", "coverImageKey"]
         
         # Xây dựng update expression
         update_parts = []

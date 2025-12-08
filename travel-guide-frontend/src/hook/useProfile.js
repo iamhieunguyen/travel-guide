@@ -75,7 +75,10 @@ export const useProfile = () => {
       // Gửi file lên S3 + cập nhật avatarKey trên backend
       await profileService.uploadAvatar(file);
 
-      // Sau khi upload xong, lấy lại profile mới từ API
+      // Đợi một chút để S3 presigned URL được tạo
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Sau khi upload xong, lấy lại profile mới từ API (force no cache)
       const fresh = await profileService.getProfile();
       setProfile(fresh);
       return fresh;
@@ -105,7 +108,10 @@ export const useProfile = () => {
       // Gửi file lên S3 + cập nhật coverKey trên backend
       await profileService.uploadCoverPhoto(file);
 
-      // Sau khi upload xong, lấy lại profile mới từ API
+      // Đợi một chút để S3 presigned URL được tạo
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Sau khi upload xong, lấy lại profile mới từ API (force no cache)
       const fresh = await profileService.getProfile();
       setProfile(fresh);
       return fresh;
@@ -144,10 +150,18 @@ export const useProfile = () => {
   }, []);
 
   /**
-   * Fetch profile khi mount
+   * Fetch profile khi mount và khi window focus (để reload sau khi update)
    */
   useEffect(() => {
     fetchProfile();
+    
+    // Reload profile khi user quay lại tab
+    const handleFocus = () => {
+      fetchProfile();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [fetchProfile]);
 
   return {

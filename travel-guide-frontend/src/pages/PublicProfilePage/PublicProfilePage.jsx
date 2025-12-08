@@ -151,19 +151,27 @@ export default function PublicProfilePage() {
       try {
         setLoading(true);
         
-        // Gọi API lấy bài viết công khai - sử dụng listArticles với filter
-        const response = await api.listArticles({ 
-          scope: 'public',
-          limit: 50
+        // Gọi API chuyên dụng để lấy bài viết của user với forceRefresh
+        const response = await api.getUserArticles(userId, { 
+          limit: 50,
+          forceRefresh: true  // Force clear cache và fetch mới
         });
         
         const items = response.items || [];
+        const userProfile = response.userProfile || null;
         
-        // Filter chỉ lấy bài viết của user này
-        const userItems = items.filter(item => item.ownerId === userId);
+        // Debug logging
+        console.log('📦 PublicProfile Response:', {
+          itemsCount: items.length,
+          userProfile: userProfile,
+          firstItem: items[0],
+          hasOwnerAvatarUrl: items[0]?.ownerAvatarUrl ? 'YES' : 'NO',
+          hasOwnerCoverImageUrl: items[0]?.ownerCoverImageUrl ? 'YES' : 'NO',
+          hasOwnerBio: items[0]?.ownerBio ? 'YES' : 'NO'
+        });
         
         // Map data
-        const mapped = userItems.map(item => {
+        const mapped = items.map(item => {
           let locationName = 'Không xác định';
           if (item.locationName) {
             locationName = item.locationName;
@@ -191,32 +199,49 @@ export default function PublicProfilePage() {
             date: new Date(item.createdAt),
             scope: 'public',
             ownerId: item.ownerId,
-            ownerName: item.ownerDisplayName || item.ownerUsername || item.username || 'Người dùng',
-            ownerAvatar: item.ownerAvatar || item.ownerAvatarUrl || item.authorAvatar || item.authorAvatarUrl || null,
+            ownerName: item.ownerDisplayName || item.ownerUsername || 'Người dùng',
+            ownerAvatar: item.ownerAvatarUrl || null,
             likeCount: item.favoriteCount || 0,
           };
         });
         
         setMemories(mapped);
         
-        // Set profile data từ item đầu tiên - lấy từ response items
-        if (userItems.length > 0) {
-          const firstItem = userItems[0];
-          setProfileData({
-            displayName: firstItem.ownerDisplayName || firstItem.ownerUsername || firstItem.username || 'Người dùng',
-            username: firstItem.ownerUsername || firstItem.username || null,
-            avatarUrl: firstItem.ownerAvatar || firstItem.ownerAvatarUrl || firstItem.authorAvatar || firstItem.authorAvatarUrl || null,
-            bio: firstItem.ownerBio || firstItem.bio || L.tagline,
+        // Set profile data từ userProfile trong response (ưu tiên) hoặc từ item đầu tiên
+        if (userProfile) {
+          const profileToSet = {
+            displayName: userProfile.displayName || userProfile.username || 'Người dùng',
+            username: userProfile.username || null,
+            avatarUrl: userProfile.avatarUrl || null,
+            coverImageUrl: userProfile.coverImageUrl || null,
+            bio: userProfile.bio || L.tagline,
             userId: userId,
-          });
+          };
+          console.log('✅ Setting profile from userProfile:', profileToSet);
+          setProfileData(profileToSet);
+        } else if (items.length > 0) {
+          const firstItem = items[0];
+          const profileToSet = {
+            displayName: firstItem.ownerDisplayName || firstItem.ownerUsername || 'Người dùng',
+            username: firstItem.ownerUsername || null,
+            avatarUrl: firstItem.ownerAvatarUrl || null,
+            coverImageUrl: firstItem.ownerCoverImageUrl || null,
+            bio: firstItem.ownerBio || L.tagline,
+            userId: userId,
+          };
+          console.log('✅ Setting profile from firstItem:', profileToSet);
+          setProfileData(profileToSet);
         } else {
-          setProfileData({
+          const profileToSet = {
             displayName: 'Người dùng',
             username: null,
             avatarUrl: null,
+            coverImageUrl: null,
             bio: L.tagline,
             userId: userId,
-          });
+          };
+          console.log('⚠️ No items, setting default profile:', profileToSet);
+          setProfileData(profileToSet);
         }
       } catch (error) {
         console.error('Error fetching public memories:', error);
@@ -310,9 +335,20 @@ export default function PublicProfilePage() {
           </button>
         </div>
 
-        {/* Cover Photo - Placeholder */}
+        {/* Cover Photo */}
         <div className="journal-cover-photo">
-          <div className="cover-photo-placeholder">
+          {profileData?.coverImageUrl ? (
+            <img 
+              src={profileData.coverImageUrl} 
+              alt="Cover" 
+              className="cover-photo-img"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextElementSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="cover-photo-placeholder" style={{ display: profileData?.coverImageUrl ? 'none' : 'flex' }}>
             <div className="cover-placeholder-content">
               <svg className="cover-placeholder-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M4 16L8.586 11.414C9.367 10.633 10.633 10.633 11.414 11.414L16 16M14 14L15.586 12.414C16.367 11.633 17.633 11.633 18.414 12.414L20 14M14 8H14.01M6 20H18C19.105 20 20 19.105 20 18V6C20 4.895 19.105 4 18 4H6C4.895 4 4 4.895 4 6V18C4 19.105 4.895 20 6 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

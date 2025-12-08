@@ -33,10 +33,44 @@ def _get_user_profile(user_id):
             response = profiles_table.get_item(Key={'userId': user_id})
             if 'Item' in response:
                 profile = response['Item']
+                
+                # Generate presigned URLs for avatar and cover if they exist
+                avatar_url = None
+                cover_url = None
+                
+                if profile.get('avatarKey'):
+                    try:
+                        import boto3
+                        s3_client = boto3.client('s3')
+                        bucket_name = os.environ.get('BUCKET_NAME', '')
+                        if bucket_name:
+                            avatar_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': bucket_name, 'Key': profile['avatarKey']},
+                                ExpiresIn=3600
+                            )
+                    except Exception as e:
+                        print(f"Error generating avatar URL for {user_id}: {e}")
+                
+                if profile.get('coverImageKey'):
+                    try:
+                        import boto3
+                        s3_client = boto3.client('s3')
+                        bucket_name = os.environ.get('BUCKET_NAME', '')
+                        if bucket_name:
+                            cover_url = s3_client.generate_presigned_url(
+                                'get_object',
+                                Params={'Bucket': bucket_name, 'Key': profile['coverImageKey']},
+                                ExpiresIn=3600
+                            )
+                    except Exception as e:
+                        print(f"Error generating cover URL for {user_id}: {e}")
+                
                 return {
-                    'displayName': profile.get('displayName'),
+                    'displayName': profile.get('username'),  # Use username as displayName
                     'username': profile.get('username'),
-                    'avatarUrl': profile.get('avatarUrl'),
+                    'avatarUrl': avatar_url,
+                    'coverImageUrl': cover_url,
                     'bio': profile.get('bio')
                 }
         

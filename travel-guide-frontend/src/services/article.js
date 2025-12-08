@@ -170,6 +170,22 @@ export function searchArticles({ bbox, q = "", tags = "", scope = "public", limi
   return http("GET", `/search?${params.toString()}`, null, { useCache: true });
 }
 
+// ===== User Articles =====
+export function getUserArticles(userId, { limit = 20, nextToken, forceRefresh = false } = {}) {
+  const params = new URLSearchParams();
+  if (limit) params.set("limit", String(limit));
+  if (nextToken) params.set("nextToken", nextToken);
+  
+  // Clear cache nếu forceRefresh = true
+  if (forceRefresh) {
+    const path = `/users/${encodeURIComponent(userId)}/articles`;
+    clearCacheForEndpoint(path);
+  }
+  
+  // KHÔNG dùng cache để luôn lấy data mới nhất
+  return http("GET", `/users/${encodeURIComponent(userId)}/articles?${params.toString()}`, null, { useCache: false });
+}
+
 // ------------------------------------------------------------------
 // 🚀 LOGIC MỚI: TẠO BÀI VIẾT VỚI NHIỀU ẢNH
 // ------------------------------------------------------------------
@@ -309,6 +325,18 @@ export function clearCacheForEndpoint(path) {
 export function invalidateArticlesCache() {
   clearCacheForEndpoint('/articles');
   clearCacheForEndpoint('/search');
+  clearCacheForEndpoint('/users/');
+}
+
+// Expose to window for global access
+if (typeof window !== 'undefined') {
+  window.invalidateArticlesCache = invalidateArticlesCache;
+  window.clearArticlesCache = clearCache;
+}
+
+// Expose to window for global access
+if (typeof window !== 'undefined') {
+  window.invalidateArticlesCache = invalidateArticlesCache;
 }
 
 // ✨ NEW: No-cache version for polling
@@ -332,6 +360,7 @@ const articleService = {
   listArticles,
   listArticlesNoCache,  // ✨ NEW
   searchArticles,
+  getUserArticles,  // ✨ NEW
   createArticleWithUpload,
   createArticleWithMultipleFiles,
   buildImageUrlFromKey,

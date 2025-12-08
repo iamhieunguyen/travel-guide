@@ -21,7 +21,7 @@ Globals:
       Variables:
         # Bạn có thể đặt lại CORS_ORIGIN sau, nếu đã có domain CloudFront
         CORS_ORIGIN: "*"
-        PYTHONPATH: /var/task/functions
+        PYTHONPATH: /var/task/functions-
         LOG_LEVEL: INFO
     Layers:
       - !Ref PythonDependenciesLayer

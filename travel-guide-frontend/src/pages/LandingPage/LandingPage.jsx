@@ -43,7 +43,7 @@ const TEXT = {
         countries: 'Quốc gia',
         moments: 'Khoảnh khắc'
       },
-      communityInfo: 'Những khoảnh khắc thật từ cộng đồng MemoryMap'
+      communityInfo: 'Những khoảnh khắc thật từ cộng đồng Travel Journal'
     },
     cards: {
       card1: 'Buổi sáng tuyệt vời tại tháp Eiffel... 🥐',
@@ -54,7 +54,7 @@ const TEXT = {
       card6: 'Văn hóa truyền thống và kiến trúc cổ kính 🏯'
     },
     features: {
-      title: 'Tại sao chọn MemoryMap?',
+      title: 'Tại sao chọn Travel Journal?',
       subtitle: 'Những tính năng được thiết kế dành riêng cho người yêu du lịch.',
       map: {
         title: 'Bản đồ tương tác',
@@ -83,7 +83,7 @@ const TEXT = {
     },
     comparison: {
       title: 'Hơn cả một thư viện ảnh',
-      subtitle: 'MemoryMap không chỉ lưu ảnh, mà còn lưu giữ cả câu chuyện và hành trình của bạn.',
+      subtitle: 'Travel Journal không chỉ lưu ảnh, mà còn lưu giữ cả câu chuyện và hành trình của bạn.',
       oldWay: 'Cách cũ',
       oldTitle: 'Thư viện ảnh thông thường',
       oldPoints: [
@@ -93,7 +93,7 @@ const TEXT = {
         'Dễ mất dữ liệu khi đổi máy'
       ],
       newWay: 'Cách mới',
-      newTitle: 'MemoryMap',
+      newTitle: 'Travel Journal',
       newPoints: [
         'Tự động sắp xếp theo địa điểm',
         'Gắn chính xác vị trí & thời gian',
@@ -118,7 +118,7 @@ const TEXT = {
       }
     },
     explore: {
-      title: 'Khám phá thế giới cùng MemoryMap',
+      title: 'Khám phá thế giới cùng Travel Journal',
       subtitle: 'Hơn 1 triệu ký ức được lưu giữ tại hơn 50 quốc gia trên toàn thế giới.',
       asia: {
         title: 'Châu Á',
@@ -161,7 +161,7 @@ const TEXT = {
       title: 'Câu hỏi thường gặp',
       items: [
         {
-          q: 'MemoryMap có miễn phí không?',
+          q: 'Travel Journal có miễn phí không?',
           a: 'Có! Chúng tôi cung cấp gói miễn phí vĩnh viễn với đầy đủ tính năng cơ bản. Bạn có thể nâng cấp lên Premium nếu cần lưu trữ không giới hạn.'
         },
         {
@@ -184,7 +184,7 @@ const TEXT = {
       cta: 'Tạo tài khoản miễn phí'
     },
     footer: {
-      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      copyright: '© 2025 Travel Journal Inc. All rights reserved.',
       product: {
         title: 'Sản phẩm',
         features: 'Tính năng',
@@ -223,7 +223,7 @@ const TEXT = {
         countries: 'Countries',
         moments: 'Moments'
       },
-      communityInfo: 'Real moments from the MemoryMap community'
+      communityInfo: 'Real moments from the Travel Journal community'
     },
     cards: {
       card1: 'Wonderful morning at the Eiffel Tower... 🥐',
@@ -234,7 +234,7 @@ const TEXT = {
       card6: 'Traditional culture and ancient architecture 🏯'
     },
     features: {
-      title: 'Why Choose MemoryMap?',
+      title: 'Why Choose Travel Journal?',
       subtitle: 'Features designed specifically for travel lovers.',
       map: {
         title: 'Interactive Map',
@@ -263,7 +263,7 @@ const TEXT = {
     },
     comparison: {
       title: 'More Than a Photo Library',
-      subtitle: 'MemoryMap doesn\'t just store photos, it preserves your stories and journeys.',
+      subtitle: 'Travel Journal doesn\'t just store photos, it preserves your stories and journeys.',
       oldWay: 'Old Way',
       oldTitle: 'Regular Photo Library',
       oldPoints: [
@@ -273,7 +273,7 @@ const TEXT = {
         'Easy to lose data when changing devices'
       ],
       newWay: 'New Way',
-      newTitle: 'MemoryMap',
+      newTitle: 'Travel Journal',
       newPoints: [
         'Auto-organize by location',
         'Precise location & time tagging',
@@ -298,7 +298,7 @@ const TEXT = {
       }
     },
     explore: {
-      title: 'Explore the World with MemoryMap',
+      title: 'Explore the World with Travel Journal',
       subtitle: 'Over 1 million memories preserved in more than 50 countries worldwide.',
       asia: {
         title: 'Asia',
@@ -341,7 +341,7 @@ const TEXT = {
       title: 'Frequently Asked Questions',
       items: [
         {
-          q: 'Is MemoryMap free?',
+          q: 'Is Travel Journal free?',
           a: 'Yes! We offer a forever-free plan with all basic features. You can upgrade to Premium if you need unlimited storage.'
         },
         {
@@ -360,11 +360,11 @@ const TEXT = {
     },
     footerCta: {
       title: 'Ready to Continue Your Story?',
-      subtitle: 'Join over 10,000 users preserving their journeys every day.',
+      subtitle: 'Join over 100 users preserving their journeys every day.',
       cta: 'Create Free Account'
     },
     footer: {
-      copyright: '© 2025 MemoryMap Inc. All rights reserved.',
+      copyright: '© 2025 Travel Journal Inc. All rights reserved.',
       product: {
         title: 'Product',
         features: 'Features',
@@ -405,35 +405,35 @@ export default function LandingPage() {
       title: 'Paris, France',
       location: { lat: 48.8566, lng: 2.3522 },
       image: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=200&q=80',
-      date: new Date('2024-06-15')
+      date: new Date('2025-06-15')
     },
     {
       id: 2,
       title: 'Tokyo, Japan',
       location: { lat: 35.6762, lng: 139.6503 },
       image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=200&q=80',
-      date: new Date('2024-07-20')
+      date: new Date('2025-07-20')
     },
     {
       id: 3,
       title: 'New York, USA',
       location: { lat: 40.7128, lng: -74.0060 },
       image: 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?auto=format&fit=crop&w=200&q=80',
-      date: new Date('2024-08-10')
+      date: new Date('2025-08-10')
     },
     {
       id: 4,
       title: 'Sydney, Australia',
       location: { lat: -33.8688, lng: 151.2093 },
       image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=200&q=80',
-      date: new Date('2024-09-05')
+      date: new Date('2025-09-05')
     },
     {
       id: 5,
       title: 'Rio de Janeiro, Brazil',
       location: { lat: -22.9068, lng: -43.1729 },
       image: 'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?auto=format&fit=crop&w=200&q=80',
-      date: new Date('2024-10-12')
+      date: new Date('2025-10-12')
     }
   ];
 
@@ -558,21 +558,21 @@ export default function LandingPage() {
               <div className="hero-stat-mini">
                 <Users size={24} className="mini-stat-icon" />
                 <div>
-                  <div className="mini-stat-number">10,000+</div>
+                  <div className="mini-stat-number">100+</div>
                   <div className="mini-stat-label">{L.hero.stats.users}</div>
                 </div>
               </div>
               <div className="hero-stat-mini">
                 <Globe size={24} className="mini-stat-icon" />
                 <div>
-                  <div className="mini-stat-number">50+</div>
+                  <div className="mini-stat-number">20+</div>
                   <div className="mini-stat-label">{L.hero.stats.countries}</div>
                 </div>
               </div>
               <div className="hero-stat-mini">
                 <Camera size={24} className="mini-stat-icon" />
                 <div>
-                  <div className="mini-stat-number">1M+</div>
+                  <div className="mini-stat-number">10K+</div>
                   <div className="mini-stat-label">{L.hero.stats.moments}</div>
                 </div>
               </div>
@@ -599,7 +599,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Paris, France</strong>
-              <span className="lp-year">2024</span>
+              <span className="lp-year">2025</span>
                     </div>
             </div>
             <p className="lp-card-text">{L.cards.card1}</p>
@@ -616,7 +616,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Hội An, VN</strong>
-                      <span className="lp-year">2024</span>
+                      <span className="lp-year">2025</span>
                     </div>
                   </div>
                   <p className="lp-card-text">{L.cards.card2}</p>
@@ -634,7 +634,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Swiss Alps</strong>
-                      <span className="lp-year">2024</span>
+                      <span className="lp-year">2025</span>
                     </div>
                   </div>
                   <p className="lp-card-text">{L.cards.card3}</p>
@@ -651,7 +651,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Bali, Indonesia</strong>
-                      <span className="lp-year">2024</span>
+                      <span className="lp-year">2025</span>
                     </div>
                   </div>
                   <p className="lp-card-text">{L.cards.card4}</p>
@@ -669,7 +669,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Santorini, Hy Lạp</strong>
-                      <span className="lp-year">2024</span>
+                      <span className="lp-year">2025</span>
                     </div>
                   </div>
                   <p className="lp-card-text">{L.cards.card5}</p>
@@ -686,7 +686,7 @@ export default function LandingPage() {
                     <MapPin size={16} className="map-pin-icon" />
                     <div className="location-info">
                       <strong className="location-name">Kyoto, Japan</strong>
-                      <span className="lp-year">2024</span>
+                      <span className="lp-year">2025</span>
                     </div>
                   </div>
                   <p className="lp-card-text">{L.cards.card6}</p>

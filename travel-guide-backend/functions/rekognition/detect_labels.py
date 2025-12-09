@@ -461,7 +461,7 @@ def lambda_handler(event, context):
                             # This ensures each image has a unique record in GalleryPhotosTable
                             photo_id = key  # Use S3 key as unique identifier
                             
-                            save_photo_to_gallery(photo_id, image_url, tag_names, status='public', article_id=article_id)
+                            save_photo_to_gallery(photo_id, image_url, tag_names, status='public')
                             update_trending_tags(tag_names, image_url)
                             print("✓ Saved to Gallery tables")
                         except Exception as gallery_error:

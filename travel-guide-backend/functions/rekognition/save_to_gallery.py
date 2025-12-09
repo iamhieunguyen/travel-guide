@@ -18,13 +18,14 @@ def save_photo_to_gallery(photo_id, image_url, tags, status='public'):
     if not photos_table:
         return False
     try:
-        photos_table.put_item(Item={
+        item = {
             'photo_id': photo_id,
             'image_url': image_url,
             'tags': tags,
             'status': status,
             'created_at': datetime.now(timezone.utc).isoformat()
-        })
+        }
+        photos_table.put_item(Item=item)
         return True
     except Exception:
         return False

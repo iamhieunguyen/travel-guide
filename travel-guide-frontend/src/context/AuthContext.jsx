@@ -144,6 +144,9 @@ export function AuthProvider({ children }) {
 
   const loginHandler = async (username, password) => {
     try {
+      // Xóa localStorage override khi login tài khoản mới
+      localStorage.removeItem("displayNameOverride");
+      localStorage.removeItem("profileBioOverride");
       await cognitoLogin(username, password);
       const userData = await cognitoGetCurrentUser();
       setUser(formatUser(userData));
@@ -155,6 +158,9 @@ export function AuthProvider({ children }) {
   };
 
   const logout = useCallback(() => {
+    // Xóa localStorage override khi logout
+    localStorage.removeItem("displayNameOverride");
+    localStorage.removeItem("profileBioOverride");
     cognitoSignOut();
     setUser(null);
     navigate("/");

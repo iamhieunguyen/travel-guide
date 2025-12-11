@@ -49,12 +49,14 @@ export default function SmartGalleryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const loadTrendingTags = useCallback(async () => {
+  const loadTrendingTags = useCallback(async (forceRefresh = false) => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await galleryApi.getTrendingTags({ limit: 20 });
+      // ✅ Add cache-busting parameter for force refresh
+      const cacheBuster = forceRefresh ? `&_t=${Date.now()}` : '';
+      const response = await galleryApi.getTrendingTags({ limit: 20, cacheBuster });
       
       setTrendingTags(response.items || []);
     } catch (err) {
@@ -66,7 +68,9 @@ export default function SmartGalleryPage() {
   }, [L.loadError]);
 
   useEffect(() => {
-    loadTrendingTags();
+    // ✅ Force refresh when component mounts to get latest data
+    console.log('🔄 Loading trending tags with force refresh...');
+    loadTrendingTags(true);
   }, [loadTrendingTags]);
 
   const handleTagClick = (tag) => {

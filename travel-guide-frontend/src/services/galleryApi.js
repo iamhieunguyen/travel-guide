@@ -27,15 +27,15 @@ const API_BASE = (
  *   total_tags: 245
  * }
  */
-export async function getTrendingTags({ limit = 20 } = {}) {
+export async function getTrendingTags({ limit = 20, cacheBuster = '' } = {}) {
   try {
-    const url = `${API_BASE}/gallery/trending?limit=${limit}`;
+    // ✅ Add cache-busting parameter to bypass CloudFront/API Gateway cache
+    const url = `${API_BASE}/gallery/trending?limit=${limit}${cacheBuster}`;
     
+    // ❌ KHÔNG thêm custom headers vào GET request để tránh CORS preflight
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      // Không có headers - để browser tự động xử lý
     });
 
     if (!response.ok) {

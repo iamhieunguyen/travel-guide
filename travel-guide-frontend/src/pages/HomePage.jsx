@@ -110,6 +110,7 @@ export default function HomePage() {
   const [tagFilter, setTagFilter] = useState(''); // Tag filter state
   const [hoveredLocation, setHoveredLocation] = useState(null); // Track hovered location for tooltip
   const searchInputRef = useRef(null); // Ref for search input
+  const feedContainerRef = useRef(null); // Ref for scrollable feed container
   const mapType = user?.mapTypePref || 'roadmap';
   
   // Hide tooltip on scroll
@@ -510,8 +511,10 @@ export default function HomePage() {
   // Load new posts when banner is clicked
   const loadNewPosts = useCallback(async () => {
     try {
-      // Smooth scroll to top
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // ✅ Scroll the feed container to top (not window)
+      if (feedContainerRef.current) {
+        feedContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       
       // Wait a bit for scroll animation
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -557,6 +560,11 @@ export default function HomePage() {
       navigate('/auth');
       return;
     }
+    
+    // ✅ Invalidate cache when returning to HomePage to get fresh data
+    console.log('�️ Iinvalidating cache on HomePage mount...');
+    api.invalidateArticlesCache();
+    
     // Only load on initial mount or when scope/auth changes
     // Tag and search changes are handled by their own handlers
     console.log('🚀 Initial load with tagFilter:', tagFilter, 'searchQuery:', searchQuery);
@@ -924,7 +932,7 @@ export default function HomePage() {
             </div>
 
             {/* Scrollable Content */}
-            <div className="py-6 overflow-y-auto flex-1">
+            <div ref={feedContainerRef} className="py-6 overflow-y-auto flex-1">
 
             <div className="px-8">
               {/* New Posts Banner */}

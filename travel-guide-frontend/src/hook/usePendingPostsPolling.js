@@ -106,6 +106,12 @@ export function usePendingPostsPolling(posts, onStatusChange, options = {}) {
       if (updatedPost.status !== 'pending') {
         console.log(`✅ Post ${articleId} status changed: ${updatedPost.status}`);
         
+        // ✅ Invalidate cache when post is approved to refresh trending tags
+        if (updatedPost.status === 'approved') {
+          console.log('🗑️ Post approved, invalidating articles cache...');
+          api.invalidateArticlesCache();
+        }
+        
         // Remove from polling set
         pollingPostsRef.current.delete(articleId);
         

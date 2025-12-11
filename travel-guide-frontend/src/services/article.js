@@ -66,6 +66,31 @@ async function http(method, path, body, { raw = false, useCache = false } = {}) 
 
   if (!res.ok) {
     let errMsg = `${res.status} ${res.statusText}`;
+    
+    // ✅ Handle authentication errors
+    if (res.status === 401 || res.status === 403) {
+      console.error('🔒 Authentication error - Session expired');
+      
+      // Clear auth data
+      localStorage.removeItem('idToken');
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('X_USER_ID');
+      
+      // Show user-friendly message
+      errMsg = 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+      
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 2000);
+      
+      const e = new Error(errMsg);
+      e.status = res.status;
+      e.isAuthError = true;
+      throw e;
+    }
+    
     try {
       const j = await res.json();
       errMsg = j.error || j.message || errMsg;

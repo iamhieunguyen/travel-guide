@@ -4,8 +4,60 @@ import {
   confirmRegistration,
   resendConfirmationCode,
 } from "../services/cognito";
+import { useLanguage } from "../context/LanguageContext";
+
+const TEXT = {
+  vi: {
+    title: 'Đăng ký',
+    username: 'Tên đăng nhập',
+    email: 'Email',
+    password: 'Mật khẩu',
+    confirmPassword: 'Xác nhận mật khẩu',
+    registerButton: 'Đăng ký',
+    processing: 'Đang xử lý...',
+    otpTitle: 'Xác thực OTP',
+    otpDescription: 'Nhập mã OTP đã gửi đến',
+    verifying: 'Đang xác thực...',
+    verify: 'Xác thực',
+    changeEmail: '← Đổi Email',
+    resendCode: 'Gửi lại mã',
+    resendCooldown: 'Gửi lại ({0}s)',
+    passwordMismatch: 'Mật khẩu và xác nhận mật khẩu không khớp',
+    registrationFailed: 'Đăng ký thất bại',
+    invalidOtp: 'Mã OTP không hợp lệ',
+    otpSuccess: 'Xác thực OTP thành công! Đang chuyển đến trang đăng nhập...',
+    enterFullOtp: 'Vui lòng nhập đầy đủ mã OTP 6 số',
+    otpResent: 'Mã OTP mới đã được gửi!',
+    resendFailed: 'Gửi lại mã OTP thất bại',
+  },
+  en: {
+    title: 'Sign Up',
+    username: 'Username',
+    email: 'Email',
+    password: 'Password',
+    confirmPassword: 'Confirm Password',
+    registerButton: 'Sign Up',
+    processing: 'Processing...',
+    otpTitle: 'Verify OTP',
+    otpDescription: 'Enter the OTP sent to',
+    verifying: 'Verifying...',
+    verify: 'Verify',
+    changeEmail: '← Change Email',
+    resendCode: 'Resend Code',
+    resendCooldown: 'Resend ({0}s)',
+    passwordMismatch: 'Password and confirmation password do not match',
+    registrationFailed: 'Registration failed',
+    invalidOtp: 'Invalid OTP',
+    otpSuccess: 'OTP verified successfully! Redirecting to login...',
+    enterFullOtp: 'Please enter the full 6-digit OTP',
+    otpResent: 'New OTP has been sent!',
+    resendFailed: 'Failed to resend OTP',
+  },
+};
 
 export default function Register({ embed = false, onSwitchToLogin}) {
+  const { language } = useLanguage();
+  const L = TEXT[language] || TEXT.vi;
   const [step, setStep] = useState("form");
 
   const [username, setUsername] = useState("");
@@ -29,7 +81,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
     setMessage("");
 
     if (password !== confirmPassword) {
-      setError("Password and confirmation password do not match");
+      setError(L.passwordMismatch);
       return;
     }
 
@@ -40,7 +92,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
       setCooldown(60);
       startCooldown();
     } catch (err) {
-      setError(err.message || "Registration failed");
+      setError(err.message || L.registrationFailed);
     } finally {
       setLoading(false);
     }
@@ -54,21 +106,21 @@ export default function Register({ embed = false, onSwitchToLogin}) {
     setMessage("");
 
     if (otpCode.length !== 6) {
-      setError("Please enter the full 6-digit OTP");
+      setError(L.enterFullOtp);
       return;
     }
 
     try {
       setLoading(true);
       await confirmRegistration(username, otpCode);
-      setMessage("OTP verified successfully! Redirecting to login...");
+      setMessage(L.otpSuccess);
 
       // ✅ Gọi callback sang AuthPage để tự lướt qua form Login
       setTimeout(() => {
         if (onSwitchToLogin) onSwitchToLogin();
       }, 500);
     } catch (err) {
-      setError(err.message || "Invalid OTP");
+      setError(err.message || L.invalidOtp);
     } finally {
       setLoading(false);
     }
@@ -95,9 +147,9 @@ export default function Register({ embed = false, onSwitchToLogin}) {
       await resendConfirmationCode(username);
       setCooldown(60);
       startCooldown();
-      setMessage("New OTP has been sent!");
+      setMessage(L.otpResent);
     } catch (err) {
-      setError(err.message || "Failed to resend OTP");
+      setError(err.message || L.resendFailed);
     } finally {
       setLoading(false);
     }
@@ -125,7 +177,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
             className="space-y-5 w-full text-[#0891b2]"
           >
             <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">
-              Đăng ký
+              {L.title}
             </h2>
 
             {error && (
@@ -152,7 +204,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                   peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
                   peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Tên đăng nhập
+                {L.username}
               </label>
             </div>
 
@@ -175,7 +227,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                   peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
                   peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Email
+                {L.email}
               </label>
             </div>
 
@@ -198,7 +250,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                   peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
                   peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Mật khẩu
+                {L.password}
               </label>
             </div>
 
@@ -221,7 +273,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                   peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
                   peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
               >
-                Xác nhận mật khẩu
+                {L.confirmPassword}
               </label>
             </div>
 
@@ -232,7 +284,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
               className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
                 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-6"
             >
-              {loading ? "Đang xử lý..." : "Đăng ký"}
+              {loading ? L.processing : L.registerButton}
             </button>
           </form>
         )}
@@ -244,10 +296,10 @@ export default function Register({ embed = false, onSwitchToLogin}) {
             className="space-y-5 w-full text-center text-[#0891b2]"
           >
             <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">
-              Xác thực OTP
+              {L.otpTitle}
             </h2>
             <p className="text-gray-600 text-sm">
-              Nhập mã OTP đã gửi đến <b>{email}</b>
+              {L.otpDescription} <b>{email}</b>
             </p>
 
             {error && (
@@ -281,7 +333,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
               className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
                 transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-4"
             >
-              {loading ? "Đang xác thực..." : "Xác thực"}
+              {loading ? L.verifying : L.verify}
             </button>
 
             <div className="flex justify-between text-sm mt-4">
@@ -290,7 +342,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                 type="button"
                 className="text-gray-500 hover:text-gray-800"
               >
-                ← Đổi Email
+                {L.changeEmail}
               </button>
 
               <button
@@ -302,7 +354,7 @@ export default function Register({ embed = false, onSwitchToLogin}) {
                     : "text-[#06b6d4] hover:text-[#0891b2]"
                   }`}
               >
-                {cooldown > 0 ? `Gửi lại (${cooldown}s)` : "Gửi lại mã"}
+                {cooldown > 0 ? L.resendCooldown.replace('{0}', cooldown) : L.resendCode}
               </button>
             </div>
           </form>

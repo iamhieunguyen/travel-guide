@@ -1,9 +1,33 @@
 // src/pages/Login.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, getCurrentUser } from "../services/cognito"; // 👈 thêm hàm check user
+import { login, getCurrentUser } from "../services/cognito";
+import { useLanguage } from "../context/LanguageContext";
+
+const TEXT = {
+  vi: {
+    title: 'Đăng nhập',
+    username: 'Tên đăng nhập',
+    password: 'Mật khẩu',
+    remember: 'Ghi nhớ đăng nhập',
+    forgotPassword: 'Quên mật khẩu?',
+    loginButton: 'Đăng nhập',
+    invalidCredentials: 'Tên đăng nhập hoặc mật khẩu không đúng',
+  },
+  en: {
+    title: 'Login',
+    username: 'Username',
+    password: 'Password',
+    remember: 'Remember me',
+    forgotPassword: 'Forgot password?',
+    loginButton: 'Login',
+    invalidCredentials: 'Invalid username or password',
+  },
+};
 
 export default function Login({ embed = false }) {
+  const { language } = useLanguage();
+  const L = TEXT[language] || TEXT.vi;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
@@ -42,14 +66,14 @@ export default function Login({ embed = false }) {
       // Reload trang để đảm bảo AuthContext load user trước
       window.location.href = "/home";
     } catch (err) {
-      setError(err.message || "Tên đăng nhập hoặc mật khẩu không đúng");
+      setError(err.message || L.invalidCredentials);
     }
   };
 
   if (embed) {
     return (
       <form onSubmit={handleSubmit} className="space-y-6 w-full text-[#0891b2]">
-        <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">Đăng nhập</h2>
+        <h2 className="text-2xl font-semibold text-[#06b6d4] text-center mb-2">{L.title}</h2>
 
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm border border-red-200">
@@ -75,7 +99,7 @@ export default function Login({ embed = false }) {
               peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
               peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
           >
-            Tên đăng nhập
+            {L.username}
           </label>
         </div>
 
@@ -97,7 +121,7 @@ export default function Login({ embed = false }) {
               peer-focus:top-1 peer-focus:text-xs peer-focus:-translate-y-0 peer-focus:text-[#06b6d4]
               peer-valid:top-1 peer-valid:text-xs peer-valid:-translate-y-0 peer-valid:text-[#06b6d4]"
           >
-            Mật khẩu
+            {L.password}
           </label>
         </div>
 
@@ -110,7 +134,7 @@ export default function Login({ embed = false }) {
               onChange={() => setRemember(!remember)}
               className="h-5 w-5 text-[#06b6d4] border-[#06b6d4] rounded-2xl focus:ring-2 focus:ring-[#06b6d4]/40"
             />
-            Ghi nhớ đăng nhập
+            {L.remember}
           </label>
 
           <button
@@ -118,7 +142,7 @@ export default function Login({ embed = false }) {
             onClick={() => navigate("/forgot-password")}
             className="text-[#06b6d4] hover:underline"
           >
-            Quên mật khẩu?
+            {L.forgotPassword}
           </button>
         </div>
 
@@ -128,7 +152,7 @@ export default function Login({ embed = false }) {
           className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] hover:from-[#0e7490] hover:to-[#0891b2] text-white font-medium py-3 rounded-2xl
             transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] mt-6"
         >
-          Đăng nhập
+          {L.loginButton}
         </button>
       </form>
     );

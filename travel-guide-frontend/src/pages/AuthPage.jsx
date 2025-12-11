@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useLanguage } from "../context/LanguageContext";
 import Register from "../components/Register";
 import Login from "../components/Login";
+import { Globe } from "lucide-react";
 import "../index.css";
 
 const TEXT = {
@@ -97,6 +98,10 @@ export default function AuthPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
+        
+        {/* Language toggle button */}
+        <LanguageToggle isRegister={isRegister} />
+
         {/* LOGIN FORM */}
         <div className="form-box login">
           <div className="form-content">
@@ -132,5 +137,31 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Language Toggle Component
+function LanguageToggle({ isRegister }) {
+  const { language, setLanguage } = useLanguage();
+  
+  const handleToggle = () => {
+    const newLang = language === 'vi' ? 'en' : 'vi';
+    setLanguage(newLang);
+    localStorage.setItem('appLanguage', newLang);
+  };
+  
+  return (
+    <button
+      onClick={handleToggle}
+      className={`absolute top-4 right-4 z-50 px-4 py-2 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 hover:scale-105 flex items-center gap-2 font-medium ${
+        isRegister 
+          ? 'bg-cyan-500/90 hover:bg-cyan-500 text-white' 
+          : 'bg-white/90 hover:bg-white text-gray-600 hover:text-gray-800'
+      }`}
+      title={language === 'vi' ? 'Switch to English' : 'Chuyển sang Tiếng Việt'}
+    >
+      <Globe className="w-4 h-4" />
+      <span className="text-sm uppercase font-bold">{language === 'vi' ? 'EN' : 'VI'}</span>
+    </button>
   );
 }

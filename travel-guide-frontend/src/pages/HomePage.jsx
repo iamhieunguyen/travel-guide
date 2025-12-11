@@ -14,6 +14,7 @@ import { useInfiniteScroll } from '../hook/useInfiniteScroll';
 import { useNewPostsPolling } from '../hook/useNewPostsPolling';
 import { usePendingPostsPolling } from '../hook/usePendingPostsPolling';
 import NewPostsBanner from '../components/NewPostsBanner';
+import { showErrorToast } from '../utils/errorHandler';
 import './HomePage.css';
 
 // Component carousel để lướt qua nhiều ảnh
@@ -291,28 +292,8 @@ export default function HomePage() {
         stack: error.stack
       });
       
-      // Display user-friendly error message
-      if (window.showSuccessToast) {
-        let errorMsg;
-        if (error.status === 404) {
-          errorMsg = language === 'vi' 
-            ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
-            : 'API endpoint not found. Please deploy backend.';
-        } else if (error.status === 500) {
-          errorMsg = language === 'vi'
-            ? 'Lỗi tìm kiếm. Vui lòng thử lại.'
-            : 'Search failed. Please try again.';
-        } else if (error.status === 400) {
-          errorMsg = language === 'vi'
-            ? 'Tham số tìm kiếm không hợp lệ.'
-            : 'Invalid search parameters.';
-        } else {
-          errorMsg = language === 'vi'
-            ? `Lỗi: ${error.message || 'Đã xảy ra lỗi'}`
-            : `Error: ${error.message || 'An error occurred'}`;
-        }
-        window.showSuccessToast(errorMsg);
-      }
+      // ✅ Use centralized error handler
+      showErrorToast(error, language);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -628,14 +609,8 @@ export default function HomePage() {
         stack: error.stack
       });
       
-      if (window.showSuccessToast) {
-        const errorMsg = error.status === 404 
-          ? 'API endpoint không tồn tại. Vui lòng deploy backend.'
-          : error.status === 401
-          ? 'Bạn cần đăng nhập để thực hiện thao tác này'
-          : `Lỗi: ${error.message}`;
-        window.showSuccessToast(errorMsg);
-      }
+      // ✅ Use centralized error handler
+      showErrorToast(error, language);
     }
   };
 
